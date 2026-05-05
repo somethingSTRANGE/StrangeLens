@@ -446,11 +446,6 @@ namespace Lens
          using var valueCopyBrush = new SolidBrush(Color.FromArgb(0xFF, 0xE5, 0x66));
          using var outlinePen = new Pen(Color.DarkSlateGray) { Alignment = PenAlignment.Inset };
 
-         // Layout constants.
-         // Icon column: x=2, width=16. Gap=4. Label starts at x=22.
-         // Value starts at x=68 (~46px label width). Value extends to right edge minus margin.
-         int valueW = ContentW - ValueX - PanelPadding;
-
          void DrawStringAtBaseline(string text, Font font, Brush brush, float x, float baselineY)
          {
             if (font.Name == "Courier New")
@@ -489,35 +484,40 @@ namespace Lens
          }
 
          float y = PanelPadding; // tracked Y; advances as sections are drawn
+         var swatchRect = new Rectangle(ContentW - PanelPadding - SwatchSize, (int)y, SwatchSize, 0);
 
          // ── color-values section ────────────────────────────────────────────────────────
          bool cvAny = lens.InfoShowHex || lens.InfoShowRgb || lens.InfoShowHsl;
+         var rowOffset = RowHeight + RowGap;
          if (cvAny)
          {
-            // ── mouse-position section ─────────────────────────────────────────────────────
-            var swatch = new Rectangle(ContentW - PanelPadding - SwatchSize, (int)y, SwatchSize, SwatchSize);
-            using (var swatchBrush = new SolidBrush(d.SwatchColor))
-               g.FillRectangle(swatchBrush, swatch);
-            g.DrawRectangle(Pens.Black, swatch.X, swatch.Y, swatch.Width - 1, swatch.Height - 1);
-
             // Icon baseline-aligned with the section's first row.
             DrawIcon(g, this.iconColorValues, valueBrush, IconX, y, IconSize);
             if (lens.InfoShowHex)
             {
                DrawRow("HEX", d.ValueColorHex, y);
-               y += RowHeight + RowGap;
+               y += rowOffset;
+               swatchRect.Height += rowOffset;
             }
 
             if (lens.InfoShowRgb)
             {
                DrawRow("RGB", d.ValueColorRGB, y);
-               y += RowHeight + RowGap;
+               y += rowOffset;
+               swatchRect.Height += rowOffset;
             }
 
             if (lens.InfoShowHsl)
             {
                DrawRow("HSL", d.ValueColorHSL, y);
-               y += RowHeight + RowGap;
+               y += rowOffset;
+               swatchRect.Height += rowOffset;
+            }
+
+            swatchRect.Height -= RowGap;
+            if (swatchRect.Height > 0)
+            {
+               DrawSwatch(d.ColorSwatch, g, swatchRect);
             }
          }
 
@@ -527,17 +527,27 @@ namespace Lens
          cvAny = lens.InfoShow12Bit || lens.InfoShowWeb;
          if (cvAny)
          {
+            swatchRect.Height = RowHeight;
+
             DrawIcon(g, this.iconColorPalette, valueBrush, IconX, y, IconSize);
             if (lens.InfoShow12Bit)
             {
                DrawRow("12-Bit", d.ValueColor12Bit, y);
-               y += RowHeight + RowGap;
+
+               swatchRect.Y = (int)y;
+               DrawSwatch(d.Color12Bit, g, swatchRect);
+               
+               y += rowOffset;
             }
 
             if (lens.InfoShowWeb)
             {
                DrawRow("Web", d.ValueColorWeb, y);
-               y += RowHeight + RowGap;
+
+               swatchRect.Y = (int)y;
+               DrawSwatch(d.ColorWeb, g, swatchRect);
+
+               y += rowOffset;
             }
          }
 
@@ -548,7 +558,7 @@ namespace Lens
          {
             DrawIcon(g, this.iconMousePosition, valueBrush, IconX, y, IconSize);
             DrawRow("Mouse", d.MousePosition, y);
-            y += RowHeight + RowGap;
+            y += rowOffset;
          }
 
          // ── lens-size section (no gap) ─────────────────────────────────────────────────
@@ -556,7 +566,7 @@ namespace Lens
          {
             DrawIcon(g, this.iconLensSize, valueBrush, IconX, y, IconSize);
             DrawRow("Size", d.LensSize, y);
-            y += RowHeight + RowGap;
+            y += rowOffset;
          }
 
          // ── magnification section (no gap) ─────────────────────────────────────────────
@@ -620,6 +630,20 @@ namespace Lens
 
             g.SmoothingMode = smoothingMode;
             g.PixelOffsetMode = pixelOffsetMode;
+         }
+      }
+
+      private static void DrawSwatch(Color color, Graphics graphics, Rectangle rect)
+      {
+         using (var swatchBrush = new SolidBrush(Color.Black))
+         {
+            graphics.FillRectangle(swatchBrush, rect);
+         }
+
+         using (var swatchBrush = new SolidBrush(color))
+         {
+            rect = new Rectangle(rect.X + 1, rect.Y + 1, rect.Width - 2, rect.Height - 2); 
+            graphics.FillRectangle(swatchBrush, rect);
          }
       }
 
