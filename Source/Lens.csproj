@@ -12,7 +12,10 @@
     <NoWarn>$(NoWarn);CA1416</NoWarn>
     <ApplicationIcon>Icons\AppIcon.ico</ApplicationIcon>
     <Deterministic>true</Deterministic>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Version>0.1.0</Version>
+    <Product>Lens</Product>
+    <Description>Pixel magnifier and color picker</Description>
+    <Copyright>Copyright © 2026 Michael Ryan</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
