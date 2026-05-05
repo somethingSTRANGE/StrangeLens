@@ -13,6 +13,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Timers;
 
 namespace Lens
 {
@@ -42,7 +43,14 @@ namespace Lens
       // Remove this field and all references to it once theme implementation is complete.
       private string _debugTheme    = null;
 
-      private Lens() { }
+      private readonly Timer _saveTimer;
+
+      private Lens()
+      {
+         _saveTimer = new Timer(1500) { AutoReset = false };
+         _saveTimer.Elapsed += (_, _) => Save();
+         PropertyChanged += (_, _) => { _saveTimer.Stop(); _saveTimer.Start(); };
+      }
 
       public static Lens Instance => instance ?? (instance = new Lens());
 
