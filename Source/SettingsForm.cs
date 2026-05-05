@@ -77,12 +77,13 @@ namespace Lens
       private CheckBox      valueInfoShowZoom;
 
       private const int FormW       = 320;
-      private const int RowH        = 32;
+      private const int RowH        = 27;
       private const int PadX        = 16;
       private const int PadY        = 16;
-      private const int LabelW      = 168;
       private const int SubGroupGap = 10;
       private const int SectionGap  = 20;
+      private const int ComboBoxW   = 132;
+      private const int LabelIndent = 12;
 
       // ── Constructor ───────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ namespace Lens
          y = SectionHeader("LENS", y, accent, border);
          y = SubHeader("Grid", y, muted);
 
-         valueGridStyle = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 108 };
+         valueGridStyle = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
          valueGridStyle.Items.AddRange(new object[]
             { "None", "Solid", "Dash", "Dot", "Dash, Dot", "Dash, Dot, Dot" });
          valueGridStyle.SelectedIndex = ds.GridStyle;
@@ -146,7 +147,7 @@ namespace Lens
             if (valueGridStyle.SelectedIndex >= 0)
                ds.GridStyle = valueGridStyle.SelectedIndex;
          };
-         y = Row("Style", valueGridStyle, y, text);
+         y = Row("Style", valueGridStyle, LabelIndent, y, text);
 
          valueGridSize = ByteRangeComboBox(Lens.Defaults.MinGridSize, Lens.Defaults.MaxGridSize,
             i => i == 1 ? "1 pixel" : $"{i} pixels");
@@ -155,7 +156,7 @@ namespace Lens
             if (valueGridSize.SelectedIndex >= 0)
                ds.GridSize = (byte)(valueGridSize.SelectedIndex + Lens.Defaults.MinGridSize);
          };
-         y = Row("Size", valueGridSize, y, text);
+         y = Row("Size", valueGridSize, LabelIndent, y, text);
 
          valueGridColor = new Button
          {
@@ -169,7 +170,7 @@ namespace Lens
          valueGridColor.DataBindings.Add(nameof(valueGridColor.BackColor), ds,
             nameof(ds.GridColor), false, DataSourceUpdateMode.OnPropertyChanged);
          valueGridColor.Click += this.button1_Click;
-         y = Row("Color", valueGridColor, y, text);
+         y = Row("Color", valueGridColor, LabelIndent, y, text);
 
          y += SubGroupGap;
          y = SubHeader("Magnification", y, muted);
@@ -181,9 +182,9 @@ namespace Lens
             if (valueMagnification.SelectedIndex >= 0)
                ds.Magnification = (byte)(valueMagnification.SelectedIndex + Lens.Defaults.MinMagnification);
          };
-         y = Row("Power level", valueMagnification, y, text);
+         y = Row("Power level", valueMagnification, LabelIndent, y, text);
 
-         valueScalingMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 108 };
+         valueScalingMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
          valueScalingMode.Items.AddRange(new object[]
          {
             "Nearest neighbor", "Bilinear", "High quality bilinear", "Bicubic", "High quality bicubic"
@@ -193,7 +194,7 @@ namespace Lens
             if (valueScalingMode.SelectedIndex >= 0)
                ds.Scaling = (ScalingMode)valueScalingMode.SelectedIndex;
          };
-         y = Row("Scaling", valueScalingMode, y, text);
+         y = Row("Scaling", valueScalingMode, LabelIndent, y, text);
 
          valueSpeedFactor = ByteRangeComboBox(Lens.Defaults.MinSpeedFactor, Lens.Defaults.MaxSpeedFactor,
             i => i.ToString());
@@ -202,37 +203,37 @@ namespace Lens
             if (valueSpeedFactor.SelectedIndex >= 0)
                ds.SpeedFactor = (byte)(valueSpeedFactor.SelectedIndex + Lens.Defaults.MinSpeedFactor);
          };
-         y = Row("Speed factor", valueSpeedFactor, y, text);
+         y = Row("Speed factor", valueSpeedFactor, LabelIndent, y, text);
 
          // ── Info ──────────────────────────────────────────────────────────────────────
          y += SectionGap;
          y = SectionHeader("INFO", y, accent, border);
 
          valueInfoShowHex = InfoToggle(ds, nameof(ds.InfoShowHex), bg);
-         y = Row("Show hex color value", valueInfoShowHex, y, text);
+         y = Row("Show hex color value", valueInfoShowHex, 0, y, text);
 
          valueInfoShowRgb = InfoToggle(ds, nameof(ds.InfoShowRgb), bg);
-         y = Row("Show RGB color value", valueInfoShowRgb, y, text);
+         y = Row("Show RGB color value", valueInfoShowRgb, 0, y, text);
 
          valueInfoShowHsl = InfoToggle(ds, nameof(ds.InfoShowHsl), bg);
-         y = Row("Show HSL color value", valueInfoShowHsl, y, text);
+         y = Row("Show HSL color value", valueInfoShowHsl, 0, y, text);
 
          y += SubGroupGap;
          valueInfoShow12Bit = InfoToggle(ds, nameof(ds.InfoShow12Bit), bg);
-         y = Row("Show 12-bit color conversion", valueInfoShow12Bit, y, text);
+         y = Row("Show 12-bit color conversion", valueInfoShow12Bit, 0, y, text);
 
          valueInfoShowWeb = InfoToggle(ds, nameof(ds.InfoShowWeb), bg);
-         y = Row("Show web safe color conversion", valueInfoShowWeb, y, text);
+         y = Row("Show web safe color conversion", valueInfoShowWeb, 0, y, text);
 
          y += SubGroupGap;
          valueInfoShowMouse = InfoToggle(ds, nameof(ds.InfoShowMouse), bg);
-         y = Row("Show mouse position", valueInfoShowMouse, y, text);
+         y = Row("Show mouse position", valueInfoShowMouse, 0, y, text);
 
          valueInfoShowSize = InfoToggle(ds, nameof(ds.InfoShowSize), bg);
-         y = Row("Show lens size", valueInfoShowSize, y, text);
+         y = Row("Show lens size", valueInfoShowSize, 0, y, text);
 
          valueInfoShowZoom = InfoToggle(ds, nameof(ds.InfoShowZoom), bg);
-         y = Row("Show zoom level", valueInfoShowZoom, y, text);
+         y = Row("Show zoom level", valueInfoShowZoom, 0, y, text);
 
          this.ClientSize = new Size(FormW, y + PadY);
 
@@ -264,7 +265,7 @@ namespace Lens
 
       private static ComboBox ByteRangeComboBox(byte min, byte max, Func<int, string> label)
       {
-         var cb = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 108 };
+         var cb = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
          for (int i = min; i <= max; i++)
             cb.Items.Add(label(i));
          return cb;
@@ -314,6 +315,7 @@ namespace Lens
          this.Controls.Add(new Label
          {
             Text      = text,
+            Font      = new Font(this.Font, FontStyle.Bold),
             Location  = new Point(PadX, y),
             Size      = new Size(FormW - PadX * 2, SubH),
             ForeColor = color,
@@ -324,13 +326,13 @@ namespace Lens
          return y + SubH + After;
       }
 
-      private int Row(string labelText, Control ctrl, int y, Color labelColor)
+      private int Row(string labelText, Control ctrl, int xOffset, int y, Color labelColor)
       {
          this.Controls.Add(new Label
          {
             Text      = labelText,
-            Location  = new Point(PadX, y),
-            Size      = new Size(LabelW, RowH),
+            Location  = new Point(PadX + xOffset, y),
+            Size      = new Size(FormW - PadX - ctrl.Width - PadX - xOffset - PadX, RowH),
             ForeColor = labelColor,
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft
