@@ -103,6 +103,7 @@ namespace Lens
       // ── State. ─────────────────────────────────────────────────────────────────────────
       private readonly InfoControl infoData;
       private Font valueFont;
+      private bool panelShown;
 
       // Content DC — ContentW × ContentH.
       private IntPtr layeredMemDC = IntPtr.Zero;
@@ -231,9 +232,36 @@ namespace Lens
       }
 
       // ── Public update entry-point, called each frame from LensForm.RenderFrame. ────────
+
+      internal bool HasVisibleContent
+      {
+         get
+         {
+            var lens = Lens.Instance;
+            return lens.InfoShowHex || lens.InfoShowRgb || lens.InfoShowHsl ||
+                   lens.InfoShow12Bit || lens.InfoShowWeb ||
+                   lens.InfoShowMouse || lens.InfoShowSize || lens.InfoShowZoom;
+         }
+      }
+
       public void UpdateAndPosition(Point cursorPos, Color color, Rectangle contentBounds)
       {
          this.infoData.UpdateInfo(cursorPos, color);
+
+         if (!this.HasVisibleContent)
+         {
+            if (this.panelShown)
+            {
+               const uint SWP_NOSIZE      = 0x0001;
+               const uint SWP_NOMOVE      = 0x0002;
+               const uint SWP_NOACTIVATE  = 0x0010;
+               const uint SWP_HIDEWINDOW  = 0x0080;
+               SetWindowPos(this.Handle, IntPtr.Zero, 0, 0, 0, 0,
+                  SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_HIDEWINDOW);
+               this.panelShown = false;
+            }
+            return;
+         }
 
          // Recompute content height from current settings; free layered bitmap if size changed.
          int newContentH = this.ComputeContentH();
@@ -265,14 +293,23 @@ namespace Lens
             // (also topmost, but created after us) don't permanently cover the info panel.
             // LensForm calls SetWindowPos for itself just before this, so InfoForm ends up
             // above LensForm — consistent with the current Z-order.
+            //
+            // Show via SetWindowPos rather than Form.Show() for two reasons:
+            //   1. Form.Show() triggers WinForms paint events (OnPaint, OnPaintBackground) that
+            //      are suppressed here — all rendering goes through UpdateLayeredWindow.
+            //   2. CommitLayeredWindow runs above, so content is already in DWM's buffer before
+            //      SWP_SHOWWINDOW fires. The window appears with content, never blank. Calling
+            //      Show() would make the window visible before the layered content is committed,
+            //      producing a one-frame blank or positional offset between the two panels.
             var hwndTopmost = new IntPtr(-1);
             const uint SWP_NOSIZE     = 0x0001;
             const uint SWP_NOMOVE     = 0x0002;
             const uint SWP_NOACTIVATE = 0x0010;
             const uint SWP_SHOWWINDOW = 0x0040;
             uint flags = SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE;
-            if (!this.Visible) flags |= SWP_SHOWWINDOW;
+            if (!this.panelShown) flags |= SWP_SHOWWINDOW;
             SetWindowPos(this.Handle, hwndTopmost, 0, 0, 0, 0, flags);
+            this.panelShown = true;
          }
       }
 
