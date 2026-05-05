@@ -930,14 +930,18 @@ namespace Lens
 
       private void ChangeHeight(short amount)
       {
+         var before = Lens.Instance.Height;
          Lens.Instance.Height += amount;
+         if (Lens.Instance.Height == before) return;
          this.ApplyHeight();
          this.RenderFrame();
       }
 
       private void ChangeMagnification(short amount)
       {
+         var before = Lens.Instance.Magnification;
          Lens.Instance.Magnification = (byte)(Lens.Instance.Magnification + amount);
+         if (Lens.Instance.Magnification == before) return;
          this.SetMouseSpeed();
          this.RenderFrame();
       }
@@ -952,7 +956,9 @@ namespace Lens
 
       private void ChangeWidth(short amount)
       {
+         var before = Lens.Instance.Width;
          Lens.Instance.Width += amount;
+         if (Lens.Instance.Width == before) return;
          this.ApplyWidth();
          this.RenderFrame();
       }
