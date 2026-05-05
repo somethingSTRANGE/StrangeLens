@@ -20,12 +20,10 @@ namespace Lens
    {
       private static Lens instance;
 
-      private bool   _autoClose       = true;
       private Color  _gridColor       = Color.Black;
       private byte   _gridSize        = 4;
       private int    _gridStyle       = 2;
       private short  _height          = 160;
-      private bool   _hideCursor      = true;
       private byte   _magnification   = 4;
       private ScalingMode _scalingMode = ScalingMode.NearestNeighbor;
       private byte   _speedFactor     = 4;
@@ -63,12 +61,6 @@ namespace Lens
          }
       }
 
-      public bool AutoClose
-      {
-         get => _autoClose;
-         set => SetPersisted(ref _autoClose, value);
-      }
-
       public Color GridColor
       {
          get => _gridColor;
@@ -94,12 +86,6 @@ namespace Lens
          set => SetPersisted(ref _height,
             (short)(value.Clamp(Defaults.MinHeight, Defaults.MaxHeight) / Defaults.SizeIncrement *
                     Defaults.SizeIncrement));
-      }
-
-      public bool HideCursor
-      {
-         get => _hideCursor;
-         set => SetPersisted(ref _hideCursor, value);
       }
 
       public byte Magnification
@@ -161,8 +147,6 @@ namespace Lens
             _gridSize        = data.GridSize;
             _gridStyle       = data.GridStyle;
             _gridColor       = ColorTranslator.FromHtml(data.GridColor);
-            _hideCursor      = data.HideCursor;
-            _autoClose       = data.AutoClose;
             _scalingMode     = (ScalingMode)data.Scaling;
             _speedFactor     = data.SpeedFactor;
             _infoShowHex     = data.InfoShowHex;
@@ -196,8 +180,6 @@ namespace Lens
                GridSize         = _gridSize,
                GridStyle        = _gridStyle,
                GridColor        = $"#{_gridColor.R:X2}{_gridColor.G:X2}{_gridColor.B:X2}",
-               HideCursor       = _hideCursor,
-               AutoClose        = _autoClose,
                Scaling          = (int)_scalingMode,
                SpeedFactor      = _speedFactor,
                InfoShowHex      = _infoShowHex,
@@ -228,7 +210,6 @@ namespace Lens
          field = value;
          Debug.WriteLine($"{propertyName} = {value}");
          OnPropertyChanged(propertyName);
-         Save();
          return true;
       }
 
@@ -248,8 +229,6 @@ namespace Lens
          public byte   GridSize         { get; set; } = 4;
          public int    GridStyle        { get; set; } = 2;
          public string GridColor        { get; set; } = "#000000";
-         public bool   HideCursor       { get; set; } = true;
-         public bool   AutoClose        { get; set; } = true;
          public int    Scaling           { get; set; } = 0; // ScalingMode.NearestNeighbor
          public byte   SpeedFactor      { get; set; } = 4;
 

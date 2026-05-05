@@ -78,6 +78,7 @@ namespace Lens
                Debug.WriteLine($"Theme: {colorMode} (debugTheme={Lens.Instance.DebugTheme ?? "none"})");
                Application.SetColorMode(colorMode);
                settingsForm = new SettingsForm();
+               Application.ApplicationExit += (_, _) => Lens.Instance.Save();
                Application.Run();
             }
             else
