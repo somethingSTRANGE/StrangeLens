@@ -318,7 +318,6 @@ namespace Lens
          switch (e.KeyCode)
          {
             case Keys.Escape:
-               // this.infoPopup.Close();
                this.Close();
                break;
             case Keys.Oemplus:  if (e.Control) this.ChangeMagnification(1);  break;
