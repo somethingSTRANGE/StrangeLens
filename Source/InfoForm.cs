@@ -34,8 +34,9 @@ namespace Lens
       private const int   ShadowMarginB  = ShadowBlur + ShadowOffsetY;  // 22
 
       // ── Content dimensions. ────────────────────────────────────────────────────────────
-      internal const int ContentW = 230;  // fixed; grows to accommodate icon column
+      private int contentW;               // dynamic; recomputed from enabled settings each frame
       private int contentH;               // dynamic; recomputed from enabled settings each frame
+      internal int ContentW => this.contentW;
 
       /// <summary>Horizontal gap (px) between the lens content edge and this panel.</summary>
       internal const int PanelMargin = 20;
@@ -43,6 +44,15 @@ namespace Lens
       private const int ColumnGap = 4;
       private const int RowGap = 2;
       private const int RowHeight = 16;
+
+      // Max character counts for each value type — used to compute dynamic panel width.
+      private const int MaxCharsHex      =  7;  // #FFFFFF
+      private const int MaxCharsRgb      = 13;  // 255, 255, 255
+      private const int MaxCharsHsl      = 19;  // 359.9, 99.9%, 99.9%
+      private const int MaxCharsColor4   =  4;  // #RGB  (12-bit, Web)
+      private const int MaxCharsMouse    = 11;  // 99999, 99999
+      private const int MaxCharsSize     =  7;  // 400×400
+      private const int MaxCharsZoom     =  3;  // x16
 
       /// <summary>
       ///    SectionGap is only drawn after a section, and a section contains at least one row. Each row
@@ -103,6 +113,7 @@ namespace Lens
       // ── State. ─────────────────────────────────────────────────────────────────────────
       private readonly InfoControl infoData;
       private Font valueFont;
+      private float charWidth;
       private bool panelShown;
 
       // Content DC — ContentW × ContentH.
@@ -134,13 +145,16 @@ namespace Lens
          this.FormBorderStyle = FormBorderStyle.None;
          this.ShowInTaskbar   = false;
          this.StartPosition   = FormStartPosition.Manual;
-         // Window size includes shadow margins on all sides.
+         // Font must be created before ComputeContentW(), which needs charWidth.
+         this.valueFont = CreateValueFont(13f);
+         this.charWidth = MeasureCharWidth(this.valueFont);
          this.contentH = this.ComputeContentH();
-         this.ClientSize = new Size(ContentW + ShadowMarginL + ShadowMarginR,
+         this.contentW = this.ComputeContentW();
+         // Window size includes shadow margins on all sides.
+         this.ClientSize = new Size(this.contentW + ShadowMarginL + ShadowMarginR,
                                     this.contentH + ShadowMarginT + ShadowMarginB);
          // Start off-screen; shown lazily by UpdateAndPosition after first position set.
          this.Location = new Point(-32000, -32000);
-         this.valueFont          = CreateValueFont(13f);
          this.iconColorPalette   = IconPaths.Build(IconPaths.ColorPalette,   IconSize);
          this.iconColorValues    = IconPaths.Build(IconPaths.ColorValues,    IconSize);
          this.iconLensSize       = IconPaths.Build(IconPaths.LensSize,       IconSize);
@@ -263,11 +277,13 @@ namespace Lens
             return;
          }
 
-         // Recompute content height from current settings; free layered bitmap if size changed.
+         // Recompute content size from current settings; free layered bitmap if either dimension changed.
          int newContentH = this.ComputeContentH();
-         if (newContentH != this.contentH)
+         int newContentW = this.ComputeContentW();
+         if (newContentH != this.contentH || newContentW != this.contentW)
          {
             this.contentH = newContentH;
+            this.contentW = newContentW;
             this.FreeLayeredResources();
          }
 
@@ -314,6 +330,54 @@ namespace Lens
       }
 
       // ── Rendering. ─────────────────────────────────────────────────────────────────────
+
+      /// <summary>
+      ///   Measures the advance width of one character in <paramref name="font"/> using the
+      ///   same GDI+ / GenericTypographic path used at draw time.
+      /// </summary>
+      private static float MeasureCharWidth(Font font)
+      {
+         using var bmp = new Bitmap(1, 1);
+         using var g   = Graphics.FromImage(bmp);
+         return g.MeasureString("0", font, PointF.Empty, StringFormat.GenericTypographic).Width;
+      }
+
+      /// <summary>
+      ///   Computes the dynamic panel width from the currently visible rows and the measured
+      ///   character width of the value font. Color rows (HEX/RGB/HSL/12-bit/Web) drive the
+      ///   swatch column position; non-color rows (Mouse) determine the fallback minimum.
+      /// </summary>
+      private int ComputeContentW()
+      {
+         var lens = Lens.Instance;
+
+         // Widest visible color-row value in characters. HSL is always the ceiling at 19.
+         int colorChars = 0;
+         if      (lens.InfoShowHsl)                       colorChars = MaxCharsHsl;
+         else if (lens.InfoShowRgb)                       colorChars = MaxCharsRgb;
+         else if (lens.InfoShowHex)                       colorChars = MaxCharsHex;
+         else if (lens.InfoShow12Bit || lens.InfoShowWeb) colorChars = MaxCharsColor4;
+
+         // Color rows need value text + gap + swatch column.
+         int colorValueW = colorChars > 0
+            ? (int)Math.Ceiling(colorChars * this.charWidth) + ColumnGap * 2 + SwatchSize
+            : 0;
+
+         // Non-color rows: take the widest visible one (Mouse > Size > Zoom).
+         int nonColorChars = 0;
+         if (lens.InfoShowMouse) nonColorChars = MaxCharsMouse;
+         else if (lens.InfoShowSize) nonColorChars = MaxCharsSize;
+         else if (lens.InfoShowZoom) nonColorChars = MaxCharsZoom;
+         int nonColorValueW = (int)Math.Ceiling(nonColorChars * this.charWidth);
+
+         // Take the max so neither side clips the other when both are visible.
+         int valuePixels = Math.Max(colorValueW, nonColorValueW);
+
+         // Fall back to a minimum if nothing is enabled (shouldn't render, but be safe).
+         if (valuePixels == 0) valuePixels = (int)Math.Ceiling(4 * this.charWidth);
+
+         return ValueX + valuePixels + PanelPadding;
+      }
 
       /// <summary>
       ///   Computes the dynamic content height from the current display-toggle settings.

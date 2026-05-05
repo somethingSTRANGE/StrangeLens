@@ -410,7 +410,7 @@ namespace Lens
             //
             // On display change: re-initialize to default, except start inverse if the cursor
             // is already within the right-edge flip zone of the new display.
-            int infoW       = this.infoForm.HasVisibleContent ? InfoForm.ContentW + InfoForm.PanelMargin : 0;
+            int infoW       = this.infoForm.HasVisibleContent ? this.infoForm.ContentW + InfoForm.PanelMargin : 0;
             bool rightClips = cursorPos.X + gapX + w + infoW > screen.Bounds.Right;
             bool leftClips  = cursorPos.X - gapX - w - infoW < screen.Bounds.Left;
 
