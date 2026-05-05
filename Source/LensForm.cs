@@ -419,10 +419,10 @@ namespace Lens
                this.lastScreenName = screen.DeviceName;
                this.infoOnLeft = rightClips;   // initialize for this display
             }
-            else if (!this.infoOnLeft && rightClips)
-               this.infoOnLeft = true;          // default → inverse
-            else if (this.infoOnLeft && leftClips)
-               this.infoOnLeft = false;         // inverse → default
+            else if (!this.infoOnLeft && rightClips && !leftClips)
+               this.infoOnLeft = true;          // default → inverse (only if left fits)
+            else if (this.infoOnLeft && leftClips && !rightClips)
+               this.infoOnLeft = false;         // inverse → default (only if right fits)
 
             var lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
             var lensTop = Math.Max(screen.Bounds.Top,
