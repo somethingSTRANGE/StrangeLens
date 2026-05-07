@@ -8,6 +8,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -26,17 +27,17 @@ namespace Lens
 
       private LensForm activeLens;
       private int      clickCount;
-      private System.Windows.Forms.Timer clickTimer;
+      private Timer    clickTimer;
       private bool     shouldExitApplication;
 
       // ── Nord palette ──────────────────────────────────────────────────────────────────
 
-      private static readonly Color DarkBg      = Color.FromArgb(0x2E, 0x34, 0x40); // Nord0
-      private static readonly Color DarkControl = Color.FromArgb(0x43, 0x4C, 0x5E); // Nord2
-      private static readonly Color DarkBorder  = Color.FromArgb(0x4C, 0x56, 0x6A); // Nord3
-      private static readonly Color DarkText    = Color.FromArgb(0xEC, 0xEF, 0xF4); // Nord6
-      private static readonly Color DarkMuted   = Color.FromArgb(0xD8, 0xDE, 0xE9); // Nord4
-      private static readonly Color DarkAccent  = Color.FromArgb(0x88, 0xC0, 0xD0); // Nord8
+      private static readonly Color DarkBg      = ColorTranslator.FromHtml("#2e3440"); // Nord0
+      private static readonly Color DarkControl = ColorTranslator.FromHtml("#434c5e"); // Nord2
+      private static readonly Color DarkBorder  = ColorTranslator.FromHtml("#4c566a"); // Nord3
+      private static readonly Color DarkMuted   = ColorTranslator.FromHtml("#d8dee9"); // Nord4
+      private static readonly Color DarkText    = ColorTranslator.FromHtml("#e5e9f0"); // Nord5
+      private static readonly Color DarkAccent  = ColorTranslator.FromHtml("#5e81ac"); //.Saturate(20); // Nord10
 
       private static readonly Color LightBg      = Color.FromArgb(0xFA, 0xFA, 0xFA);
       private static readonly Color LightControl = Color.White;
@@ -61,20 +62,20 @@ namespace Lens
 
       // ── Layout fields ─────────────────────────────────────────────────────────────────
 
-      private ComboBox      valueGridStyle;
-      private ComboBox      valueGridSize;
-      private Button        valueGridColor;
-      private ComboBox      valueMagnification;
-      private ComboBox      valueScalingMode;
-      private ComboBox      valueSpeedFactor;
-      private CheckBox      valueInfoShowHex;
-      private CheckBox      valueInfoShowRgb;
-      private CheckBox      valueInfoShowHsl;
-      private CheckBox      valueInfoShow12Bit;
-      private CheckBox      valueInfoShowWeb;
-      private CheckBox      valueInfoShowMouse;
-      private CheckBox      valueInfoShowSize;
-      private CheckBox      valueInfoShowZoom;
+      private ComboBox      comboBoxLensGridStyle;
+      private ComboBox      comboBoxLensGridSize;
+      private Button        buttonLensGridColor;
+      private ComboBox      comboBoxLensMagnification;
+      private ComboBox      comboBoxLensScalingMode;
+      private ComboBox      comboBoxLensSpeedFactor;
+      private CheckBox      checkBoxInfoShowHex;
+      private CheckBox      checkBoxInfoShowRgb;
+      private CheckBox      checkBoxInfoShowHsl;
+      private CheckBox      checkBoxInfoShow12Bit;
+      private CheckBox      checkBoxInfoShowWeb;
+      private CheckBox      checkBoxInfoShowMouse;
+      private CheckBox      checkBoxInfoShowSize;
+      private CheckBox      checkBoxInfoShowZoom;
 
       private const int FormW       = 320;
       private const int RowH        = 27;
@@ -84,6 +85,10 @@ namespace Lens
       private const int SectionGap  = 20;
       private const int ComboBoxW   = 132;
       private const int LabelIndent = 12;
+
+      private Color colorCtrlBg;
+      private Color colorCtrlBorder;
+      private Color colorFocusBorder;
 
       // ── Constructor ───────────────────────────────────────────────────────────────────
 
@@ -132,33 +137,42 @@ namespace Lens
          var  accent = dark ? DarkAccent  : LightAccent;
          var  ds     = Lens.Instance;
 
-         this.BackColor = bg;
-         int y = PadY;
+         Toggle.Colors.Focus = border;
+         Toggle.Colors.Thumb = muted;
+         Toggle.Colors.ThumbHover = Color.White;
+         Toggle.Colors.TrackActive = accent;
+         Toggle.Colors.TrackBase = Color.Black;
+
+         this.BackColor        = bg;
+         this.colorCtrlBg      = ctrlBg;
+         this.colorCtrlBorder  = border;
+         this.colorFocusBorder = accent;
+         int y = PadY / 2;
 
          // ── Lens ──────────────────────────────────────────────────────────────────────
          y = SectionHeader("LENS", y, accent, border);
          y = SubHeader("Grid", y, muted);
 
-         valueGridStyle = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
-         valueGridStyle.Items.AddRange(new object[]
+         this.comboBoxLensGridStyle = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
+         this.comboBoxLensGridStyle.Items.AddRange(new object[]
             { "None", "Solid", "Dash", "Dot", "Dash, Dot", "Dash, Dot, Dot" });
-         valueGridStyle.SelectedIndex = ds.GridStyle;
-         valueGridStyle.SelectedIndexChanged += (_, _) => {
-            if (valueGridStyle.SelectedIndex >= 0)
-               ds.GridStyle = valueGridStyle.SelectedIndex;
+         this.comboBoxLensGridStyle.SelectedIndex = ds.GridStyle;
+         this.comboBoxLensGridStyle.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxLensGridStyle.SelectedIndex >= 0)
+               ds.GridStyle = this.comboBoxLensGridStyle.SelectedIndex;
          };
-         y = Row("Style", valueGridStyle, LabelIndent, y, text);
+         y = this.LayoutRow("Style", this.comboBoxLensGridStyle, LabelIndent, y, text);
 
-         valueGridSize = ByteRangeComboBox(Lens.Defaults.MinGridSize, Lens.Defaults.MaxGridSize,
+         this.comboBoxLensGridSize = ByteRangeComboBox(Lens.Defaults.MinGridSize, Lens.Defaults.MaxGridSize,
             i => i == 1 ? "1 pixel" : $"{i} pixels");
-         valueGridSize.SelectedIndex = ds.GridSize - Lens.Defaults.MinGridSize;
-         valueGridSize.SelectedIndexChanged += (_, _) => {
-            if (valueGridSize.SelectedIndex >= 0)
-               ds.GridSize = (byte)(valueGridSize.SelectedIndex + Lens.Defaults.MinGridSize);
+         this.comboBoxLensGridSize.SelectedIndex = ds.GridSize - Lens.Defaults.MinGridSize;
+         this.comboBoxLensGridSize.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxLensGridSize.SelectedIndex >= 0)
+               ds.GridSize = (byte)(this.comboBoxLensGridSize.SelectedIndex + Lens.Defaults.MinGridSize);
          };
-         y = Row("Size", valueGridSize, LabelIndent, y, text);
+         y = this.LayoutRow("Size", this.comboBoxLensGridSize, LabelIndent, y, text);
 
-         valueGridColor = new Button
+         this.buttonLensGridColor = new Button
          {
             Width                  = 24,
             Height                 = 24,
@@ -166,74 +180,74 @@ namespace Lens
             BackColor              = ds.GridColor,
             UseVisualStyleBackColor = false
          };
-         valueGridColor.FlatAppearance.BorderColor = border;
-         valueGridColor.DataBindings.Add(nameof(valueGridColor.BackColor), ds,
+         this.buttonLensGridColor.FlatAppearance.BorderColor = border;
+         this.buttonLensGridColor.DataBindings.Add(nameof(this.buttonLensGridColor.BackColor), ds,
             nameof(ds.GridColor), false, DataSourceUpdateMode.OnPropertyChanged);
-         valueGridColor.Click += this.button1_Click;
-         y = Row("Color", valueGridColor, LabelIndent, y, text);
+         this.buttonLensGridColor.Click += this.button1_Click;
+         y = this.LayoutRow("Color", this.buttonLensGridColor, LabelIndent, y, text);
 
          y += SubGroupGap;
          y = SubHeader("Magnification", y, muted);
 
-         valueMagnification = ByteRangeComboBox(Lens.Defaults.MinMagnification, Lens.Defaults.MaxMagnification,
+         this.comboBoxLensMagnification = ByteRangeComboBox(Lens.Defaults.MinMagnification, Lens.Defaults.MaxMagnification,
             i => $"×{i}");
-         valueMagnification.SelectedIndex = ds.Magnification - Lens.Defaults.MinMagnification;
-         valueMagnification.SelectedIndexChanged += (_, _) => {
-            if (valueMagnification.SelectedIndex >= 0)
-               ds.Magnification = (byte)(valueMagnification.SelectedIndex + Lens.Defaults.MinMagnification);
+         this.comboBoxLensMagnification.SelectedIndex = ds.Magnification - Lens.Defaults.MinMagnification;
+         this.comboBoxLensMagnification.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxLensMagnification.SelectedIndex >= 0)
+               ds.Magnification = (byte)(this.comboBoxLensMagnification.SelectedIndex + Lens.Defaults.MinMagnification);
          };
-         y = Row("Power level", valueMagnification, LabelIndent, y, text);
+         y = this.LayoutRow("Power level", this.comboBoxLensMagnification, LabelIndent, y, text);
 
-         valueScalingMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
-         valueScalingMode.Items.AddRange(new object[]
+         this.comboBoxLensScalingMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
+         this.comboBoxLensScalingMode.Items.AddRange(new object[]
          {
             "Nearest neighbor", "Bilinear", "High quality bilinear", "Bicubic", "High quality bicubic"
          });
-         valueScalingMode.SelectedIndex = (int)ds.Scaling;
-         valueScalingMode.SelectedIndexChanged += (_, _) => {
-            if (valueScalingMode.SelectedIndex >= 0)
-               ds.Scaling = (ScalingMode)valueScalingMode.SelectedIndex;
+         this.comboBoxLensScalingMode.SelectedIndex = (int)ds.Scaling;
+         this.comboBoxLensScalingMode.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxLensScalingMode.SelectedIndex >= 0)
+               ds.Scaling = (ScalingMode)this.comboBoxLensScalingMode.SelectedIndex;
          };
-         y = Row("Scaling", valueScalingMode, LabelIndent, y, text);
+         y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, text);
 
-         valueSpeedFactor = ByteRangeComboBox(Lens.Defaults.MinSpeedFactor, Lens.Defaults.MaxSpeedFactor,
+         this.comboBoxLensSpeedFactor = ByteRangeComboBox(Lens.Defaults.MinSpeedFactor, Lens.Defaults.MaxSpeedFactor,
             i => i.ToString());
-         valueSpeedFactor.SelectedIndex = ds.SpeedFactor - Lens.Defaults.MinSpeedFactor;
-         valueSpeedFactor.SelectedIndexChanged += (_, _) => {
-            if (valueSpeedFactor.SelectedIndex >= 0)
-               ds.SpeedFactor = (byte)(valueSpeedFactor.SelectedIndex + Lens.Defaults.MinSpeedFactor);
+         this.comboBoxLensSpeedFactor.SelectedIndex = ds.SpeedFactor - Lens.Defaults.MinSpeedFactor;
+         this.comboBoxLensSpeedFactor.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxLensSpeedFactor.SelectedIndex >= 0)
+               ds.SpeedFactor = (byte)(this.comboBoxLensSpeedFactor.SelectedIndex + Lens.Defaults.MinSpeedFactor);
          };
-         y = Row("Speed factor", valueSpeedFactor, LabelIndent, y, text);
+         y = this.LayoutRow("Speed factor", this.comboBoxLensSpeedFactor, LabelIndent, y, text);
 
          // ── Info ──────────────────────────────────────────────────────────────────────
          y += SectionGap;
          y = SectionHeader("INFO", y, accent, border);
 
-         valueInfoShowHex = InfoToggle(ds, nameof(ds.InfoShowHex), bg);
-         y = Row("Show hex color value", valueInfoShowHex, 0, y, text);
+         this.checkBoxInfoShowHex = InfoToggle(ds, nameof(ds.InfoShowHex), bg);
+         y = this.LayoutRow("Show hex color value", this.checkBoxInfoShowHex, 0, y, text);
 
-         valueInfoShowRgb = InfoToggle(ds, nameof(ds.InfoShowRgb), bg);
-         y = Row("Show RGB color value", valueInfoShowRgb, 0, y, text);
+         this.checkBoxInfoShowRgb = InfoToggle(ds, nameof(ds.InfoShowRgb), bg);
+         y = this.LayoutRow("Show RGB color value", this.checkBoxInfoShowRgb, 0, y, text);
 
-         valueInfoShowHsl = InfoToggle(ds, nameof(ds.InfoShowHsl), bg);
-         y = Row("Show HSL color value", valueInfoShowHsl, 0, y, text);
-
-         y += SubGroupGap;
-         valueInfoShow12Bit = InfoToggle(ds, nameof(ds.InfoShow12Bit), bg);
-         y = Row("Show 12-bit color conversion", valueInfoShow12Bit, 0, y, text);
-
-         valueInfoShowWeb = InfoToggle(ds, nameof(ds.InfoShowWeb), bg);
-         y = Row("Show web safe color conversion", valueInfoShowWeb, 0, y, text);
+         this.checkBoxInfoShowHsl = InfoToggle(ds, nameof(ds.InfoShowHsl), bg);
+         y = this.LayoutRow("Show HSL color value", this.checkBoxInfoShowHsl, 0, y, text);
 
          y += SubGroupGap;
-         valueInfoShowMouse = InfoToggle(ds, nameof(ds.InfoShowMouse), bg);
-         y = Row("Show mouse position", valueInfoShowMouse, 0, y, text);
+         this.checkBoxInfoShow12Bit = InfoToggle(ds, nameof(ds.InfoShow12Bit), bg);
+         y = this.LayoutRow("Show 12-bit color conversion", this.checkBoxInfoShow12Bit, 0, y, text);
 
-         valueInfoShowSize = InfoToggle(ds, nameof(ds.InfoShowSize), bg);
-         y = Row("Show lens size", valueInfoShowSize, 0, y, text);
+         this.checkBoxInfoShowWeb = InfoToggle(ds, nameof(ds.InfoShowWeb), bg);
+         y = this.LayoutRow("Show web safe color conversion", this.checkBoxInfoShowWeb, 0, y, text);
 
-         valueInfoShowZoom = InfoToggle(ds, nameof(ds.InfoShowZoom), bg);
-         y = Row("Show zoom level", valueInfoShowZoom, 0, y, text);
+         y += SubGroupGap;
+         this.checkBoxInfoShowMouse = InfoToggle(ds, nameof(ds.InfoShowMouse), bg);
+         y = this.LayoutRow("Show mouse position", this.checkBoxInfoShowMouse, 0, y, text);
+
+         this.checkBoxInfoShowSize = InfoToggle(ds, nameof(ds.InfoShowSize), bg);
+         y = this.LayoutRow("Show lens size", this.checkBoxInfoShowSize, 0, y, text);
+
+         this.checkBoxInfoShowZoom = InfoToggle(ds, nameof(ds.InfoShowZoom), bg);
+         y = this.LayoutRow("Show zoom level", this.checkBoxInfoShowZoom, 0, y, text);
 
          this.ClientSize = new Size(FormW, y + PadY);
 
@@ -246,19 +260,19 @@ namespace Lens
          switch (e.PropertyName)
          {
             case nameof(ds.GridStyle):
-               valueGridStyle.SelectedIndex = ds.GridStyle;
+               this.comboBoxLensGridStyle.SelectedIndex = ds.GridStyle;
                break;
             case nameof(ds.GridSize):
-               valueGridSize.SelectedIndex = ds.GridSize - Lens.Defaults.MinGridSize;
+               this.comboBoxLensGridSize.SelectedIndex = ds.GridSize - Lens.Defaults.MinGridSize;
                break;
             case nameof(ds.Magnification):
-               valueMagnification.SelectedIndex = ds.Magnification - Lens.Defaults.MinMagnification;
+               this.comboBoxLensMagnification.SelectedIndex = ds.Magnification - Lens.Defaults.MinMagnification;
                break;
             case nameof(ds.SpeedFactor):
-               valueSpeedFactor.SelectedIndex = ds.SpeedFactor - Lens.Defaults.MinSpeedFactor;
+               this.comboBoxLensSpeedFactor.SelectedIndex = ds.SpeedFactor - Lens.Defaults.MinSpeedFactor;
                break;
             case nameof(ds.Scaling):
-               valueScalingMode.SelectedIndex = (int)ds.Scaling;
+               this.comboBoxLensScalingMode.SelectedIndex = (int)ds.Scaling;
                break;
          }
       }
@@ -271,12 +285,35 @@ namespace Lens
          return cb;
       }
 
-      private CheckBox InfoToggle(Lens ds, string propertyName, Color bg)
+      /// <summary>
+      /// Draws a transparent black rectangle, that's useful for visualizing Control placement and alignment.
+      /// </summary>
+      /// <param name="graphics">The <see cref="Graphics"/> handle.</param>
+      /// <param name="rect">The <see cref="Rectangle"/> to draw.</param>
+      /// <example><c>SettingsForm.DrawDebugRect(e.Graphics, this.ClientRectangle);</c></example>
+      public static void DrawDebugRect(Graphics graphics, Rectangle rect)
       {
-         var cb = new CheckBox
-            { Width = 20, Height = 20, Text = "", BackColor = bg, CheckAlign = ContentAlignment.MiddleCenter };
-         cb.DataBindings.Add(nameof(cb.Checked), ds, propertyName, false, DataSourceUpdateMode.OnPropertyChanged);
-         return cb;
+         var smoothingMode = graphics.SmoothingMode;
+         graphics.SmoothingMode = SmoothingMode.None;
+         using var clientRectBrush = new SolidBrush(Color.FromArgb(0x33, Color.Black));
+         graphics.FillRectangle(clientRectBrush, rect);
+         graphics.SmoothingMode = smoothingMode;
+      }
+
+      private CheckBox InfoToggle(Lens lens, string propertyName, Color backgroundColor)
+      {
+         var toggle = new Toggle
+            {
+               Text = propertyName,
+               BackColor = backgroundColor,
+               CheckAlign = ContentAlignment.MiddleCenter
+            };
+
+         toggle.Name = $"Toggle_{propertyName}";
+         toggle.DataBindings.Add(nameof(toggle.Checked), lens, propertyName, false,
+            DataSourceUpdateMode.OnPropertyChanged);
+
+         return toggle;
       }
 
       private int SectionHeader(string text, int y, Color accent, Color border)
@@ -288,19 +325,19 @@ namespace Lens
          this.Controls.Add(new Label
          {
             Text      = text,
-            Location  = new Point(PadX, y),
-            Size      = new Size(FormW - PadX * 2, HeaderH),
+            Location  = new Point(PadX - 2, y),
+            Size      = new Size(FormW + 2 - PadX * 2, HeaderH),
             ForeColor = accent,
             BackColor = Color.Transparent,
-            Font      = new Font(this.Font, FontStyle.Bold),
+            Font      = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
             TextAlign = ContentAlignment.BottomLeft
          });
          y += HeaderH;
 
          this.Controls.Add(new Panel
          {
-            Location  = new Point(PadX, y),
-            Size      = new Size(FormW - PadX * 2, SepH),
+            Location  = new Point(PadX + 3, y),
+            Size      = new Size(FormW - 3 - PadX * 2, SepH),
             BackColor = border
          });
 
@@ -326,21 +363,59 @@ namespace Lens
          return y + SubH + After;
       }
 
-      private int Row(string labelText, Control ctrl, int xOffset, int y, Color labelColor)
+      private int LayoutRow(string labelText, Control ctrl, int xOffset, int y, Color labelColor)
       {
-         this.Controls.Add(new Label
+         // Wrap ComboBoxes in a Panel that acts as a 1px focus border.
+         Control host = ctrl;
+         if (ctrl is ComboBox combo)
+         {
+            var focusPanel = new Panel
+            {
+               Size      = new Size(combo.Width + 2, combo.Height + 2),
+               BackColor = this.colorCtrlBorder,
+            };
+            combo.Location  = new Point(1, 1);
+            combo.BackColor = this.colorCtrlBg;
+            combo.Enter += (_, _) => focusPanel.BackColor = this.colorFocusBorder;
+            combo.Leave += (_, _) => focusPanel.BackColor = this.colorCtrlBorder;
+            focusPanel.Controls.Add(combo);
+            host = focusPanel;
+         }
+
+         var label = new Label
          {
             Text      = labelText,
             Location  = new Point(PadX + xOffset, y),
-            Size      = new Size(FormW - PadX - ctrl.Width - PadX - xOffset - PadX, RowH),
+            Size      = new Size(FormW - PadX - host.Width - PadX - xOffset - PadX, RowH),
             ForeColor = labelColor,
             BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.MiddleLeft
-         });
+            TextAlign = ContentAlignment.MiddleLeft,
+            Cursor    = Cursors.Hand
+         };
+         EventHandler activate = (_, _) =>
+         {
+            if (ctrl is CheckBox cb)
+            {
+               cb.Focus();
+               cb.Checked = !cb.Checked;
+            }
+            else if (ctrl is Button btn)
+            {
+               btn.Focus();
+               btn.PerformClick();
+            }
+            else
+            {
+               ctrl.Focus();
+            }
+         };
+         label.Click       += activate;
+         label.DoubleClick += activate;
+         this.Controls.Add(label);
 
-         ctrl.Top  = y + (RowH - ctrl.Height) / 2;
-         ctrl.Left = FormW - PadX - ctrl.Width;
-         this.Controls.Add(ctrl);
+         host.Top  = y + (RowH - host.Height) / 2;
+         host.Left = FormW - PadX - host.Width;
+         this.Controls.Add(host);
 
          return y + RowH;
       }
@@ -437,9 +512,9 @@ namespace Lens
 
       private void button1_Click(object sender, EventArgs e)
       {
-         this.colorGrid.Color = this.valueGridColor.BackColor;
+         this.colorGrid.Color = this.buttonLensGridColor.BackColor;
          if (this.colorGrid.ShowDialog() == DialogResult.OK)
-            this.valueGridColor.BackColor = this.colorGrid.Color;
+            this.buttonLensGridColor.BackColor = this.colorGrid.Color;
       }
 
       private void menuItemExit_Click(object sender, EventArgs e)
