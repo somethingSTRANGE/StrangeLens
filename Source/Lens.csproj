@@ -13,6 +13,7 @@
     <ApplicationIcon>Icons\AppIcon.ico</ApplicationIcon>
     <Deterministic>true</Deterministic>
     <Version>0.1.0</Version>
+    <Company>Strange</Company>
     <Product>Lens</Product>
     <Description>Pixel magnifier and color picker</Description>
     <Copyright>Copyright © 2026 Michael Ryan</Copyright>

@@ -22,6 +22,12 @@ Planned work for Lens. Completed items are removed; see git history for what shi
 - Add ESC / Ctrl+Shift+Z behavior to the README: Ctrl+Shift+Z is the primary toggle; ESC only works when the lens window has focus and is a fallback, not the intended gesture. Consider a visual focus indicator on the lens border (e.g. a color change) so users know when ESC will work.
 - Update the README with screenshots, key shortcuts, and full app details.
 
+## Theming
+
+- Theme colors currently apply only to the Settings panel. Any future panels (About, Shortcuts/Help) should use the active theme palette.
+- The Lens and Info panel colors are hardcoded. If they become user-configurable, expose them as additional `ThemePalette` properties rather than standalone settings.
+- `GridColor` stays outside the theme as a runtime user choice — switching themes shouldn't reset it. If a per-theme default grid color is ever added to `ThemePalette`, add a **Reset** button next to the Grid Color picker in Settings that restores the color to the active theme's default.
+
 ## Future Considerations
 
 - Add an About panel.

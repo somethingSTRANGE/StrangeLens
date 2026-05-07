@@ -32,33 +32,25 @@ namespace Lens
 
       // ── Nord palette ──────────────────────────────────────────────────────────────────
 
-      private static readonly Color DarkBg      = ColorTranslator.FromHtml("#2e3440"); // Nord0
-      private static readonly Color DarkControl = ColorTranslator.FromHtml("#434c5e"); // Nord2
-      private static readonly Color DarkBorder  = ColorTranslator.FromHtml("#4c566a"); // Nord3
-      private static readonly Color DarkMuted   = ColorTranslator.FromHtml("#d8dee9"); // Nord4
-      private static readonly Color DarkText    = ColorTranslator.FromHtml("#e5e9f0"); // Nord5
-      private static readonly Color DarkAccent  = ColorTranslator.FromHtml("#5e81ac"); //.Saturate(20); // Nord10
+      private static readonly Color DarkInset      = ColorTranslator.FromHtml("#191C22"); // Nord0, -10% L
+      private static readonly Color DarkBackground = ColorTranslator.FromHtml("#2E3440"); // Nord0
+      private static readonly Color DarkControl    = ColorTranslator.FromHtml("#434C5E"); // Nord2
+      private static readonly Color DarkBorder     = ColorTranslator.FromHtml("#4C566A"); // Nord3
+      private static readonly Color DarkAccent     = ColorTranslator.FromHtml("#5E81AC"); // Nord10
+      private static readonly Color DarkTextSubtle = ColorTranslator.FromHtml("#D8DEE9"); // Nord4
+      private static readonly Color DarkTextNormal = ColorTranslator.FromHtml("#E5E9F0"); // Nord5
+      private static readonly Color DarkTextStrong = ColorTranslator.FromHtml("#FFFFFF"); // Nord5, +10% L
 
-      private static readonly Color LightBg      = Color.FromArgb(0xFA, 0xFA, 0xFA);
-      private static readonly Color LightControl = Color.White;
-      private static readonly Color LightBorder  = Color.FromArgb(0xCC, 0xCC, 0xCC);
-      private static readonly Color LightText    = Color.FromArgb(0x2E, 0x34, 0x40); // Nord0 as dark text
-      private static readonly Color LightMuted   = Color.FromArgb(0x4C, 0x56, 0x6A); // Nord3
-      private static readonly Color LightAccent  = Color.FromArgb(0x5E, 0x81, 0xAC); // Nord10
+      private static readonly Color LightInset      = ColorTranslator.FromHtml("#B7C2D7"); // Nord4, -10% L
+      private static readonly Color LightBackground = ColorTranslator.FromHtml("#E5E9F0"); // Nord5
+      private static readonly Color LightControl    = ColorTranslator.FromHtml("#ECEFF4"); // Nord6
+      private static readonly Color LightBorder     = ColorTranslator.FromHtml("#D8DEE9"); // Nord4
+      private static readonly Color LightAccent     = ColorTranslator.FromHtml("#5E81AC"); // Nord10
+      private static readonly Color LightTextSubtle = ColorTranslator.FromHtml("#4C566A"); // Nord3
+      private static readonly Color LightTextNormal = ColorTranslator.FromHtml("#3B4252"); // Nord1
+      private static readonly Color LightTextStrong = ColorTranslator.FromHtml("#2E3440"); // Nord0
 
-      private static bool IsDarkMode()
-      {
-         var debug = Lens.Instance.DebugTheme;
-         if (debug == "dark")  return true;
-         if (debug == "light") return false;
-         try
-         {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-               @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            return key?.GetValue("AppsUseLightTheme") is int v && v == 0;
-         }
-         catch { return false; }
-      }
+      private static bool IsDarkMode() => Lens.IsOsDarkMode();
 
       // ── Layout fields ─────────────────────────────────────────────────────────────────
 
@@ -128,30 +120,34 @@ namespace Lens
 
       private void BuildLayout()
       {
-         bool dark   = IsDarkMode();
-         var  bg     = dark ? DarkBg      : LightBg;
-         var  ctrlBg = dark ? DarkControl : LightControl;
-         var  border = dark ? DarkBorder  : LightBorder;
-         var  text   = dark ? DarkText    : LightText;
-         var  muted  = dark ? DarkMuted   : LightMuted;
-         var  accent = dark ? DarkAccent  : LightAccent;
-         var  ds     = Lens.Instance;
+         var ds    = Lens.Instance;
+         var dark = IsDarkMode();
 
-         Toggle.Colors.Focus = border;
-         Toggle.Colors.Thumb = muted;
-         Toggle.Colors.ThumbHover = Color.White;
-         Toggle.Colors.TrackActive = accent;
-         Toggle.Colors.TrackBase = Color.Black;
+         var  colorInset      = dark ? DarkInset      : LightInset;
+         var  colorBackground = dark ? DarkBackground : LightBackground;
+         var  colorControl    = dark ? DarkControl    : LightControl;
+         var  colorBorder     = dark ? DarkBorder     : LightBorder;
+         var  colorAccent     = dark ? DarkAccent     : LightAccent;
+         var  colorTextSubtle = dark ? DarkTextSubtle : LightTextSubtle;
+         var  colorTextNormal = dark ? DarkTextNormal : LightTextNormal;
+         var  colorTextStrong = dark ? DarkTextStrong : LightTextStrong;
 
-         this.BackColor        = bg;
-         this.colorCtrlBg      = ctrlBg;
-         this.colorCtrlBorder  = border;
-         this.colorFocusBorder = accent;
+         this.BackColor        = colorBackground;
+         this.colorCtrlBg      = colorControl;
+         this.colorCtrlBorder  = colorBorder;
+         this.colorFocusBorder = colorAccent;
+
+         Toggle.Colors.Focus       = colorBorder;
+         Toggle.Colors.Thumb       = colorTextSubtle;
+         Toggle.Colors.ThumbHover  = colorTextStrong;
+         Toggle.Colors.TrackActive = colorAccent;
+         Toggle.Colors.TrackBase   = colorInset;
+
          int y = PadY / 2;
 
          // ── Lens ──────────────────────────────────────────────────────────────────────
-         y = SectionHeader("LENS", y, accent, border);
-         y = SubHeader("Grid", y, muted);
+         y = SectionHeader("LENS", y, colorAccent, colorBorder);
+         y = SubHeader("Grid", y, colorTextSubtle);
 
          this.comboBoxLensGridStyle = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
          this.comboBoxLensGridStyle.Items.AddRange(new object[]
@@ -161,7 +157,7 @@ namespace Lens
             if (this.comboBoxLensGridStyle.SelectedIndex >= 0)
                ds.GridStyle = this.comboBoxLensGridStyle.SelectedIndex;
          };
-         y = this.LayoutRow("Style", this.comboBoxLensGridStyle, LabelIndent, y, text);
+         y = this.LayoutRow("Style", this.comboBoxLensGridStyle, LabelIndent, y, colorTextNormal);
 
          this.comboBoxLensGridSize = ByteRangeComboBox(Lens.Defaults.MinGridSize, Lens.Defaults.MaxGridSize,
             i => i == 1 ? "1 pixel" : $"{i} pixels");
@@ -170,7 +166,7 @@ namespace Lens
             if (this.comboBoxLensGridSize.SelectedIndex >= 0)
                ds.GridSize = (byte)(this.comboBoxLensGridSize.SelectedIndex + Lens.Defaults.MinGridSize);
          };
-         y = this.LayoutRow("Size", this.comboBoxLensGridSize, LabelIndent, y, text);
+         y = this.LayoutRow("Size", this.comboBoxLensGridSize, LabelIndent, y, colorTextNormal);
 
          this.buttonLensGridColor = new Button
          {
@@ -180,14 +176,14 @@ namespace Lens
             BackColor              = ds.GridColor,
             UseVisualStyleBackColor = false
          };
-         this.buttonLensGridColor.FlatAppearance.BorderColor = border;
+         this.buttonLensGridColor.FlatAppearance.BorderColor = colorBorder;
          this.buttonLensGridColor.DataBindings.Add(nameof(this.buttonLensGridColor.BackColor), ds,
             nameof(ds.GridColor), false, DataSourceUpdateMode.OnPropertyChanged);
          this.buttonLensGridColor.Click += this.button1_Click;
-         y = this.LayoutRow("Color", this.buttonLensGridColor, LabelIndent, y, text);
+         y = this.LayoutRow("Color", this.buttonLensGridColor, LabelIndent, y, colorTextNormal);
 
          y += SubGroupGap;
-         y = SubHeader("Magnification", y, muted);
+         y = SubHeader("Magnification", y, colorTextSubtle);
 
          this.comboBoxLensMagnification = ByteRangeComboBox(Lens.Defaults.MinMagnification, Lens.Defaults.MaxMagnification,
             i => $"×{i}");
@@ -196,7 +192,7 @@ namespace Lens
             if (this.comboBoxLensMagnification.SelectedIndex >= 0)
                ds.Magnification = (byte)(this.comboBoxLensMagnification.SelectedIndex + Lens.Defaults.MinMagnification);
          };
-         y = this.LayoutRow("Power level", this.comboBoxLensMagnification, LabelIndent, y, text);
+         y = this.LayoutRow("Power level", this.comboBoxLensMagnification, LabelIndent, y, colorTextNormal);
 
          this.comboBoxLensScalingMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
          this.comboBoxLensScalingMode.Items.AddRange(new object[]
@@ -208,7 +204,7 @@ namespace Lens
             if (this.comboBoxLensScalingMode.SelectedIndex >= 0)
                ds.Scaling = (ScalingMode)this.comboBoxLensScalingMode.SelectedIndex;
          };
-         y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, text);
+         y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, colorTextNormal);
 
          this.comboBoxLensSpeedFactor = ByteRangeComboBox(Lens.Defaults.MinSpeedFactor, Lens.Defaults.MaxSpeedFactor,
             i => i.ToString());
@@ -217,37 +213,37 @@ namespace Lens
             if (this.comboBoxLensSpeedFactor.SelectedIndex >= 0)
                ds.SpeedFactor = (byte)(this.comboBoxLensSpeedFactor.SelectedIndex + Lens.Defaults.MinSpeedFactor);
          };
-         y = this.LayoutRow("Speed factor", this.comboBoxLensSpeedFactor, LabelIndent, y, text);
+         y = this.LayoutRow("Speed factor", this.comboBoxLensSpeedFactor, LabelIndent, y, colorTextNormal);
 
          // ── Info ──────────────────────────────────────────────────────────────────────
          y += SectionGap;
-         y = SectionHeader("INFO", y, accent, border);
+         y = SectionHeader("INFO", y, colorAccent, colorBorder);
 
-         this.checkBoxInfoShowHex = InfoToggle(ds, nameof(ds.InfoShowHex), bg);
-         y = this.LayoutRow("Show hex color value", this.checkBoxInfoShowHex, 0, y, text);
+         this.checkBoxInfoShowHex = InfoToggle(ds, nameof(ds.InfoShowHex), colorBackground);
+         y = this.LayoutRow("Show hex color value", this.checkBoxInfoShowHex, 0, y, colorTextNormal);
 
-         this.checkBoxInfoShowRgb = InfoToggle(ds, nameof(ds.InfoShowRgb), bg);
-         y = this.LayoutRow("Show RGB color value", this.checkBoxInfoShowRgb, 0, y, text);
+         this.checkBoxInfoShowRgb = InfoToggle(ds, nameof(ds.InfoShowRgb), colorBackground);
+         y = this.LayoutRow("Show RGB color value", this.checkBoxInfoShowRgb, 0, y, colorTextNormal);
 
-         this.checkBoxInfoShowHsl = InfoToggle(ds, nameof(ds.InfoShowHsl), bg);
-         y = this.LayoutRow("Show HSL color value", this.checkBoxInfoShowHsl, 0, y, text);
-
-         y += SubGroupGap;
-         this.checkBoxInfoShow12Bit = InfoToggle(ds, nameof(ds.InfoShow12Bit), bg);
-         y = this.LayoutRow("Show 12-bit color conversion", this.checkBoxInfoShow12Bit, 0, y, text);
-
-         this.checkBoxInfoShowWeb = InfoToggle(ds, nameof(ds.InfoShowWeb), bg);
-         y = this.LayoutRow("Show web safe color conversion", this.checkBoxInfoShowWeb, 0, y, text);
+         this.checkBoxInfoShowHsl = InfoToggle(ds, nameof(ds.InfoShowHsl), colorBackground);
+         y = this.LayoutRow("Show HSL color value", this.checkBoxInfoShowHsl, 0, y, colorTextNormal);
 
          y += SubGroupGap;
-         this.checkBoxInfoShowMouse = InfoToggle(ds, nameof(ds.InfoShowMouse), bg);
-         y = this.LayoutRow("Show mouse position", this.checkBoxInfoShowMouse, 0, y, text);
+         this.checkBoxInfoShow12Bit = InfoToggle(ds, nameof(ds.InfoShow12Bit), colorBackground);
+         y = this.LayoutRow("Show 12-bit color conversion", this.checkBoxInfoShow12Bit, 0, y, colorTextNormal);
 
-         this.checkBoxInfoShowSize = InfoToggle(ds, nameof(ds.InfoShowSize), bg);
-         y = this.LayoutRow("Show lens size", this.checkBoxInfoShowSize, 0, y, text);
+         this.checkBoxInfoShowWeb = InfoToggle(ds, nameof(ds.InfoShowWeb), colorBackground);
+         y = this.LayoutRow("Show web safe color conversion", this.checkBoxInfoShowWeb, 0, y, colorTextNormal);
 
-         this.checkBoxInfoShowZoom = InfoToggle(ds, nameof(ds.InfoShowZoom), bg);
-         y = this.LayoutRow("Show zoom level", this.checkBoxInfoShowZoom, 0, y, text);
+         y += SubGroupGap;
+         this.checkBoxInfoShowMouse = InfoToggle(ds, nameof(ds.InfoShowMouse), colorBackground);
+         y = this.LayoutRow("Show mouse position", this.checkBoxInfoShowMouse, 0, y, colorTextNormal);
+
+         this.checkBoxInfoShowSize = InfoToggle(ds, nameof(ds.InfoShowSize), colorBackground);
+         y = this.LayoutRow("Show lens size", this.checkBoxInfoShowSize, 0, y, colorTextNormal);
+
+         this.checkBoxInfoShowZoom = InfoToggle(ds, nameof(ds.InfoShowZoom), colorBackground);
+         y = this.LayoutRow("Show zoom level", this.checkBoxInfoShowZoom, 0, y, colorTextNormal);
 
          this.ClientSize = new Size(FormW, y + PadY);
 
