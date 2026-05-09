@@ -11,6 +11,13 @@ Planned work for Lens. Completed items are removed; see git history for what shi
 
 - Consider adding a thin border around the Info panel to visually separate it from the desktop.
 
+## Keyboard Shortcuts
+
+- **Cleanup sweep:** Several legacy shortcuts (`[`, `]`, `;`, `'` for runtime resize, and possibly others) need review. Most will be updated to require modifier keys to reduce accidental triggers.
+- **Focus problem:** Most shortcuts require the Lens window to have focus. After clicking into another app (which is intentional and a feature — the lens stays open while you interact with content beneath it, unlike most tools that dismiss on click), focus is lost and shortcuts stop working. Current workarounds (Alt-Tab back, or toggle the lens closed and open) are friction. Add a global hotkey to immediately return focus to the Lens window.
+- **Configurable shortcuts:** Follow the theme pattern — store shortcut bindings in the settings JSON, edited by the user directly. Use a human-friendly string format (e.g. `ctrl + alt + shift + win + w`), case-insensitive and flexible about separators. AHK-style symbols (`^!+#`) are compact but require looking up which symbol maps to which modifier — not worth the cognitive overhead for a general audience. Parse entirely in-app, no AHK runtime dependency.
+- Make the global toggle hotkey user-configurable (currently hardcoded to Ctrl+Alt+Shift+Z) — already noted under Settings above; resolve duplication when implementing.
+
 ## UX / Interaction
 
 - Add a held-key override (e.g. Space) that temporarily restores normal mouse speed while the lens is open, bypassing the zoom-proportional slowdown. Useful on multi-monitor setups where moving the lens across displays at high zoom is impractical.

@@ -112,6 +112,7 @@ namespace Lens
 
       // ── State. ─────────────────────────────────────────────────────────────────────────
       private readonly InfoControl infoData;
+      private Font labelFont;
       private Font valueFont;
       private float charWidth;
       private bool panelShown;
@@ -146,7 +147,8 @@ namespace Lens
          this.ShowInTaskbar   = false;
          this.StartPosition   = FormStartPosition.Manual;
          // Font must be created before ComputeContentW(), which needs charWidth.
-         this.valueFont = CreateValueFont(13f);
+         this.labelFont = FontHelper.CreateLabelFont();
+         this.valueFont = FontHelper.CreateValueFont();
          this.charWidth = MeasureCharWidth(this.valueFont);
          this.contentH = this.ComputeContentH();
          this.contentW = this.ComputeContentW();
@@ -208,42 +210,6 @@ namespace Lens
          base.OnClosing(e);
       }
 
-      /// <summary>
-      ///   Creates the value font, preferring a clean monospace in order:
-      ///   JetBrains Mono → Consolas → system generic monospace (Courier New).
-      ///   Uses <c>Font.Name</c> to detect silent GDI+ substitution.
-      /// </summary>
-      private static Font CreateValueFont(float emSize)
-      {
-         var fontInfos = new[]
-            {
-               new { Name = "JetBrains Mono",  Size = emSize },
-               new { Name = "Fira Code",       Size = emSize },  // y-1
-               new { Name = "Noto Mono",       Size = emSize },   // y-1
-               new { Name = "Consolas",        Size = emSize + 1},   // 14px
-               new { Name = "Lucida Console",  Size = emSize }, // y-3
-               new { Name = "Courier New",     Size = emSize }, // y-1
-            };
-         
-         foreach (var fontInfo in fontInfos)
-         {
-            var font = new Font(fontInfo.Name, fontInfo.Size, FontStyle.Regular, GraphicsUnit.Pixel);
-            if (string.Equals(font.Name, fontInfo.Name, StringComparison.OrdinalIgnoreCase))
-            {
-               float ascentPx  = font.FontFamily.GetCellAscent(font.Style) * font.Size / font.FontFamily.GetEmHeight(font.Style);
-               float descentPx = font.FontFamily.GetCellDescent(font.Style) * font.Size / font.FontFamily.GetEmHeight(font.Style);
-               var top = 0 - ascentPx; 
-               Debug.WriteLine(
-                  $"{font}\n{font.Size}, {font.SizeInPoints}, {font.Height}, ascent: {ascentPx}, descent: {descentPx}, top: {top}");
-               return font;
-            }
-            font.Dispose();
-         }
-         // FontFamily.GenericMonospace always resolves — Courier New on Windows.
-         var systemMonospaceFont = new Font(FontFamily.GenericMonospace, emSize, FontStyle.Regular, GraphicsUnit.Pixel);
-         // Debug.WriteLine(font.Name);
-         return systemMonospaceFont; // y-2
-      }
 
       // ── Public update entry-point, called each frame from LensForm.RenderFrame. ────────
 
@@ -440,7 +406,6 @@ namespace Lens
          using (var bg = new LinearGradientBrush(bgRect, Color.Black, Color.FromArgb(51, 51, 51), 45f))
             g.FillRectangle(bg, bgRect);
 
-         using var labelFont = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
          using var labelBrush = new SolidBrush(Color.FromArgb(0xFF, 0xFF, 0xE1));
          using var valueBrush = new SolidBrush(Color.White);
          using var valueCopyBrush = new SolidBrush(Color.FromArgb(0xFF, 0xE5, 0x66));
@@ -448,14 +413,14 @@ namespace Lens
 
          void DrawStringAtBaseline(string text, Font font, Brush brush, float x, float baselineY)
          {
-            if (font.Name == "Courier New")
+            if (font.Name is "Courier New" or "Microsoft Sans Serif")
             {
                baselineY--;
             }
 
             var ff = font.FontFamily;
             var style = font.Style;
-            float ascentPx = (float)Math.Round(font.Size * ff.GetCellAscent(style) / ff.GetEmHeight(style));
+            var ascentPx = (float)Math.Round(font.Size * ff.GetCellAscent(style) / ff.GetEmHeight(style));
             // GenericTypographic: PointF.Y is exactly the top of the cell ascent — no internal-leading shift.
             g.DrawString(text, font, brush, new PointF(x, baselineY - ascentPx),
                StringFormat.GenericTypographic);

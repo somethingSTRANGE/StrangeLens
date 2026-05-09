@@ -25,6 +25,7 @@ namespace Lens
 
       private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
+      private Font     textFont;
       private LensForm activeLens;
       private int      clickCount;
       private Timer    clickTimer;
@@ -93,6 +94,8 @@ namespace Lens
          this.clickTimer      = new System.Windows.Forms.Timer();
          this.clickTimer.Tick += this.ClickTimer_Elapsed;
 
+         this.textFont = FontHelper.CreateLabelFont();
+
          this.BuildLayout();
 
          var menuItemOpen = new ToolStripMenuItem { Text = "Show" };
@@ -115,6 +118,7 @@ namespace Lens
          // OnHandleCreated fires immediately and RegisterHotKey works from the start.
          this.CreateHandle();
       }
+
 
       // ── BuildLayout ───────────────────────────────────────────────────────────────────
 
@@ -325,7 +329,7 @@ namespace Lens
             Size      = new Size(FormW + 2 - PadX * 2, HeaderH),
             ForeColor = accent,
             BackColor = Color.Transparent,
-            Font      = new Font(this.Font.FontFamily, 12, FontStyle.Bold),
+            Font      = new Font(this.textFont.FontFamily, 12, FontStyle.Bold),
             TextAlign = ContentAlignment.BottomLeft
          });
          y += HeaderH;
@@ -348,7 +352,7 @@ namespace Lens
          this.Controls.Add(new Label
          {
             Text      = text,
-            Font      = new Font(this.Font, FontStyle.Bold),
+            Font      = new Font(this.textFont, FontStyle.Bold),
             Location  = new Point(PadX, y),
             Size      = new Size(FormW - PadX * 2, SubH),
             ForeColor = color,
@@ -381,6 +385,7 @@ namespace Lens
          var label = new Label
          {
             Text      = labelText,
+            Font      = this.textFont,
             Location  = new Point(PadX + xOffset, y),
             Size      = new Size(FormW - PadX - host.Width - PadX - xOffset - PadX, RowH),
             ForeColor = labelColor,
