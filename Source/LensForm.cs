@@ -449,6 +449,8 @@ namespace Lens
             var screen    = Screen.FromPoint(cursorPos);
             bool portrait = screen.Bounds.Height > screen.Bounds.Width;
             int  infoW    = this.infoForm.HasVisibleContent ? this.infoForm.ContentW + InfoForm.PanelMargin : 0;
+            int  infoH    = this.infoForm.HasVisibleContent ? this.infoForm.ContentH : 0;
+            int  maxH     = Math.Max(h, infoH);
             bool screenChanged = screen.DeviceName != this.lastScreenName;
             if (screenChanged) this.lastScreenName = screen.DeviceName;
 
@@ -461,8 +463,8 @@ namespace Lens
                // Two independent thresholds on opposite edges give a large dead zone in the
                // center so neither flip fires until the panel genuinely clips an edge.
                var  gapX       = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-               bool rightClips = cursorPos.X + gapX + w + infoW > screen.Bounds.Right;
-               bool leftClips  = cursorPos.X - gapX - w - infoW < screen.Bounds.Left;
+               bool rightClips = cursorPos.X + gapX + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
+               bool leftClips  = cursorPos.X - gapX - w - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
 
                if (screenChanged)
                   this.infoOnLeft = rightClips;
@@ -472,8 +474,8 @@ namespace Lens
                   this.infoOnLeft = false;
 
                lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
-               lensTop  = Math.Max(screen.Bounds.Top,
-                          Math.Min(cursorPos.Y - h / 2, screen.Bounds.Bottom - h));
+               lensTop  = Math.Max(screen.Bounds.Top    + InfoForm.PanelMargin,
+                          Math.Min(cursorPos.Y - h / 2, screen.Bounds.Bottom - maxH - InfoForm.PanelMargin));
                infoLeft = this.infoOnLeft;
             }
             else
@@ -483,8 +485,8 @@ namespace Lens
                // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
                // cursor can move near the left/right boundary without clipping the panel.
                var  gapY        = (int)(Math.Ceiling(h / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-               bool topClips    = cursorPos.Y - gapY - h < screen.Bounds.Top;
-               bool bottomClips = cursorPos.Y + gapY + h > screen.Bounds.Bottom;
+               bool topClips    = cursorPos.Y - gapY - h    < screen.Bounds.Top    + InfoForm.PanelMargin;
+               bool bottomClips = cursorPos.Y + gapY + maxH > screen.Bounds.Bottom - InfoForm.PanelMargin;
 
                if (screenChanged)
                   this._udLensAbove = !topClips;
@@ -493,15 +495,19 @@ namespace Lens
                else if (!this._udLensAbove && bottomClips && !topClips)
                   this._udLensAbove = true;
 
-               lensLeft = Math.Max(screen.Bounds.Left,
-                          Math.Min(cursorPos.X - w / 2, screen.Bounds.Right - w));
+               lensLeft = Math.Clamp(cursorPos.X - w / 2,
+                                     screen.Bounds.Left  + InfoForm.PanelMargin,
+                                     screen.Bounds.Right - w - InfoForm.PanelMargin);
                lensTop  = this._udLensAbove
-                  ? Math.Max(screen.Bounds.Top,    cursorPos.Y - gapY - h)
-                  : Math.Min(cursorPos.Y + gapY,   screen.Bounds.Bottom - h);
+                  ? Math.Clamp(cursorPos.Y - gapY - h,
+                               screen.Bounds.Top    + InfoForm.PanelMargin,
+                               screen.Bounds.Bottom - maxH - InfoForm.PanelMargin)
+                  : Math.Min(cursorPos.Y + gapY,
+                             screen.Bounds.Bottom - maxH - InfoForm.PanelMargin);
 
                // Info left/right of Lens, with the same two-threshold hysteresis.
-               bool rightClipsUD = lensLeft + w + infoW > screen.Bounds.Right;
-               bool leftClipsUD  = lensLeft - infoW     < screen.Bounds.Left;
+               bool rightClipsUD = lensLeft + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
+               bool leftClipsUD  = lensLeft - infoW - InfoForm.PanelMargin     < screen.Bounds.Left;
 
                if (screenChanged)
                   this._udInfoLeft = rightClipsUD;

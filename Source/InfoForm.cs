@@ -37,6 +37,7 @@ namespace Lens
       private int contentW;               // dynamic; recomputed from enabled settings each frame
       private int contentH;               // dynamic; recomputed from enabled settings each frame
       internal int ContentW => this.contentW;
+      internal int ContentH => this.contentH;
 
       /// <summary>Horizontal gap (px) between the lens content edge and this panel.</summary>
       internal const int PanelMargin = 20;
