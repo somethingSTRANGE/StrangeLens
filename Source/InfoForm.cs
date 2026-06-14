@@ -50,7 +50,7 @@ namespace Lens
       private const int MaxCharsRgb      = 13;  // 255, 255, 255
       private const int MaxCharsHsl      = 19;  // 359.9, 99.9%, 99.9%
       private const int MaxCharsColor4   =  4;  // #RGB  (12-bit, Web)
-      private const int MaxCharsMouse    = 11;  // 99999, 99999
+      private const int MaxCharsMouse    = 18;  // 99999, 99999 — 70%
       private const int MaxCharsSize     =  7;  // 400×400
       private const int MaxCharsZoom     =  3;  // x16
 
@@ -224,9 +224,9 @@ namespace Lens
          }
       }
 
-      public void UpdateAndPosition(Point cursorPos, Color color, Rectangle contentBounds)
+      public void UpdateAndPosition(Point cursorPos, Color color, Rectangle contentBounds, bool precisionActive, int precisionSpeed)
       {
-         this.infoData.UpdateInfo(cursorPos, color);
+         this.infoData.UpdateInfo(cursorPos, color, precisionActive, precisionSpeed);
 
          if (!this.HasVisibleContent)
          {

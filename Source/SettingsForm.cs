@@ -54,7 +54,7 @@ namespace Lens
       private Button        buttonLensGridColor;
       private ComboBox      comboBoxLensMagnification;
       private ComboBox      comboBoxLensScalingMode;
-      private ComboBox      comboBoxLensSpeedFactor;
+      private ComboBox      comboBoxPrecisionSpeed;
       private CheckBox      checkBoxInfoShowHex;
       private CheckBox      checkBoxInfoShowRgb;
       private CheckBox      checkBoxInfoShowHsl;
@@ -204,14 +204,15 @@ namespace Lens
          };
          y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, colorTextNormal);
 
-         this.comboBoxLensSpeedFactor = ByteRangeComboBox(Lens.Defaults.MinSpeedFactor, Lens.Defaults.MaxSpeedFactor,
-            i => i.ToString());
-         this.comboBoxLensSpeedFactor.SelectedIndex = ds.SpeedFactor - Lens.Defaults.MinSpeedFactor;
-         this.comboBoxLensSpeedFactor.SelectedIndexChanged += (_, _) => {
-            if (this.comboBoxLensSpeedFactor.SelectedIndex >= 0)
-               ds.SpeedFactor = (byte)(this.comboBoxLensSpeedFactor.SelectedIndex + Lens.Defaults.MinSpeedFactor);
+         this.comboBoxPrecisionSpeed = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
+         foreach (var pct in Lens.PrecisionSpeedOptions)
+            this.comboBoxPrecisionSpeed.Items.Add($"{pct}%");
+         this.comboBoxPrecisionSpeed.SelectedIndex = Array.IndexOf(Lens.PrecisionSpeedOptions, ds.PrecisionSpeed);
+         this.comboBoxPrecisionSpeed.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxPrecisionSpeed.SelectedIndex >= 0)
+               ds.PrecisionSpeed = Lens.PrecisionSpeedOptions[this.comboBoxPrecisionSpeed.SelectedIndex];
          };
-         y = this.LayoutRow("Speed factor", this.comboBoxLensSpeedFactor, LabelIndent, y, colorTextNormal);
+         y = this.LayoutRow("Precision Speed", this.comboBoxPrecisionSpeed, LabelIndent, y, colorTextNormal);
 
          // ── Info ──────────────────────────────────────────────────────────────────────
          y += SectionGap;
@@ -262,8 +263,9 @@ namespace Lens
             case nameof(ds.Magnification):
                this.comboBoxLensMagnification.SelectedIndex = ds.Magnification - Lens.Defaults.MinMagnification;
                break;
-            case nameof(ds.SpeedFactor):
-               this.comboBoxLensSpeedFactor.SelectedIndex = ds.SpeedFactor - Lens.Defaults.MinSpeedFactor;
+            case nameof(ds.PrecisionSpeed):
+               int pidx = Array.IndexOf(Lens.PrecisionSpeedOptions, ds.PrecisionSpeed);
+               if (pidx >= 0) this.comboBoxPrecisionSpeed.SelectedIndex = pidx;
                break;
             case nameof(ds.Scaling):
                this.comboBoxLensScalingMode.SelectedIndex = (int)ds.Scaling;
