@@ -37,6 +37,7 @@ namespace Lens
       private int contentW;               // dynamic; recomputed from enabled settings each frame
       private int contentH;               // dynamic; recomputed from enabled settings each frame
       internal int ContentW => this.contentW;
+      internal int ContentH => this.contentH;
 
       /// <summary>Horizontal gap (px) between the lens content edge and this panel.</summary>
       internal const int PanelMargin = 20;
@@ -224,7 +225,7 @@ namespace Lens
          }
       }
 
-      public void UpdateAndPosition(Point cursorPos, Color color, Rectangle contentBounds, bool precisionActive, int precisionSpeed)
+      public void UpdateAndPosition(Point cursorPos, Color color, Rectangle contentBounds, bool infoLeft, bool precisionActive, int precisionSpeed)
       {
          this.infoData.UpdateInfo(cursorPos, color, precisionActive, precisionSpeed);
 
@@ -253,11 +254,9 @@ namespace Lens
             this.FreeLayeredResources();
          }
 
-         // Info mirrors the lens side — already flipped by LensForm.RenderFrame.
-         bool lensIsRightOfCursor = contentBounds.Left >= cursorPos.X;
-         int infoContentLeft = lensIsRightOfCursor
-            ? contentBounds.Right + PanelMargin
-            : contentBounds.Left - PanelMargin - ContentW;
+         int infoContentLeft = infoLeft
+            ? contentBounds.Left - PanelMargin - ContentW
+            : contentBounds.Right + PanelMargin;
          int infoContentTop = contentBounds.Top;
 
          int totalW = ContentW + ShadowMarginL + ShadowMarginR;
