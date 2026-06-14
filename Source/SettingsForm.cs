@@ -1,9 +1,3 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="SettingsForm.cs" company="Strange Entertainment LLC">
-//   Copyright 2004-2023 Strange Entertainment LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -365,7 +359,6 @@ namespace Lens
 
       private int LayoutRow(string labelText, Control ctrl, int xOffset, int y, Color labelColor)
       {
-         // Wrap ComboBoxes in a Panel that acts as a 1px focus border.
          Control host = ctrl;
          if (ctrl is ComboBox combo)
          {
@@ -393,6 +386,12 @@ namespace Lens
             TextAlign = ContentAlignment.MiddleLeft,
             Cursor    = Cursors.Hand
          };
+
+         if (label.Font.Name == "Segoe UI")
+         {
+            label.Padding = new Padding(0, 0, 0, 2);
+         }
+
          EventHandler activate = (_, _) =>
          {
             if (ctrl is CheckBox cb)

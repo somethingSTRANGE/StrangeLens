@@ -12,7 +12,7 @@ namespace Lens
          ("Roboto",     13f),
          ("Arial Nova", 13f),
          ("Segoe UI",   13f),
-      }, FontFamily.GenericSansSerif, 13f);
+      }, FontFamily.GenericSansSerif, 13f); // Microsoft Sans Serif
 
       internal static Font CreateValueFont() => Create(new[]
       {
@@ -21,9 +21,9 @@ namespace Lens
          ("Noto Mono",      13f),
          ("Consolas",       14f),
          ("Lucida Console", 13f),
-      }, FontFamily.GenericMonospace, 13f);
+      }, FontFamily.GenericMonospace, 13f); // Courier New
 
-      internal static Font Create(
+      private static Font Create(
          (string Name, float Size)[] candidates,
          FontFamily fallback,
          float fallbackSize)
