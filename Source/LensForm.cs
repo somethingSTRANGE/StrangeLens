@@ -122,8 +122,11 @@ namespace Lens
       private int cachedShadowContentW = -1, cachedShadowContentH = -1;
 
       private Point targetLocation;
-      // Tracks which side the info panel is currently on, for hysteresis.
+      // L-R mode: Lens+Info are left of cursor when true.
       private bool infoOnLeft;
+      // U-D mode: Lens is above cursor when true; Info is left of Lens when true.
+      private bool _udLensAbove;
+      private bool _udInfoLeft;
       // Tracks the last screen the cursor was on; used to re-initialize flip state on display change.
       private string lastScreenName;
 
@@ -438,38 +441,78 @@ namespace Lens
             var w = lens.Width;
             var h = lens.Height;
 
-            // Position the lens to the right of the cursor; flip left near screen edge.
-            // The gap is fixed regardless of current magnification: it's based on the
-            // widest possible capture region for this lens width (at minimum zoom = 2×).
-            // This keeps the panel at a constant apparent distance as zoom changes.
-            var screen = Screen.FromPoint(cursorPos);
-            var gapX = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-            // ── Flip orientation with hysteresis. ──────────────────────────────────────
-            // Two independent thresholds on opposite screen edges prevent oscillation:
-            //   default (cursor·lens·info) → inverse  when Info's RIGHT edge clips screen right.
-            //   inverse (info·lens·cursor) → default  when Info's LEFT  edge clips screen left.
-            // Because these are on opposite sides of the screen, there is a large dead zone in
-            // the center where neither flip fires — no flickering at either edge.
-            //
-            // On display change: re-initialize to default, except start inverse if the cursor
-            // is already within the right-edge flip zone of the new display.
-            int infoW       = this.infoForm.HasVisibleContent ? this.infoForm.ContentW + InfoForm.PanelMargin : 0;
-            bool rightClips = cursorPos.X + gapX + w + infoW > screen.Bounds.Right;
-            bool leftClips  = cursorPos.X - gapX - w - infoW < screen.Bounds.Left;
+            // Select axis based on screen orientation.
+            // Portrait screens (H > W) use U-D placement to avoid constant left/right flipping
+            // when the combined panel width exceeds half the display width.
+            // Gaps are derived from the capture region at minimum zoom so the panel never
+            // overlaps the captured area regardless of the current zoom level.
+            var screen    = Screen.FromPoint(cursorPos);
+            bool portrait = screen.Bounds.Height > screen.Bounds.Width;
+            int  infoW    = this.infoForm.HasVisibleContent ? this.infoForm.ContentW + InfoForm.PanelMargin : 0;
+            bool screenChanged = screen.DeviceName != this.lastScreenName;
+            if (screenChanged) this.lastScreenName = screen.DeviceName;
 
-            if (screen.DeviceName != this.lastScreenName)
+            int  lensLeft, lensTop;
+            bool infoLeft;
+
+            if (!portrait)
             {
-               this.lastScreenName = screen.DeviceName;
-               this.infoOnLeft = rightClips;   // initialize for this display
-            }
-            else if (!this.infoOnLeft && rightClips && !leftClips)
-               this.infoOnLeft = true;          // default → inverse (only if left fits)
-            else if (this.infoOnLeft && leftClips && !rightClips)
-               this.infoOnLeft = false;         // inverse → default (only if right fits)
+               // ── L-R mode (landscape) ───────────────────────────────────────────────────
+               // Two independent thresholds on opposite edges give a large dead zone in the
+               // center so neither flip fires until the panel genuinely clips an edge.
+               var  gapX       = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
+               bool rightClips = cursorPos.X + gapX + w + infoW > screen.Bounds.Right;
+               bool leftClips  = cursorPos.X - gapX - w - infoW < screen.Bounds.Left;
 
-            var lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
-            var lensTop = Math.Max(screen.Bounds.Top,
-               Math.Min(cursorPos.Y - h / 2, screen.Bounds.Bottom - h));
+               if (screenChanged)
+                  this.infoOnLeft = rightClips;
+               else if (!this.infoOnLeft && rightClips && !leftClips)
+                  this.infoOnLeft = true;
+               else if (this.infoOnLeft && leftClips && !rightClips)
+                  this.infoOnLeft = false;
+
+               lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
+               lensTop  = Math.Max(screen.Bounds.Top,
+                          Math.Min(cursorPos.Y - h / 2, screen.Bounds.Bottom - h));
+               infoLeft = this.infoOnLeft;
+            }
+            else
+            {
+               // ── U-D mode (portrait) ────────────────────────────────────────────────────
+               // Lens is centered horizontally on the cursor; Info hangs off left or right.
+               // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
+               // cursor can move near the left/right boundary without clipping the panel.
+               var  gapY        = (int)(Math.Ceiling(h / (float)Lens.Defaults.MinMagnification) / 2) + 10;
+               bool topClips    = cursorPos.Y - gapY - h < screen.Bounds.Top;
+               bool bottomClips = cursorPos.Y + gapY + h > screen.Bounds.Bottom;
+
+               if (screenChanged)
+                  this._udLensAbove = !topClips;
+               else if (this._udLensAbove && topClips && !bottomClips)
+                  this._udLensAbove = false;
+               else if (!this._udLensAbove && bottomClips && !topClips)
+                  this._udLensAbove = true;
+
+               lensLeft = Math.Max(screen.Bounds.Left,
+                          Math.Min(cursorPos.X - w / 2, screen.Bounds.Right - w));
+               lensTop  = this._udLensAbove
+                  ? Math.Max(screen.Bounds.Top,    cursorPos.Y - gapY - h)
+                  : Math.Min(cursorPos.Y + gapY,   screen.Bounds.Bottom - h);
+
+               // Info left/right of Lens, with the same two-threshold hysteresis.
+               bool rightClipsUD = lensLeft + w + infoW > screen.Bounds.Right;
+               bool leftClipsUD  = lensLeft - infoW     < screen.Bounds.Left;
+
+               if (screenChanged)
+                  this._udInfoLeft = rightClipsUD;
+               else if (!this._udInfoLeft && rightClipsUD && !leftClipsUD)
+                  this._udInfoLeft = true;
+               else if (this._udInfoLeft && leftClipsUD && !rightClipsUD)
+                  this._udInfoLeft = false;
+
+               infoLeft = this._udInfoLeft;
+            }
+
             int totalW = w + ShadowMarginL + ShadowMarginR;
             int totalH = h + ShadowMarginT + ShadowMarginB;
             // Window top-left is inset by the shadow margins so content appears at lensLeft/lensTop.
@@ -527,7 +570,7 @@ namespace Lens
             const uint SWP_NOMOVE_NOSIZE_NOACTIVATE = 0x0013; // SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE
             SetWindowPos(this.Handle, new IntPtr(-1), 0, 0, 0, 0, SWP_NOMOVE_NOSIZE_NOACTIVATE);
             this.infoForm.UpdateAndPosition(cursorPos, sampledColor, new Rectangle(lensLeft, lensTop, w, h),
-               precisionActive, Lens.Instance.PrecisionSpeed);
+               infoLeft, precisionActive, Lens.Instance.PrecisionSpeed);
          }
          catch (Exception ex)
          {
