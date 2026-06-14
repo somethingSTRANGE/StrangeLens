@@ -35,14 +35,14 @@ namespace Lens
    {
       private static Lens instance;
 
-      private Color       _gridColor     = Color.Black;
-      private byte        _gridSize      = 4;
-      private int         _gridStyle     = 2;
-      private short       _height        = 160;
-      private byte        _magnification = 4;
-      private ScalingMode _scalingMode   = ScalingMode.NearestNeighbor;
-      private byte        _speedFactor   = 4;
-      private short       _width         = 150;
+      private Color       _gridColor      = Color.Black;
+      private byte        _gridSize       = 4;
+      private int         _gridStyle      = 2;
+      private short       _height         = 160;
+      private byte        _magnification  = 4;
+      private ScalingMode _scalingMode    = ScalingMode.NearestNeighbor;
+      private int         _precisionSpeed = 45;
+      private short       _width          = 150;
 
       private bool _infoShowHex   = true;
       private bool _infoShowRgb   = true;
@@ -153,11 +153,12 @@ namespace Lens
          set => SetPersisted(ref _scalingMode, value);
       }
 
-      public byte SpeedFactor
+      public static readonly int[] PrecisionSpeedOptions = { 10, 25, 45, 70 };
+
+      public int PrecisionSpeed
       {
-         get => _speedFactor;
-         set => SetPersisted(ref _speedFactor,
-            value.Clamp(Defaults.MinSpeedFactor, Defaults.MaxSpeedFactor));
+         get => _precisionSpeed;
+         set => SetPersisted(ref _precisionSpeed, value);
       }
 
       public short Width
@@ -219,8 +220,9 @@ namespace Lens
             _gridSize      = data.GridSize;
             _gridStyle     = data.GridStyle;
             _gridColor     = ColorTranslator.FromHtml(data.GridColor);
-            _scalingMode   = (ScalingMode)data.Scaling;
-            _speedFactor   = data.SpeedFactor;
+            _scalingMode    = (ScalingMode)data.Scaling;
+            _precisionSpeed = Array.IndexOf(PrecisionSpeedOptions, data.PrecisionSpeed) >= 0
+               ? data.PrecisionSpeed : 45;
             _infoShowHex   = data.InfoShowHex;
             _infoShowRgb   = data.InfoShowRgb;
             _infoShowHsl   = data.InfoShowHsl;
@@ -273,8 +275,8 @@ namespace Lens
                GridSize      = _gridSize,
                GridStyle     = _gridStyle,
                GridColor     = $"#{_gridColor.R:X2}{_gridColor.G:X2}{_gridColor.B:X2}",
-               Scaling       = (int)_scalingMode,
-               SpeedFactor   = _speedFactor,
+               Scaling        = (int)_scalingMode,
+               PrecisionSpeed = _precisionSpeed,
                InfoShowHex   = _infoShowHex,
                InfoShowRgb   = _infoShowRgb,
                InfoShowHsl   = _infoShowHsl,
@@ -333,8 +335,8 @@ namespace Lens
          public byte   GridSize      { get; set; } = 4;
          public int    GridStyle     { get; set; } = 2;
          public string GridColor     { get; set; } = "#000000";
-         public int    Scaling       { get; set; } = 0; // ScalingMode.NearestNeighbor
-         public byte   SpeedFactor   { get; set; } = 4;
+         public int    Scaling        { get; set; } = 0; // ScalingMode.NearestNeighbor
+         public int    PrecisionSpeed { get; set; } = 45;
 
          public bool   InfoShowHex   { get; set; } = true;
          public bool   InfoShowRgb   { get; set; } = true;
@@ -354,9 +356,6 @@ namespace Lens
          public const byte MaxGridSize = 16;
          public const byte MinGridSize = 1;
 
-         public const byte MaxMouseSpeed = 20;
-         public const byte MinMouseSpeed = 1;
-
          public const byte MaxMagnification = 16;
          public const byte MinMagnification = 2;
 
@@ -365,9 +364,6 @@ namespace Lens
 
          public const short MaxWidth = 400;
          public const short MinWidth = 100;
-
-         public const byte MaxSpeedFactor = 10;
-         public const byte MinSpeedFactor = 1;
 
          public const byte SizeIncrement = 20;
 

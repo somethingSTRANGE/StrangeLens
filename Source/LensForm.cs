@@ -18,13 +18,9 @@ namespace Lens
 {
    public partial class LensForm : Form
    {
-      [SuppressMessage("ReSharper", "IdentifierTypo")] [SuppressMessage("ReSharper", "InconsistentNaming")]
-      private const uint SPI_GETMOUSESPEED = 0x0070;
-
-      [SuppressMessage("ReSharper", "IdentifierTypo")] [SuppressMessage("ReSharper", "InconsistentNaming")]
-      private const uint SPI_SETMOUSESPEED = 0x0071;
-
       private const uint ULW_ALPHA = 0x00000002;
+
+      private const Keys CtrlAltShift = Keys.Control | Keys.Alt | Keys.Shift;
 
       // Drop shadow parameters.
       private const int   ShadowBlur     = 16;   // window margin on each side (px)
@@ -77,12 +73,7 @@ namespace Lens
          public BITMAPINFOHEADER bmiHeader;
       }
 
-      // Saved base speed — static so EmergencyRestoreMouseSpeed can reach it without a form instance.
-      private static int savedBaseMouseSpeed;
-
       private readonly Timer timer;
-
-      private int baseMouseSpeed;
 
       private InfoControl infoControl;
 
@@ -94,6 +85,12 @@ namespace Lens
       private Point scrCaptureOrigin;
       private Bitmap checkerTile;
       private TextureBrush checkerBrush;
+
+      // Precision movement state — used by the low-level mouse hook.
+      private Point  _lastCursorPos;
+      private bool   _isSyntheticMove;
+      private double _accumX;
+      private double _accumY;
 
       private bool isRendering;
 
@@ -144,9 +141,6 @@ namespace Lens
          this.ApplyWidth();
          this.ApplyHeight();
 
-         this.baseMouseSpeed = SystemInformation.MouseSpeed;
-         savedBaseMouseSpeed = this.baseMouseSpeed;
-
          this.timer = new Timer { Interval = 16, Enabled = false };
          this.timer.Tick += (s, e) => this.RenderFrame();
 
@@ -171,8 +165,8 @@ namespace Lens
          set => this.targetLocation = value;
       }
 
-      [DllImport("User32.dll")]
-      private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, uint pvParam, uint fWinIni);
+      [DllImport("User32.dll")] private static extern bool SetCursorPos(int x, int y);
+      [DllImport("User32.dll")] private static extern short GetAsyncKeyState(int vKey);
 
       [DllImport("User32.dll", ExactSpelling = true, SetLastError = true)]
       private static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, ref Point pptDst, ref Size psize,
@@ -215,14 +209,6 @@ namespace Lens
       private const int Hotkey12BitA = 5;
       private const int Hotkey12BitB = 6;
 
-      // Called by Program.cs on unhandled exceptions to ensure mouse speed is always restored.
-      internal static void EmergencyRestoreMouseSpeed()
-      {
-         if (savedBaseMouseSpeed > 0)
-            SystemParametersInfo(SPI_SETMOUSESPEED, 0, (uint)savedBaseMouseSpeed, 0);
-      }
-
-
       protected override void WndProc(ref Message m)
       {
          const int WmHotkey = 0x0312;
@@ -252,7 +238,6 @@ namespace Lens
          UnregisterHotKey(this.Handle, Hotkey12BitB);
          if (this.mouseHook != IntPtr.Zero) { UnhookWindowsHookEx(this.mouseHook); this.mouseHook = IntPtr.Zero; }
          this.infoForm.Close();
-         this.ResetMouseSpeed();
          this.FreeLayeredResources();
          this.FreeFinalResources();
          this.shadowAlpha = null;
@@ -341,16 +326,74 @@ namespace Lens
 
       private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
       {
+         const int WmMousemove  = 0x0200;
          const int WmMousewheel = 0x020A;
-         const Keys CtrlAltShift = Keys.Control | Keys.Alt | Keys.Shift;
-         if (nCode >= 0 && wParam.ToInt32() == WmMousewheel && (Control.ModifierKeys & CtrlAltShift) == CtrlAltShift)
+
+         if (nCode >= 0)
          {
-            // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the signed wheel delta.
-            var mouseData  = Marshal.ReadInt32(lParam, 8);
-            var wheelDelta = (short)(mouseData >> 16);
-            this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
-            return (IntPtr)1; // consume — don't forward to the app under the cursor
+            int msg = wParam.ToInt32();
+            bool hasCtrlAltShift = (Control.ModifierKeys & CtrlAltShift) == CtrlAltShift;
+
+            if (msg == WmMousemove)
+            {
+               // MSLLHOOKSTRUCT: POINT is at offset 0 (two int32s).
+               int ptX = Marshal.ReadInt32(lParam, 0);
+               int ptY = Marshal.ReadInt32(lParam, 4);
+
+               if (this._isSyntheticMove)
+               {
+                  // Always clear — we cannot stay in this state indefinitely.
+                  this._isSyntheticMove = false;
+                  if (ptX == this._lastCursorPos.X && ptY == this._lastCursorPos.Y)
+                     // Coordinates match our SetCursorPos target: this is the synthetic.
+                     return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
+                  // Coordinates don't match: stale real event queued before our SetCursorPos.
+                  // Consume it so the unscaled position never reaches Cursor.Position.
+                  return (IntPtr)1;
+               }
+
+               if (hasCtrlAltShift)
+               {
+                  int dx = ptX - this._lastCursorPos.X;
+                  int dy = ptY - this._lastCursorPos.Y;
+                  if (dx != 0 || dy != 0)
+                  {
+                     double scale = Lens.Instance.PrecisionSpeed / 100.0;
+                     this._accumX += dx * scale;
+                     this._accumY += dy * scale;
+                     int moveX = (int)this._accumX;
+                     int moveY = (int)this._accumY;
+                     this._accumX -= moveX;
+                     this._accumY -= moveY;
+                     int newX = this._lastCursorPos.X + moveX;
+                     int newY = this._lastCursorPos.Y + moveY;
+                     this._lastCursorPos = new Point(newX, newY);
+                     this._isSyntheticMove = true;
+                     SetCursorPos(newX, newY);
+                     return (IntPtr)1;
+                  }
+               }
+               else
+               {
+                  this._lastCursorPos = new Point(ptX, ptY);
+                  this._accumX = 0;
+                  this._accumY = 0;
+               }
+            }
+            else if (msg == WmMousewheel && hasCtrlAltShift)
+            {
+               // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the signed wheel delta.
+               var mouseData  = Marshal.ReadInt32(lParam, 8);
+               var wheelDelta = (short)(mouseData >> 16);
+               if ((GetAsyncKeyState((int)Keys.S) & 0x8000) != 0)
+                  // Wheel up = more precise (lower speed %) — mirrors wheel up = zoom in.
+                  this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
+               else
+                  this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
+               return (IntPtr)1;
+            }
          }
+
          return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
       }
 
@@ -358,10 +401,9 @@ namespace Lens
       {
          base.OnShown(e);
 
-         this.SetMouseSpeed();
-
          // Rough initial position — first RenderFrame will correct it via UpdateLayeredWindow.
          var pos = Cursor.Position;
+         this._lastCursorPos = pos;
          this.Left = pos.X + 20;
          this.Top = pos.Y - this.Height / 2;
 
@@ -390,7 +432,8 @@ namespace Lens
          this.isRendering = true;
          try
          {
-            var cursorPos = Cursor.Position;
+            bool precisionActive = (Control.ModifierKeys & CtrlAltShift) == CtrlAltShift;
+            var cursorPos = precisionActive ? this._lastCursorPos : Cursor.Position;
             var lens = Lens.Instance;
             var w = lens.Width;
             var h = lens.Height;
@@ -483,7 +526,8 @@ namespace Lens
             // (which are also topmost but created after us) don't permanently cover the lens.
             const uint SWP_NOMOVE_NOSIZE_NOACTIVATE = 0x0013; // SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE
             SetWindowPos(this.Handle, new IntPtr(-1), 0, 0, 0, 0, SWP_NOMOVE_NOSIZE_NOACTIVATE);
-            this.infoForm.UpdateAndPosition(cursorPos, sampledColor, new Rectangle(lensLeft, lensTop, w, h));
+            this.infoForm.UpdateAndPosition(cursorPos, sampledColor, new Rectangle(lensLeft, lensTop, w, h),
+               precisionActive, Lens.Instance.PrecisionSpeed);
          }
          catch (Exception ex)
          {
@@ -942,8 +986,15 @@ namespace Lens
          var before = Lens.Instance.Magnification;
          Lens.Instance.Magnification = (byte)(Lens.Instance.Magnification + amount);
          if (Lens.Instance.Magnification == before) return;
-         this.SetMouseSpeed();
          this.RenderFrame();
+      }
+
+      private void ChangePrecisionSpeed(int direction)
+      {
+         var options = Lens.PrecisionSpeedOptions;
+         int idx = Array.IndexOf(options, Lens.Instance.PrecisionSpeed);
+         if (idx < 0) idx = Array.IndexOf(options, 50);
+         Lens.Instance.PrecisionSpeed = options[(idx + direction).Clamp(0, options.Length - 1)];
       }
 
       private void ChangePosition(int x, int y)
@@ -963,23 +1014,5 @@ namespace Lens
          this.RenderFrame();
       }
 
-      private void ResetMouseSpeed()
-      {
-         SystemParametersInfo(SPI_SETMOUSESPEED, 0, (uint)this.baseMouseSpeed, 0);
-      }
-
-      private void SetMouseSpeed()
-      {
-         var factor = (float)(Lens.Instance.Magnification - Lens.Defaults.MinMagnification) /
-                      (Lens.Defaults.MaxMagnification - Lens.Defaults.MinMagnification);
-         var minSpeed = Math.Max(this.baseMouseSpeed / Lens.Instance.SpeedFactor,
-            Lens.Defaults.MinMouseSpeed);
-         var mouseSpeed = (uint)Math.Round((this.baseMouseSpeed - minSpeed) * (1 - factor) + minSpeed);
-
-         // The pvParam (mouseSpeed) parameter must point to an integer that
-         // receives a value which ranges between 1 (slowest) and 20 (fastest).
-         // A value of 10 is the default.
-         SystemParametersInfo(SPI_SETMOUSESPEED, 0, mouseSpeed, 0);
-      }
    }
 }

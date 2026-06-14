@@ -42,14 +42,16 @@ namespace Lens
       public bool IsCopied(string label) =>
          this.copiedLabel == label && (DateTime.UtcNow - this.copiedAt).TotalMilliseconds < 600;
 
-      public void UpdateInfo(Point mousePosition, Color color)
+      public void UpdateInfo(Point mousePosition, Color color, bool precisionActive, int precisionSpeed)
       {
          this.ValueColorHex   = ColorAsHex(color);
          this.ValueColor12Bit = ColorAsHex(this.Color12Bit = ColorAs12Bit(color), shortForm: true);
          this.ValueColorWeb   = ColorAsHex(this.ColorWeb = ColorAsWeb(color), shortForm: true);
          this.ValueColorRGB   = ColorAsRGB(color);
          this.ValueColorHSL   = ColorAsHSL(color);
-         this.MousePosition  = $"{mousePosition.X}, {mousePosition.Y}";
+         this.MousePosition  = precisionActive
+            ? $"{mousePosition.X}, {mousePosition.Y} — {precisionSpeed}%"
+            : $"{mousePosition.X}, {mousePosition.Y}";
          this.LensSize       = $"{Lens.Instance.Width}×{Lens.Instance.Height}";
          this.ZoomFactor     = $"x{Lens.Instance.Magnification}";
          this.ColorSwatch    = color;

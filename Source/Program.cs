@@ -50,16 +50,8 @@ namespace Lens
          Debug.WriteLine("-----");
          Debug.WriteLine($"Lens started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n");
 
-         Application.ThreadException += (s, e) =>
-         {
-            Debug.WriteLine("ThreadException: " + e.Exception);
-            LensForm.EmergencyRestoreMouseSpeed();
-         };
-         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-         {
-            Debug.WriteLine("UnhandledException: " + e.ExceptionObject);
-            LensForm.EmergencyRestoreMouseSpeed();
-         };
+         Application.ThreadException += (s, e) => Debug.WriteLine("ThreadException: " + e.Exception);
+         AppDomain.CurrentDomain.UnhandledException += (s, e) => Debug.WriteLine("UnhandledException: " + e.ExceptionObject);
 
          var createdNew = true;
          using (var mutex = new Mutex(true, "strange-lens-app-mutex", out createdNew))
