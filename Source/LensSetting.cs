@@ -214,8 +214,8 @@ namespace Lens
          {
             var data = JsonSerializer.Deserialize<SettingsData>(File.ReadAllText(path), JsonOptions);
             if (data == null) return;
-            _width         = data.Width;
-            _height        = data.Height;
+            Width          = data.Width;
+            Height         = data.Height;
             _magnification = data.Magnification;
             _gridSize      = data.GridSize;
             _gridStyle     = data.GridStyle;

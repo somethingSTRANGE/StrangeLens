@@ -55,6 +55,8 @@ namespace Lens
       private ComboBox      comboBoxLensMagnification;
       private ComboBox      comboBoxLensScalingMode;
       private ComboBox      comboBoxPrecisionSpeed;
+      private ComboBox      comboBoxLensWidth;
+      private ComboBox      comboBoxLensHeight;
       private CheckBox      checkBoxInfoShowHex;
       private CheckBox      checkBoxInfoShowRgb;
       private CheckBox      checkBoxInfoShowHsl;
@@ -64,7 +66,7 @@ namespace Lens
       private CheckBox      checkBoxInfoShowSize;
       private CheckBox      checkBoxInfoShowZoom;
 
-      private const int FormW       = 320;
+      private const int FormW       = 335;
       private const int RowH        = 27;
       private const int PadX        = 16;
       private const int PadY        = 16;
@@ -145,6 +147,38 @@ namespace Lens
 
          // ── Lens ──────────────────────────────────────────────────────────────────────
          y = SectionHeader("LENS", y, colorAccent, colorBorder);
+
+         this.comboBoxLensWidth = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
+         for (int i = Lens.Defaults.MinWidth; i <= Lens.Defaults.MaxWidth; i += Lens.Defaults.SizeIncrement)
+            this.comboBoxLensWidth.Items.Add($"{i} px");
+         this.comboBoxLensWidth.SelectedIndex = (ds.Width - Lens.Defaults.MinWidth) / Lens.Defaults.SizeIncrement;
+         this.comboBoxLensWidth.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxLensWidth.SelectedIndex >= 0)
+               ds.Width = (short)(Lens.Defaults.MinWidth + this.comboBoxLensWidth.SelectedIndex * Lens.Defaults.SizeIncrement);
+         };
+         y = this.LayoutRow("Panel width", this.comboBoxLensWidth, 0, y, colorTextNormal);
+
+         this.comboBoxLensHeight = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
+         for (int i = Lens.Defaults.MinHeight; i <= Lens.Defaults.MaxHeight; i += Lens.Defaults.SizeIncrement)
+            this.comboBoxLensHeight.Items.Add($"{i} px");
+         this.comboBoxLensHeight.SelectedIndex = (ds.Height - Lens.Defaults.MinHeight) / Lens.Defaults.SizeIncrement;
+         this.comboBoxLensHeight.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxLensHeight.SelectedIndex >= 0)
+               ds.Height = (short)(Lens.Defaults.MinHeight + this.comboBoxLensHeight.SelectedIndex * Lens.Defaults.SizeIncrement);
+         };
+         y = this.LayoutRow("Panel height", this.comboBoxLensHeight, 0, y, colorTextNormal);
+
+         this.comboBoxPrecisionSpeed = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
+         foreach (var pct in Lens.PrecisionSpeedOptions)
+            this.comboBoxPrecisionSpeed.Items.Add($"{pct}%");
+         this.comboBoxPrecisionSpeed.SelectedIndex = Array.IndexOf(Lens.PrecisionSpeedOptions, ds.PrecisionSpeed);
+         this.comboBoxPrecisionSpeed.SelectedIndexChanged += (_, _) => {
+            if (this.comboBoxPrecisionSpeed.SelectedIndex >= 0)
+               ds.PrecisionSpeed = Lens.PrecisionSpeedOptions[this.comboBoxPrecisionSpeed.SelectedIndex];
+         };
+         y = this.LayoutRow("Mouse Precision Speed", this.comboBoxPrecisionSpeed, 0, y, colorTextNormal);
+
+         y += SubGroupGap;
          y = SubHeader("Grid", y, colorTextSubtle);
 
          this.comboBoxLensGridStyle = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
@@ -204,16 +238,6 @@ namespace Lens
          };
          y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, colorTextNormal);
 
-         this.comboBoxPrecisionSpeed = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = ComboBoxW };
-         foreach (var pct in Lens.PrecisionSpeedOptions)
-            this.comboBoxPrecisionSpeed.Items.Add($"{pct}%");
-         this.comboBoxPrecisionSpeed.SelectedIndex = Array.IndexOf(Lens.PrecisionSpeedOptions, ds.PrecisionSpeed);
-         this.comboBoxPrecisionSpeed.SelectedIndexChanged += (_, _) => {
-            if (this.comboBoxPrecisionSpeed.SelectedIndex >= 0)
-               ds.PrecisionSpeed = Lens.PrecisionSpeedOptions[this.comboBoxPrecisionSpeed.SelectedIndex];
-         };
-         y = this.LayoutRow("Precision Speed", this.comboBoxPrecisionSpeed, LabelIndent, y, colorTextNormal);
-
          // ── Info ──────────────────────────────────────────────────────────────────────
          y += SectionGap;
          y = SectionHeader("INFO", y, colorAccent, colorBorder);
@@ -254,6 +278,12 @@ namespace Lens
          var ds = Lens.Instance;
          switch (e.PropertyName)
          {
+            case nameof(ds.Width):
+               this.comboBoxLensWidth.SelectedIndex = (ds.Width - Lens.Defaults.MinWidth) / Lens.Defaults.SizeIncrement;
+               break;
+            case nameof(ds.Height):
+               this.comboBoxLensHeight.SelectedIndex = (ds.Height - Lens.Defaults.MinHeight) / Lens.Defaults.SizeIncrement;
+               break;
             case nameof(ds.GridStyle):
                this.comboBoxLensGridStyle.SelectedIndex = ds.GridStyle;
                break;
