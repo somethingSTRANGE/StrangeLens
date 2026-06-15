@@ -150,7 +150,8 @@ namespace Lens
       public ScalingMode Scaling
       {
          get => _scalingMode;
-         set => SetPersisted(ref _scalingMode, value);
+         set => SetPersisted(ref _scalingMode,
+            Enum.IsDefined(typeof(ScalingMode), value) ? value : _scalingMode);
       }
 
       public static readonly int[] PrecisionSpeedOptions = { 10, 25, 45, 70 };
@@ -158,7 +159,8 @@ namespace Lens
       public int PrecisionSpeed
       {
          get => _precisionSpeed;
-         set => SetPersisted(ref _precisionSpeed, value);
+         set => SetPersisted(ref _precisionSpeed,
+            Array.IndexOf(PrecisionSpeedOptions, value) >= 0 ? value : _precisionSpeed);
       }
 
       public short Width
@@ -172,10 +174,27 @@ namespace Lens
       public string Theme
       {
          get => _theme;
-         set => SetPersisted(ref _theme, value);
+         set => SetPersisted(ref _theme,
+            string.IsNullOrEmpty(value)                          ? "system" :
+            value == "system" || _themes.ContainsKey(value)     ? value    :
+            IsOsDarkMode()                                       ? "dark"   : "light");
       }
 
-      public IReadOnlyDictionary<string, ThemePalette> Themes => _themes;
+      public IReadOnlyDictionary<string, ThemePalette> Themes
+      {
+         get => _themes;
+         private set
+         {
+            _themes = new Dictionary<string, ThemePalette>(StringComparer.OrdinalIgnoreCase)
+            {
+               ["dark"]  = DefaultDark,
+               ["light"] = DefaultLight,
+            };
+            if (value != null)
+               foreach (var kvp in value)
+                  _themes[kvp.Key] = kvp.Value;
+         }
+      }
 
       // ── Info panel display toggles — persisted; UI to be added later. ──────────────────
       public bool InfoShowHex   { get => _infoShowHex;   set => SetPersisted(ref _infoShowHex,   value); }
@@ -188,6 +207,19 @@ namespace Lens
       public bool InfoShowZoom  { get => _infoShowZoom;  set => SetPersisted(ref _infoShowZoom,  value); }
 
       public event PropertyChangedEventHandler PropertyChanged;
+
+      internal static void ResetForTesting()
+      {
+         instance?._saveTimer.Stop();
+         instance?._saveTimer.Dispose();
+         instance = null;
+      }
+
+      private static Color TryParseColor(string html, Color fallback)
+      {
+         try   { return ColorTranslator.FromHtml(html); }
+         catch { return fallback; }
+      }
 
       public static bool IsOsDarkMode()
       {
@@ -206,9 +238,10 @@ namespace Lens
          Converters    = { new ColorHexConverter() }
       };
 
-      public void Load()
+      public void Load() => Load(SettingsFilePath);
+
+      internal void Load(string path)
       {
-         var path = SettingsFilePath;
          if (!File.Exists(path)) return;
          try
          {
@@ -216,13 +249,12 @@ namespace Lens
             if (data == null) return;
             Width          = data.Width;
             Height         = data.Height;
-            _magnification = data.Magnification;
-            _gridSize      = data.GridSize;
-            _gridStyle     = data.GridStyle;
-            _gridColor     = ColorTranslator.FromHtml(data.GridColor);
-            _scalingMode    = (ScalingMode)data.Scaling;
-            _precisionSpeed = Array.IndexOf(PrecisionSpeedOptions, data.PrecisionSpeed) >= 0
-               ? data.PrecisionSpeed : 45;
+            Magnification  = data.Magnification;
+            GridSize       = data.GridSize;
+            GridStyle      = data.GridStyle;
+            GridColor      = TryParseColor(data.GridColor, Color.Black);
+            Scaling        = (ScalingMode)data.Scaling;
+            PrecisionSpeed = data.PrecisionSpeed;
             _infoShowHex   = data.InfoShowHex;
             _infoShowRgb   = data.InfoShowRgb;
             _infoShowHsl   = data.InfoShowHsl;
@@ -232,26 +264,8 @@ namespace Lens
             _infoShowSize  = data.InfoShowSize;
             _infoShowZoom  = data.InfoShowZoom;
 
-            // Build themes: start with built-in defaults, overlay with anything from the file.
-            _themes = new Dictionary<string, ThemePalette>(StringComparer.OrdinalIgnoreCase)
-            {
-               ["dark"]  = DefaultDark,
-               ["light"] = DefaultLight,
-            };
-            if (data.Themes != null)
-               foreach (var kvp in data.Themes)
-                  _themes[kvp.Key] = kvp.Value;
-
-            var osDark = IsOsDarkMode();
-
-            // Resolve the active theme name.
-            var raw = data.Theme;
-            if (string.IsNullOrEmpty(raw))
-               _theme = "system";
-            else if (raw == "system" || _themes.ContainsKey(raw))
-               _theme = raw;
-            else
-               _theme = osDark ? "dark" : "light";
+            Themes = data.Themes;
+            Theme  = data.Theme;
 
             Debug.WriteLine($"Settings loaded from {path}");
          }
