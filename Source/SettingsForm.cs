@@ -97,15 +97,17 @@ namespace Lens
          var menuItemOpen = new ToolStripMenuItem { Text = "Show" };
          var menuItemSettings = new ToolStripMenuItem
             { Text = "&Settings...", ShortcutKeys = Keys.Control | Keys.Shift | Keys.S, ShowShortcutKeys = true };
+         var menuItemAbout     = new ToolStripMenuItem { Text = "&About..." };
          var menuItemSeparator = new ToolStripSeparator();
-         var menuItemExit = new ToolStripMenuItem { Text = "E&xit" };
+         var menuItemExit      = new ToolStripMenuItem { Text = "E&xit" };
 
          menuItemExit.Click     += this.menuItemExit_Click;
          menuItemSettings.Click += this.menuItemSettings_Click;
+         menuItemAbout.Click    += this.menuItemAbout_Click;
          menuItemOpen.Click     += this.menuItemOpen_Click;
 
          this.contextMenu.Items.AddRange(new ToolStripItem[]
-            { menuItemOpen, menuItemSettings, menuItemSeparator, menuItemExit });
+            { menuItemOpen, menuItemSettings, menuItemAbout, menuItemSeparator, menuItemExit });
 
          this.notifyIcon.Icon            = this.Icon;
          this.notifyIcon.ContextMenuStrip = this.contextMenu;
@@ -558,6 +560,12 @@ namespace Lens
 
       private void menuItemOpen_Click(object sender, EventArgs e)     => this.ToggleLens();
       private void menuItemSettings_Click(object sender, EventArgs e) => this.OpenSettings();
+
+      private void menuItemAbout_Click(object sender, EventArgs e)
+      {
+         using var about = new AboutForm(this.Icon);
+         about.ShowDialog(this);
+      }
 
       private void notifyIcon_MouseClick(object sender, MouseEventArgs e)
       {

@@ -180,6 +180,15 @@ namespace Lens
             IsOsDarkMode()                                       ? "dark"   : "light");
       }
 
+      public ThemePalette ActivePalette
+      {
+         get
+         {
+            var name = _theme == "system" ? (IsOsDarkMode() ? "dark" : "light") : _theme;
+            return _themes.TryGetValue(name, out var p) ? p : DefaultDark;
+         }
+      }
+
       public IReadOnlyDictionary<string, ThemePalette> Themes
       {
          get => _themes;

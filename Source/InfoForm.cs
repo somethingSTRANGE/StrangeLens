@@ -134,11 +134,11 @@ namespace Lens
       private int cachedLayeredW = -1, cachedLayeredH = -1;
 
       // ── Icon paths — built once at IconSize, reused every frame. ───────────────────────
-      private readonly GraphicsPath iconColorPalette;
-      private readonly GraphicsPath iconColorValues;
-      private readonly GraphicsPath iconLensSize;
-      private readonly GraphicsPath iconMagnification;
-      private readonly GraphicsPath iconMousePosition;
+      private readonly SvgImage iconColorPalette;
+      private readonly SvgImage iconColorValues;
+      private readonly SvgImage iconLensSize;
+      private readonly SvgImage iconMagnification;
+      private readonly SvgImage iconMousePosition;
 
       // ── Constructor. ───────────────────────────────────────────────────────────────────
       public InfoForm(InfoControl infoData)
@@ -158,11 +158,11 @@ namespace Lens
                                     this.contentH + ShadowMarginT + ShadowMarginB);
          // Start off-screen; shown lazily by UpdateAndPosition after first position set.
          this.Location = new Point(-32000, -32000);
-         this.iconColorPalette   = IconPaths.Build(IconPaths.ColorPalette,   IconSize);
-         this.iconColorValues    = IconPaths.Build(IconPaths.ColorValues,    IconSize);
-         this.iconLensSize       = IconPaths.Build(IconPaths.LensSize,       IconSize);
-         this.iconMagnification  = IconPaths.Build(IconPaths.Magnification,  IconSize);
-         this.iconMousePosition  = IconPaths.Build(IconPaths.MousePosition,  IconSize);
+         this.iconColorPalette   = SvgImageFactory.ColorPalette(IconSize);
+         this.iconColorValues    = SvgImageFactory.ColorValues(IconSize);
+         this.iconLensSize       = SvgImageFactory.LensSize(IconSize);
+         this.iconMagnification  = SvgImageFactory.Magnification(IconSize);
+         this.iconMousePosition  = SvgImageFactory.MousePosition(IconSize);
       }
 
       // Never activates on Show() — must remain true for the window to be non-activatable.
@@ -200,11 +200,6 @@ namespace Lens
       {
          this.valueFont?.Dispose();
          this.valueFont = null;
-         this.iconColorPalette?.Dispose();
-         this.iconColorValues?.Dispose();
-         this.iconLensSize?.Dispose();
-         this.iconMagnification?.Dispose();
-         this.iconMousePosition?.Dispose();
          this.FreeLayeredResources();
          this.FreeFinalResources();
          this.shadowAlpha = null;
@@ -408,7 +403,6 @@ namespace Lens
          using var labelBrush = new SolidBrush(Color.FromArgb(0xFF, 0xFF, 0xE1));
          using var valueBrush = new SolidBrush(Color.White);
          using var valueCopyBrush = new SolidBrush(Color.FromArgb(0xFF, 0xE5, 0x66));
-         using var outlinePen = new Pen(Color.DarkSlateGray) { Alignment = PenAlignment.Inset };
 
          void DrawStringAtBaseline(string text, Font font, Brush brush, float x, float baselineY)
          {
@@ -456,7 +450,7 @@ namespace Lens
          if (cvAny)
          {
             // Icon baseline-aligned with the section's first row.
-            DrawIcon(g, this.iconColorValues, valueBrush, IconX, y, IconSize);
+            DrawSvg(g, this.iconColorValues.Path, valueBrush, IconX, y);
             if (lens.InfoShowHex)
             {
                DrawRow("HEX", d.ValueColorHex, y);
@@ -493,7 +487,7 @@ namespace Lens
          {
             swatchRect.Height = RowHeight;
 
-            DrawIcon(g, this.iconColorPalette, valueBrush, IconX, y, IconSize);
+            DrawSvg(g, this.iconColorPalette.Path, valueBrush, IconX, y);
             if (lens.InfoShow12Bit)
             {
                DrawRow("12-Bit", d.ValueColor12Bit, y);
@@ -520,7 +514,7 @@ namespace Lens
 
          if (lens.InfoShowMouse)
          {
-            DrawIcon(g, this.iconMousePosition, valueBrush, IconX, y, IconSize);
+            DrawSvg(g, this.iconMousePosition.Path, valueBrush, IconX, y);
             DrawRow("Mouse", d.MousePosition, y);
             y += rowOffset;
          }
@@ -528,7 +522,7 @@ namespace Lens
          // ── lens-size section (no gap) ─────────────────────────────────────────────────
          if (lens.InfoShowSize)
          {
-            DrawIcon(g, this.iconLensSize, valueBrush, IconX, y, IconSize);
+            DrawSvg(g, this.iconLensSize.Path, valueBrush, IconX, y);
             DrawRow("Size", d.LensSize, y);
             y += rowOffset;
          }
@@ -536,65 +530,40 @@ namespace Lens
          // ── magnification section (no gap) ─────────────────────────────────────────────
          if (lens.InfoShowZoom)
          {
-            DrawIcon(g, this.iconMagnification, valueBrush, IconX, y, IconSize);
+            DrawSvg(g, this.iconMagnification.Path, valueBrush, IconX, y);
             DrawRow("Zoom", d.ZoomFactor, y);
          }
 
-         /// <summary>
-         ///   Fills a pre-built <see cref="GraphicsPath"/> icon using <paramref name="brush"/>.
-         ///   (<paramref name="x"/>, <paramref name="y"/>) is the lower-left (baseline) corner,
-         ///   so the same y can be passed to both this and <c>DrawStringAtBaseline</c> to align
-         ///   an icon with adjacent text. <paramref name="size"/> must match the value used when
-         ///   the path was built — it is used to shift the path's upper-left to the correct origin.
-         /// </summary>
-         void DrawIcon(Graphics g, GraphicsPath path, Brush brush, float x, float y, float size)
-         {
-            // var rect = new RectangleF(x, y, size, size);
-            // DrawRect(g, rect, Color.Blue);
-            // DrawOutline(g, rect);
 
-            var smoothingMode = g.SmoothingMode;
-            g.SmoothingMode = SmoothingMode.HighQuality;
-
-            var state = g.Save();
-            g.TranslateTransform(x, y);
-            g.FillPath(brush, path);
-            g.Restore(state);
-            
-            g.SmoothingMode = smoothingMode;
-         }
 
 #pragma warning disable CS8321 // Local function is declared but never used
-         void DrawRect(Graphics g, RectangleF rect, Color color)
-         {
-            var smoothingMode = g.SmoothingMode;
-            var pixelOffsetMode = g.PixelOffsetMode;
-            g.SmoothingMode = SmoothingMode.None;
-            g.PixelOffsetMode = PixelOffsetMode.Half;
+         // void DrawDebugBounds(Graphics g, GraphicsPath path, float x, float y)
+         // {
+         //    var b    = path.GetBounds();
+         //
+         //    float left   = x + b.X;
+         //    float top    = y + b.Y;
+         //    float right  = left + b.Width;
+         //    float bottom = top + b.Height;
+         //
+         //    left = MathF.Floor(left);
+         //    top = MathF.Floor(top);
+         //
+         //    var rect = new RectangleF(
+         //       left,
+         //       top,
+         //       MathF.Ceiling(right) - left,
+         //       MathF.Ceiling(bottom) - top
+         //    );            
+         //
+         //    DrawRect(g, rect, Color.Blue);
+         //    DrawOutline(g, rect);
+         // }
+         
 
-            using (var brush = new SolidBrush(color))
-               g.FillRectangle(brush, rect);
+         
+#pragma warning restore CS8321
 
-            g.SmoothingMode = smoothingMode;
-            g.PixelOffsetMode = pixelOffsetMode;
-         }
-#pragma warning restore CS8321 // Local function is declared but never used
-
-         void DrawOutline(Graphics g, RectangleF rect)
-         {
-            var smoothingMode = g.SmoothingMode;
-            var pixelOffsetMode = g.PixelOffsetMode;
-            g.SmoothingMode = SmoothingMode.None;
-            g.PixelOffsetMode = PixelOffsetMode.Half;
-
-            g.DrawLine(outlinePen, rect.Left, rect.Top + 1, rect.Right, rect.Top + 1);
-            g.DrawLine(outlinePen, rect.Right, rect.Top, rect.Right, rect.Bottom);
-            g.DrawLine(outlinePen, rect.Right, rect.Bottom, rect.Left, rect.Bottom);
-            g.DrawLine(outlinePen, rect.Left + 1, rect.Bottom, rect.Left + 1, rect.Top + 1);
-
-            g.SmoothingMode = smoothingMode;
-            g.PixelOffsetMode = pixelOffsetMode;
-         }
       }
 
       private static void DrawSwatch(Color color, Graphics graphics, Rectangle rect)
@@ -705,6 +674,80 @@ namespace Lens
          }
       }
 
+      static void DrawDebugBounds(Graphics g, float x, float y, float w, float h)
+      {
+         float left   = MathF.Floor(x);
+         float top    = MathF.Floor(y);
+         var   rect   = new RectangleF(left, top,
+            MathF.Ceiling(x + w) - left,
+            MathF.Ceiling(y + h) - top);
+         DrawRect(g, rect, Color.Blue);
+         DrawOutline(g, rect);
+      }
+
+      /// <summary>
+      ///   Fills a pre-built <see cref="GraphicsPath"/> icon using <paramref name="brush"/>.
+      ///   (<paramref name="x"/>, <paramref name="y"/>) is the lower-left (baseline) corner,
+      ///   so the same y can be passed to both this and <c>DrawStringAtBaseline</c> to align
+      ///   an icon with adjacent text. <paramref name="size"/> must match the value used when
+      ///   the path was built — it is used to shift the path's upper-left to the correct origin.
+      /// </summary>
+      public static void DrawSvg(Graphics g, GraphicsPath path, Brush brush, float x, float y)
+      {
+         // DrawDebugBounds(g, path, x, y);
+
+         var smoothingMode = g.SmoothingMode;
+         g.SmoothingMode = SmoothingMode.HighQuality;
+
+         var state = g.Save();
+         g.TranslateTransform(x, y);
+         g.FillPath(brush, path);
+         g.Restore(state);
+
+         g.SmoothingMode = smoothingMode;
+      }
+
+      static void DrawRect(Graphics g, RectangleF rect, Color color)
+      {
+         var smoothingMode = g.SmoothingMode;
+         var pixelOffsetMode = g.PixelOffsetMode;
+         g.SmoothingMode = SmoothingMode.None;
+         g.PixelOffsetMode = PixelOffsetMode.Half;
+
+         using (var brush = new SolidBrush(color))
+            g.FillRectangle(brush, rect);
+
+         g.SmoothingMode = smoothingMode;
+         g.PixelOffsetMode = pixelOffsetMode;
+      }
+
+      static void DrawOutline(Graphics g, RectangleF rect)
+      {
+         var smoothingMode = g.SmoothingMode;
+         var pixelOffsetMode = g.PixelOffsetMode;
+         g.SmoothingMode = SmoothingMode.None;
+         g.PixelOffsetMode = PixelOffsetMode.Half;
+         
+         using var outlinePen = new Pen(Color.DarkSlateGray) { Alignment = PenAlignment.Inset };
+
+
+         g.DrawLine(outlinePen, rect.Left, rect.Top + 1, rect.Right, rect.Top + 1);
+         g.DrawLine(outlinePen, rect.Right, rect.Top, rect.Right, rect.Bottom);
+         g.DrawLine(outlinePen, rect.Right, rect.Bottom, rect.Left, rect.Bottom);
+         g.DrawLine(outlinePen, rect.Left + 1, rect.Bottom, rect.Left + 1, rect.Top + 1);
+
+         g.SmoothingMode = smoothingMode;
+         g.PixelOffsetMode = pixelOffsetMode;
+      }
+      
+      
+      
+      // Tight-bounds variant delegates to explicit
+      public static void DrawDebugBounds(Graphics g, GraphicsPath path, float x, float y)
+      {
+         var b = path.GetBounds();
+         DrawDebugBounds(g, x + b.X, y + b.Y, b.Width, b.Height);
+      }         
       private void CommitLayeredWindow(Point winPos, int w, int h)
       {
          var winSize = new Size(w, h);
