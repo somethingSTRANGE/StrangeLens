@@ -1,9 +1,3 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="LensForm.cs" company="Strange Entertainment LLC">
-//   Copyright 2004-2023 Strange Entertainment LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -80,11 +74,11 @@ namespace Lens
       private InfoForm infoForm;
 
       // Screen capture (small localized region around cursor).
-      private Bitmap scrBmp;
-      private Graphics scrGrp;
+      private Bitmap? scrBmp;
+      private Graphics? scrGrp;
       private Point scrCaptureOrigin;
-      private Bitmap checkerTile;
-      private TextureBrush checkerBrush;
+      private Bitmap? checkerTile;
+      private TextureBrush? checkerBrush;
 
       // Precision movement state — used by the low-level mouse hook.
       private Point  _lastCursorPos;
@@ -95,18 +89,18 @@ namespace Lens
       private bool isRendering;
 
       // Mouse hook — field keeps the delegate alive so the GC doesn't collect it.
-      private LowLevelMouseProc mouseHookProc;
+      private LowLevelMouseProc? mouseHookProc;
       private IntPtr mouseHook = IntPtr.Zero;
 
       // Cached GDI resources for the layered window — allocated once, reused every frame.
       private IntPtr layeredMemDC = IntPtr.Zero;
       private IntPtr layeredBitmap = IntPtr.Zero;
       private IntPtr layeredBits = IntPtr.Zero; // raw pixel pointer into the DIBSection
-      private Graphics layeredGrp;
+      private Graphics? layeredGrp;
       private int layeredW, layeredH;
 
       // Cached grid bitmap — rebuilt only when relevant settings change.
-      private Bitmap gridBmp;
+      private Bitmap? gridBmp;
       private int cachedGridW, cachedGridH, cachedGridMag, cachedGridSize;
       private GridStyleOptions cachedGridStyle;
       private Color cachedGridColor;
@@ -118,7 +112,7 @@ namespace Lens
       private int finalW, finalH;
 
       // Cached Gaussian shadow alpha map — rebuilt only when content size changes.
-      private byte[] shadowAlpha;
+      private byte[]? shadowAlpha;
       private int cachedShadowContentW = -1, cachedShadowContentH = -1;
 
       private Point targetLocation;
@@ -128,7 +122,7 @@ namespace Lens
       private bool _udLensAbove;
       private bool _udInfoLeft;
       // Tracks the last screen the cursor was on; used to re-initialize flip state on display change.
-      private string lastScreenName;
+      private string? lastScreenName;
 
       public LensForm()
       {
@@ -198,7 +192,7 @@ namespace Lens
       [DllImport("user32.dll")] private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
       [DllImport("user32.dll")] private static extern bool UnhookWindowsHookEx(IntPtr hhk);
       [DllImport("user32.dll")] private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-      [DllImport("kernel32.dll")] private static extern IntPtr GetModuleHandle(string lpModuleName);
+      [DllImport("kernel32.dll")] private static extern IntPtr GetModuleHandle(string? lpModuleName);
       [DllImport("user32.dll", SetLastError = true)]
       private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
       [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -527,7 +521,7 @@ namespace Lens
             this.EnsureLayeredResources(w, h);
             this.EnsureFinalResources(totalW, totalH);
 
-            var g = this.layeredGrp;
+            var g = this.layeredGrp!;
             g.ResetTransform();
             g.ResetClip();
 
@@ -551,7 +545,7 @@ namespace Lens
             this.CopyScreen(cursorPos);
             // Sample the pixel at the cursor — scrBmp is centered on cursorPos so the
             // center pixel maps exactly to the crosshair origin (the spec's sampled pixel).
-            var sampledColor = this.scrBmp.GetPixel(this.scrBmp.Width / 2, this.scrBmp.Height / 2);
+            var sampledColor = this.scrBmp!.GetPixel(this.scrBmp.Width / 2, this.scrBmp.Height / 2);
             g.DrawImage(this.scrBmp, this.scrCaptureOrigin.X, this.scrCaptureOrigin.Y);
 
             // All overlay drawing is in device space.
@@ -678,7 +672,7 @@ namespace Lens
             Marshal.WriteInt32(this.finalBits, i * 4, 0);
 
          // Write shadow. Pixel is pre-multiplied BGRA: black with alpha=a → (a<<24)|0.
-         var alpha = this.shadowAlpha;
+         var alpha = this.shadowAlpha!;
          for (int i = 0; i < totalPixels; i++)
          {
             byte a = alpha[i];
@@ -959,7 +953,7 @@ namespace Lens
          var captureRect = new Rectangle(this.scrCaptureOrigin, new Size(captureW, captureH));
 
          // Pre-fill with checkerboard. Anything not overwritten below is out of monitor bounds.
-         this.scrGrp.FillRectangle(this.checkerBrush, 0, 0, captureW, captureH);
+         this.scrGrp!.FillRectangle(this.checkerBrush!, 0, 0, captureW, captureH);
 
          // Copy only the portions that fall within actual monitor bounds.
          foreach (var screen in Screen.AllScreens)

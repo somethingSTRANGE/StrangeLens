@@ -1,9 +1,3 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="LensSetting.cs" company="Strange Entertainment LLC">
-//   Copyright 2004-2023 Strange Entertainment LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -33,7 +27,7 @@ namespace Lens
 
    public class Lens : INotifyPropertyChanged
    {
-      private static Lens instance;
+      private static Lens? instance;
 
       private Color       _gridColor      = Color.Black;
       private byte        _gridSize       = 4;
@@ -215,7 +209,7 @@ namespace Lens
       public bool InfoShowSize  { get => _infoShowSize;  set => SetPersisted(ref _infoShowSize,  value); }
       public bool InfoShowZoom  { get => _infoShowZoom;  set => SetPersisted(ref _infoShowZoom,  value); }
 
-      public event PropertyChangedEventHandler PropertyChanged;
+      public event PropertyChangedEventHandler? PropertyChanged;
 
       internal static void ResetForTesting()
       {
@@ -273,7 +267,7 @@ namespace Lens
             _infoShowSize  = data.InfoShowSize;
             _infoShowZoom  = data.InfoShowZoom;
 
-            Themes = data.Themes;
+            if (data.Themes != null) Themes = data.Themes;
             Theme  = data.Theme;
 
             Debug.WriteLine($"Settings loaded from {path}");
@@ -289,7 +283,7 @@ namespace Lens
          var path = SettingsFilePath;
          try
          {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var data = new SettingsData
             {
                Width         = _width,
@@ -319,12 +313,12 @@ namespace Lens
          }
       }
 
-      private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+      private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
       {
          PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
       }
 
-      private bool SetPersisted<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+      private bool SetPersisted<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
       {
          if (EqualityComparer<T>.Default.Equals(field, value)) return false;
          field = value;
@@ -333,7 +327,7 @@ namespace Lens
          return true;
       }
 
-      private bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+      private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
       {
          if (EqualityComparer<T>.Default.Equals(field, value)) return false;
          field = value;
@@ -371,7 +365,7 @@ namespace Lens
          public bool   InfoShowZoom  { get; set; } = true;
 
          public string Theme  { get; set; } = "system";
-         public Dictionary<string, ThemePalette> Themes { get; set; } = null;
+         public Dictionary<string, ThemePalette>? Themes { get; set; }
       }
 
       public static class Defaults

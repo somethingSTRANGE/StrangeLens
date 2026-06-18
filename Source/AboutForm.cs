@@ -1,13 +1,6 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="AboutForm.cs" company="Greyborn Studios LLC">
-//   Copyright 2015-2026 Greyborn Studios LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 using System;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -31,8 +24,8 @@ namespace Lens
 
       private static readonly (string Label, string Url)[] DonateLinks =
          [
-            // ("GitHub Sponsors", "https://github.com/sponsors/somethingSTRANGE"),
-            // ("Buy Me a Coffee", "https://buymeacoffee.com/strange"),
+            ("GitHub Sponsors", "https://github.com/sponsors/somethingSTRANGE"),
+            ("Buy Me a Coffee", "https://buymeacoffee.com/strange"),
             ("Ko-fi", "https://ko-fi.com/somethingstrange"),
             ("PayPal", "https://www.paypal.com/donate/?business=JFYPDTH5TA872")
          ];
@@ -63,10 +56,10 @@ namespace Lens
 
 
          // gpLogoCode = SvgImageFactory.LogoCode(width, height)
-         // this.iconDonateGitHub = SvgImageFactory.DonateGitHub(BtnSize);
+         this.iconDonateGitHub = SvgImageFactory.DonateGitHub(BtnSize);
          this.iconDonatePayPal = SvgImageFactory.DonatePayPal(BtnSize);
          this.iconDonateKoFi = SvgImageFactory.DonateKoFi(BtnSize);
-         // this.iconDonateBuyMeACoffee = SvgImageFactory.DonateBuyMeACoffee(BtnSize);
+         this.iconDonateBuyMeACoffee = SvgImageFactory.DonateBuyMeACoffee(BtnSize);
          this.iconWebsite = SvgImageFactory.Website(BtnSize);
          this.iconCopy = SvgImageFactory.Copy(BtnSize);
          this.imageLogo = SvgImageFactory.Logo(200, 24);
@@ -141,9 +134,7 @@ namespace Lens
             };
          logoPanel.Paint += (_, e) =>
          {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var brush = new SolidBrush(palette.TextStrong);
-            e.Graphics.FillPath(brush, this.imageLogo.Path);
+            InfoForm.DrawSvg(e.Graphics, this.imageLogo, palette.TextStrong, 0, 0);
          };
          this.Controls.Add(logoPanel);
 
@@ -156,9 +147,7 @@ namespace Lens
             };
          logoCodePanel.Paint += (_, e) =>
          {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var brush = new SolidBrush(palette.Border);
-            e.Graphics.FillPath(brush, this.imageLogoCode.Path);
+            InfoForm.DrawSvg(e.Graphics, this.imageLogoCode, palette.Border, 0, 0);
          };
          this.Controls.Add(logoCodePanel);
 
@@ -317,16 +306,14 @@ namespace Lens
             };
          panel.Paint += (_, e) =>
          {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var brush = new SolidBrush(color);
-            e.Graphics.FillPath(brush, image.Path);
+            InfoForm.DrawSvg(e.Graphics, image, color, 0, 0);
          };
          this.Controls.Add(panel);
          y += image.Height + gapAfter;
       }
 
       private Panel MakeIconButton(SvgImage icon, Color color, Color hoverColor,
-         Action onClick, Action onEnter = null, Action onLeave = null)
+         Action onClick, Action? onEnter = null, Action? onLeave = null)
       {
          var panel = new Panel
             {
@@ -337,11 +324,7 @@ namespace Lens
          var hovered = false;
          panel.Paint += (_, e) =>
          {
-            e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
-            var state = e.Graphics.Save();
-            using var brush = new SolidBrush(hovered ? hoverColor : color);
-            e.Graphics.FillPath(brush, icon.Path);
-            e.Graphics.Restore(state);
+            InfoForm.DrawSvg(e.Graphics, icon, hovered ? hoverColor : color, 0, 0);
          };
          panel.MouseEnter += (_, _) =>
          {

@@ -1,9 +1,3 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="InfoControl.cs" company="Strange Entertainment LLC">
-//   Copyright 2004-2023 Strange Entertainment LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;

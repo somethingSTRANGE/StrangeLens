@@ -20,7 +20,7 @@ namespace Lens
       private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
       private Font     textFont;
-      private LensForm activeLens;
+      private LensForm? activeLens;
       private int      clickCount;
       private Timer    clickTimer;
       private bool     shouldExitApplication;
@@ -49,22 +49,22 @@ namespace Lens
 
       // ── Layout fields ─────────────────────────────────────────────────────────────────
 
-      private ComboBox      comboBoxLensGridStyle;
-      private ComboBox      comboBoxLensGridSize;
-      private Button        buttonLensGridColor;
-      private ComboBox      comboBoxLensMagnification;
-      private ComboBox      comboBoxLensScalingMode;
-      private ComboBox      comboBoxPrecisionSpeed;
-      private ComboBox      comboBoxLensWidth;
-      private ComboBox      comboBoxLensHeight;
-      private CheckBox      checkBoxInfoShowHex;
-      private CheckBox      checkBoxInfoShowRgb;
-      private CheckBox      checkBoxInfoShowHsl;
-      private CheckBox      checkBoxInfoShow12Bit;
-      private CheckBox      checkBoxInfoShowWeb;
-      private CheckBox      checkBoxInfoShowMouse;
-      private CheckBox      checkBoxInfoShowSize;
-      private CheckBox      checkBoxInfoShowZoom;
+      private ComboBox      comboBoxLensGridStyle      = null!;
+      private ComboBox      comboBoxLensGridSize       = null!;
+      private Button        buttonLensGridColor        = null!;
+      private ComboBox      comboBoxLensMagnification  = null!;
+      private ComboBox      comboBoxLensScalingMode    = null!;
+      private ComboBox      comboBoxPrecisionSpeed     = null!;
+      private ComboBox      comboBoxLensWidth          = null!;
+      private ComboBox      comboBoxLensHeight         = null!;
+      private CheckBox      checkBoxInfoShowHex        = null!;
+      private CheckBox      checkBoxInfoShowRgb        = null!;
+      private CheckBox      checkBoxInfoShowHsl        = null!;
+      private CheckBox      checkBoxInfoShow12Bit      = null!;
+      private CheckBox      checkBoxInfoShowWeb        = null!;
+      private CheckBox      checkBoxInfoShowMouse      = null!;
+      private CheckBox      checkBoxInfoShowSize       = null!;
+      private CheckBox      checkBoxInfoShowZoom       = null!;
 
       private const int FormW       = 335;
       private const int RowH        = 27;
@@ -275,7 +275,7 @@ namespace Lens
          ds.PropertyChanged += this.OnSettingChanged;
       }
 
-      private void OnSettingChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+      private void OnSettingChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
       {
          var ds = Lens.Instance;
          switch (e.PropertyName)
@@ -456,7 +456,7 @@ namespace Lens
 
       // ── Existing event handlers ───────────────────────────────────────────────────────
 
-      private void ClickTimer_Elapsed(object sender, EventArgs e)
+      private void ClickTimer_Elapsed(object? sender, EventArgs e)
       {
          this.clickTimer.Stop();
 
@@ -544,30 +544,30 @@ namespace Lens
          lensForm.Activate();
       }
 
-      private void button1_Click(object sender, EventArgs e)
+      private void button1_Click(object? sender, EventArgs e)
       {
          this.colorGrid.Color = this.buttonLensGridColor.BackColor;
          if (this.colorGrid.ShowDialog() == DialogResult.OK)
             this.buttonLensGridColor.BackColor = this.colorGrid.Color;
       }
 
-      private void menuItemExit_Click(object sender, EventArgs e)
+      private void menuItemExit_Click(object? sender, EventArgs e)
       {
          this.shouldExitApplication = true;
          this.Close();
          Application.Exit();
       }
 
-      private void menuItemOpen_Click(object sender, EventArgs e)     => this.ToggleLens();
-      private void menuItemSettings_Click(object sender, EventArgs e) => this.OpenSettings();
+      private void menuItemOpen_Click(object? sender, EventArgs e)     => this.ToggleLens();
+      private void menuItemSettings_Click(object? sender, EventArgs e) => this.OpenSettings();
 
-      private void menuItemAbout_Click(object sender, EventArgs e)
+      private void menuItemAbout_Click(object? sender, EventArgs e)
       {
-         using var about = new AboutForm(this.Icon);
+         using var about = new AboutForm(this.Icon!);
          about.ShowDialog(this);
       }
 
-      private void notifyIcon_MouseClick(object sender, MouseEventArgs e)
+      private void notifyIcon_MouseClick(object? sender, MouseEventArgs e)
       {
          if (e.Button != MouseButtons.Left) return;
 
@@ -577,7 +577,7 @@ namespace Lens
          this.clickTimer.Start();
       }
 
-      private void SettingsForm_FormClosing(object sender, FormClosingEventArgs e)
+      private void SettingsForm_FormClosing(object? sender, FormClosingEventArgs e)
       {
          if (!this.shouldExitApplication)
             this.CloseToSystemTray(e);

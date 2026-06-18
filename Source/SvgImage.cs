@@ -8,15 +8,17 @@ namespace Lens
    /// </summary>
    internal sealed class SvgImage
    {
-      internal SvgImage(GraphicsPath path, int width, int height)
+      internal SvgImage(GraphicsPath path1, GraphicsPath? path2, int width, int height)
       {
-         this.Path = path;
-         this.Width = width;
-         this.Height = height;
+         this.Path1   = path1;
+         this.Path2   = path2;
+         this.Width   = width;
+         this.Height  = height;
       }
 
-      public GraphicsPath Path { get; }
-      public int Width { get; }
-      public int Height { get; }
+      public GraphicsPath  Path1  { get; }
+      public GraphicsPath? Path2  { get; }
+      public int           Width  { get; }
+      public int           Height { get; }
    }
 }

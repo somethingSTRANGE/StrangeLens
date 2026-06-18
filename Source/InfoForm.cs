@@ -1,9 +1,3 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="InfoForm.cs" company="Greyborn Studios LLC">
-//   Copyright 2015-2026 Greyborn Studios LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -113,8 +107,8 @@ namespace Lens
 
       // ── State. ─────────────────────────────────────────────────────────────────────────
       private readonly InfoControl infoData;
-      private Font labelFont;
-      private Font valueFont;
+      private Font  labelFont;
+      private Font? valueFont;
       private float charWidth;
       private bool panelShown;
 
@@ -129,7 +123,7 @@ namespace Lens
       private IntPtr finalBits = IntPtr.Zero;
       private int finalW, finalH;
 
-      private byte[] shadowAlpha;
+      private byte[]? shadowAlpha;
       private int cachedShadowContentW = -1, cachedShadowContentH = -1;
       private int cachedLayeredW = -1, cachedLayeredH = -1;
 
@@ -438,7 +432,7 @@ namespace Lens
                display = "Copied";
                brush = valueCopyBrush;
             }
-            DrawStringAtBaseline(display, this.valueFont, brush, ValueX, baseline);
+            DrawStringAtBaseline(display, this.valueFont!, brush, ValueX, baseline);
          }
 
          float y = PanelPadding; // tracked Y; advances as sections are drawn
@@ -450,7 +444,7 @@ namespace Lens
          if (cvAny)
          {
             // Icon baseline-aligned with the section's first row.
-            DrawSvg(g, this.iconColorValues.Path, valueBrush, IconX, y);
+            DrawSvg(g, this.iconColorValues, Color.White, IconX, y);
             if (lens.InfoShowHex)
             {
                DrawRow("HEX", d.ValueColorHex, y);
@@ -487,7 +481,7 @@ namespace Lens
          {
             swatchRect.Height = RowHeight;
 
-            DrawSvg(g, this.iconColorPalette.Path, valueBrush, IconX, y);
+            DrawSvg(g, this.iconColorPalette, Color.White, IconX, y);
             if (lens.InfoShow12Bit)
             {
                DrawRow("12-Bit", d.ValueColor12Bit, y);
@@ -514,7 +508,7 @@ namespace Lens
 
          if (lens.InfoShowMouse)
          {
-            DrawSvg(g, this.iconMousePosition.Path, valueBrush, IconX, y);
+            DrawSvg(g, this.iconMousePosition, Color.White, IconX, y);
             DrawRow("Mouse", d.MousePosition, y);
             y += rowOffset;
          }
@@ -522,7 +516,7 @@ namespace Lens
          // ── lens-size section (no gap) ─────────────────────────────────────────────────
          if (lens.InfoShowSize)
          {
-            DrawSvg(g, this.iconLensSize.Path, valueBrush, IconX, y);
+            DrawSvg(g, this.iconLensSize, Color.White, IconX, y);
             DrawRow("Size", d.LensSize, y);
             y += rowOffset;
          }
@@ -530,7 +524,7 @@ namespace Lens
          // ── magnification section (no gap) ─────────────────────────────────────────────
          if (lens.InfoShowZoom)
          {
-            DrawSvg(g, this.iconMagnification.Path, valueBrush, IconX, y);
+            DrawSvg(g, this.iconMagnification, Color.White, IconX, y);
             DrawRow("Zoom", d.ZoomFactor, y);
          }
 
@@ -654,7 +648,7 @@ namespace Lens
             Marshal.WriteInt32(this.finalBits, i * 4, 0);
 
          // Write shadow (pre-multiplied black with per-pixel alpha).
-         var alpha = this.shadowAlpha;
+         var alpha = this.shadowAlpha!;
          for (int i = 0; i < totalPx; i++)
          {
             byte a = alpha[i];
@@ -685,23 +679,20 @@ namespace Lens
          DrawOutline(g, rect);
       }
 
-      /// <summary>
-      ///   Fills a pre-built <see cref="GraphicsPath"/> icon using <paramref name="brush"/>.
-      ///   (<paramref name="x"/>, <paramref name="y"/>) is the lower-left (baseline) corner,
-      ///   so the same y can be passed to both this and <c>DrawStringAtBaseline</c> to align
-      ///   an icon with adjacent text. <paramref name="size"/> must match the value used when
-      ///   the path was built — it is used to shift the path's upper-left to the correct origin.
-      /// </summary>
-      public static void DrawSvg(Graphics g, GraphicsPath path, Brush brush, float x, float y)
+      public static void DrawSvg(Graphics g, SvgImage image, Color color, float x, float y)
       {
-         // DrawDebugBounds(g, path, x, y);
-
          var smoothingMode = g.SmoothingMode;
          g.SmoothingMode = SmoothingMode.HighQuality;
 
          var state = g.Save();
          g.TranslateTransform(x, y);
-         g.FillPath(brush, path);
+         using var b1 = new SolidBrush(color);
+         g.FillPath(b1, image.Path1);
+         if (image.Path2 != null)
+         {
+            using var b2 = new SolidBrush(Color.FromArgb((int)(255 * 0.4f), color));
+            g.FillPath(b2, image.Path2);
+         }
          g.Restore(state);
 
          g.SmoothingMode = smoothingMode;

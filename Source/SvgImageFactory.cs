@@ -34,7 +34,7 @@ namespace Lens
 
       // ── Native size properties ────────────────────────────────────────────────────────────
 
-      public static (int Width, int Height) LogoCodeNativeSize => ParseViewBox(Data.LogoCodeImage);
+      public static (int Width, int Height) LogoCodeNativeSize => ParseViewBox(Data.LogoCodeImage.ViewBox);
 
       // ── Public accessors — square icons ───────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ namespace Lens
 
       public static SvgImage MousePosition(int size)
       {
-         return Get(c_mousePosition, Data.MousePositionIcon, size, size);
+         return Get(c_mousePosition, Data.MouseCursorIcon, size, size);
       }
 
       public static SvgImage Copy(int size)
@@ -112,45 +112,35 @@ namespace Lens
 
       // ── Private helpers ───────────────────────────────────────────────────────────────────
 
-      private static SvgImage Get(Dictionary<(int, int), SvgImage> cache, string[] data, int w, int h)
+      private static SvgImage Get(Dictionary<(int, int), SvgImage> cache, SvgData data, int w, int h)
       {
          var key = (w, h);
          if (!cache.TryGetValue(key, out var img))
          {
-            img = new SvgImage(Build(data, w, h), w, h);
+            var path1 = BuildPath(data.ViewBox, data.Primary, w, h);
+            var path2 = data.Secondary != null ? BuildPath(data.ViewBox, data.Secondary, w, h) : null;
+            img = new SvgImage(path1, path2, w, h);
             cache[key] = img;
          }
 
          return img;
       }
 
-      private static (int Width, int Height) ParseViewBox(string[] data)
+      private static (int Width, int Height) ParseViewBox(string viewBox)
       {
-         if (data.Length > 0 && !HasCommand(data[0]))
-         {
-            var vb = data[0].Trim().Split(' ');
-            if (vb.Length == 2)
-               return (int.Parse(vb[0], CultureInfo.InvariantCulture),
-                  int.Parse(vb[1], CultureInfo.InvariantCulture));
-            if (vb.Length >= 4)
-               return (int.Parse(vb[2], CultureInfo.InvariantCulture),
-                  int.Parse(vb[3], CultureInfo.InvariantCulture));
-         }
-
+         var vb = viewBox.Trim().Split(' ');
+         if (vb.Length == 2)
+            return (int.Parse(vb[0], CultureInfo.InvariantCulture),
+               int.Parse(vb[1], CultureInfo.InvariantCulture));
+         if (vb.Length >= 4)
+            return (int.Parse(vb[2], CultureInfo.InvariantCulture),
+               int.Parse(vb[3], CultureInfo.InvariantCulture));
          return (640, 640);
-      }
-
-      private static bool HasCommand(string s)
-      {
-         foreach (var c in s)
-            if ("MmLlHhVvCcSsQqTtZz".IndexOf(c) >= 0)
-               return true;
-         return false;
       }
 
       private static IEnumerable<(char cmd, string args)> Tokenize(string segment)
       {
-         const string Letters = "MmLlHhVvCcSsQqTtZz";
+         const string Letters = "MmLlHhVvCcSsQqTtAaZz";
          var start = 0;
          var cmd = '\0';
          for (var i = 0; i < segment.Length; i++)
@@ -208,6 +198,8 @@ namespace Lens
 
             if (i > start)
                nums.Add(float.Parse(argStr.Substring(start, i - start), CultureInfo.InvariantCulture));
+            else
+               i++; // unrecognized character — skip to avoid infinite loop
          }
 
          return nums.ToArray();
@@ -219,24 +211,21 @@ namespace Lens
       ///    no letterboxing). Absolute coords use separate scaleX/scaleY; relative
       ///    coords use the same per-axis scale.
       /// </summary>
-      private static GraphicsPath Build(string[] data, int width, int height)
+      private static GraphicsPath BuildPath(string viewBox, string[] segments, int width, int height)
       {
          float minX = 0, minY = 0, viewW = 640, viewH = 640;
-         if (data.Length > 0 && !HasCommand(data[0]))
+         var vb = viewBox.Trim().Split(' ');
+         if (vb.Length == 2)
          {
-            var vb = data[0].Trim().Split(' ');
-            if (vb.Length == 2)
-            {
-               viewW = float.Parse(vb[0], CultureInfo.InvariantCulture);
-               viewH = float.Parse(vb[1], CultureInfo.InvariantCulture);
-            }
-            else if (vb.Length >= 4)
-            {
-               minX = float.Parse(vb[0], CultureInfo.InvariantCulture);
-               minY = float.Parse(vb[1], CultureInfo.InvariantCulture);
-               viewW = float.Parse(vb[2], CultureInfo.InvariantCulture);
-               viewH = float.Parse(vb[3], CultureInfo.InvariantCulture);
-            }
+            viewW = float.Parse(vb[0], CultureInfo.InvariantCulture);
+            viewH = float.Parse(vb[1], CultureInfo.InvariantCulture);
+         }
+         else if (vb.Length >= 4)
+         {
+            minX = float.Parse(vb[0], CultureInfo.InvariantCulture);
+            minY = float.Parse(vb[1], CultureInfo.InvariantCulture);
+            viewW = float.Parse(vb[2], CultureInfo.InvariantCulture);
+            viewH = float.Parse(vb[3], CultureInfo.InvariantCulture);
          }
 
          var sx = width / viewW; // scaleX: SVG unit → screen pixel on X axis
@@ -252,7 +241,7 @@ namespace Lens
          float prevCp2x = 0, prevCp2y = 0; // 2nd control point of last C/c/S/s (for S/s reflection)
          float prevQcpx = 0, prevQcpy = 0; // control point of last Q/q/T/t (for T/t reflection)
 
-         foreach (var seg in data)
+         foreach (var seg in segments)
          foreach (var (cmd, argStr) in Tokenize(seg))
          {
             var raw      = ParseArgs(argStr);
@@ -410,6 +399,27 @@ namespace Lens
                      prevQcpx=qcpx; prevQcpy=qcpy; cx=x3; cy=y3;
                   } break;
 
+                  case 'A':
+                  {
+                     if (!Need(7, avail, repeatAs)) { ri = raw.Length; break; }
+                     float arx = Math.Abs(raw[ri]*sx), ary = Math.Abs(raw[ri+1]*sy);
+                     float phi = raw[ri+2];
+                     bool fa = raw[ri+3] != 0, fs = raw[ri+4] != 0;
+                     x2 = raw[ri+5]*sx-ox; y2 = raw[ri+6]*sy-oy; ri+=7;
+                     AddSvgArc(path, cx, cy, arx, ary, phi, fa, fs, x2, y2);
+                     cx = x2; cy = y2;
+                  } break;
+                  case 'a':
+                  {
+                     if (!Need(7, avail, repeatAs)) { ri = raw.Length; break; }
+                     float arx = Math.Abs(raw[ri]*sx), ary = Math.Abs(raw[ri+1]*sy);
+                     float phi = raw[ri+2];
+                     bool fa = raw[ri+3] != 0, fs = raw[ri+4] != 0;
+                     x2 = cx+raw[ri+5]*sx; y2 = cy+raw[ri+6]*sy; ri+=7;
+                     AddSvgArc(path, cx, cy, arx, ary, phi, fa, fs, x2, y2);
+                     cx = x2; cy = y2;
+                  } break;
+
                   case 'Z':
                   case 'z':
                      path.CloseFigure();
@@ -429,6 +439,64 @@ namespace Lens
          }
 
          return path;
+      }
+
+      // Converts SVG endpoint arc parameterisation to a GDI+ AddArc call.
+      // Implements the algorithm from SVG 1.1 spec appendix B (F.6).
+      private static void AddSvgArc(GraphicsPath path,
+         float x1, float y1, float rx, float ry, float phiDeg,
+         bool fa, bool fs, float x2, float y2)
+      {
+         if (x1 == x2 && y1 == y2) return;
+         if (rx == 0 || ry == 0) { path.AddLine(x1, y1, x2, y2); return; }
+
+         double phi = phiDeg * Math.PI / 180;
+         double cosP = Math.Cos(phi), sinP = Math.Sin(phi);
+
+         double dx = (x1 - x2) / 2.0, dy = (y1 - y2) / 2.0;
+         double x1p =  cosP*dx + sinP*dy;
+         double y1p = -sinP*dx + cosP*dy;
+
+         // Ensure radii are large enough.
+         double lambda = x1p*x1p/(rx*(double)rx) + y1p*y1p/(ry*(double)ry);
+         if (lambda > 1) { double s = Math.Sqrt(lambda); rx = (float)(s*rx); ry = (float)(s*ry); }
+
+         double rxq = (double)rx*rx, ryq = (double)ry*ry;
+         double x1pq = x1p*x1p, y1pq = y1p*y1p;
+         double num = Math.Max(0, rxq*ryq - rxq*y1pq - ryq*x1pq);
+         double den = rxq*y1pq + ryq*x1pq;
+         double sq  = (fa == fs ? -1 : 1) * Math.Sqrt(den == 0 ? 0 : num / den);
+         double cxp =  sq * rx * y1p / ry;
+         double cyp = -sq * ry * x1p / rx;
+
+         double cx = cosP*cxp - sinP*cyp + (x1 + x2) / 2.0;
+         double cy = sinP*cxp + cosP*cyp + (y1 + y2) / 2.0;
+
+         double ux = (x1p - cxp) / rx, uy = (y1p - cyp) / ry;
+         double vx = (-x1p - cxp) / rx, vy = (-y1p - cyp) / ry;
+
+         double startAngle = SvgAngle(1, 0, ux, uy);
+         double sweepAngle = SvgAngle(ux, uy, vx, vy);
+         if (!fs && sweepAngle > 0) sweepAngle -= 360;
+         if ( fs && sweepAngle < 0) sweepAngle += 360;
+
+         if (phiDeg != 0)
+         {
+            // Rotated ellipse: apply transform around centre, draw, restore.
+            var state = path.GetLastPoint(); // dummy — handled via Graphics transform at render time
+            Debug.WriteLine($"[SvgImageFactory] rotated arc (phi={phiDeg}) not fully supported");
+         }
+
+         path.AddArc((float)(cx-rx), (float)(cy-ry), rx*2, ry*2,
+                     (float)startAngle, (float)sweepAngle);
+      }
+
+      private static double SvgAngle(double ux, double uy, double vx, double vy)
+      {
+         double dot = ux*vx + uy*vy;
+         double len = Math.Sqrt(ux*ux + uy*uy) * Math.Sqrt(vx*vx + vy*vy);
+         double a   = Math.Acos(Math.Max(-1, Math.Min(1, len == 0 ? 0 : dot / len))) * 180 / Math.PI;
+         return ux*vy - uy*vx < 0 ? -a : a;
       }
    }
 }

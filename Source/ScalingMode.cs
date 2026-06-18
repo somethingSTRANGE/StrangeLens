@@ -1,9 +1,3 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="ScalingMode.cs" company="Strange Entertainment LLC">
-//   Copyright 2004-2026 Strange Entertainment LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 namespace Lens
 {
    public enum ScalingMode

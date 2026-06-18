@@ -8,8 +8,8 @@ namespace Lens;
 public class Toggle : CheckBox
 {
    private Rectangle _figureBounds;
-   private GraphicsPath _figurePath;
-   private GraphicsPath _focusPath;
+   private GraphicsPath _figurePath = null!;
+   private GraphicsPath _focusPath  = null!;
 
    private bool _isMouseOver;
    private int _toggleSize;
@@ -29,7 +29,7 @@ public class Toggle : CheckBox
       var rect = this._figureBounds;
       var toggleSize = this._toggleSize;
 
-      e.Graphics.Clear(this.Parent.BackColor);
+      e.Graphics.Clear(this.Parent?.BackColor ?? this.BackColor);
 
       e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
       e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -97,19 +97,19 @@ public class Toggle : CheckBox
       this._toggleSize = this._figureBounds.Height;
    }
 
-   private void HandleMouseEnter(object sender, EventArgs e)
+   private void HandleMouseEnter(object? sender, EventArgs e)
    {
       this._isMouseOver = true;
       this.Invalidate();
    }
 
-   private void HandleMouseLeave(object sender, EventArgs e)
+   private void HandleMouseLeave(object? sender, EventArgs e)
    {
       this._isMouseOver = false;
       this.Invalidate();
    }
 
-   private void HandleSizeChange(object sender, EventArgs e)
+   private void HandleSizeChange(object? sender, EventArgs e)
    {
       this.BuildPaths();
    }

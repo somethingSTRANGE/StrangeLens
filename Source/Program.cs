@@ -1,9 +1,3 @@
-// -------------------------------------------------------------------------------------
-// <copyright file="Program.cs" company="Greyborn Studios LLC">
-//   Copyright 2015-2026 Greyborn Studios LLC. All rights reserved.
-// </copyright>
-// -------------------------------------------------------------------------------------
-
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -16,7 +10,7 @@ namespace Lens
    {
       private const uint SW_RESTORE = 0x09;
 
-      private static SettingsForm settingsForm;
+      private static SettingsForm settingsForm = null!;
 
       [DllImport("user32.dll")]
       [return: MarshalAs(UnmanagedType.Bool)]

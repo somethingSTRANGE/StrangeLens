@@ -11,7 +11,7 @@
     <RootNamespace>Lens</RootNamespace>
     <AssemblyName>Lens</AssemblyName>
     <LangVersion>12</LangVersion>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <SupportedOSPlatformVersion>6.1</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
     <ApplicationIcon>Icons\AppIcon.ico</ApplicationIcon>
