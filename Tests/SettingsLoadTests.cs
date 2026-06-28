@@ -1,241 +1,240 @@
-using System.Drawing;
-using System.IO;
-using NUnit.Framework;
+// -------------------------------------------------------------------------------------
+// <copyright file="SettingsLoadTests.cs">
+//   Copyright (c) 2026
+//   Licensed under the MIT License. See LICENSE file in the project root.
+// </copyright>
+// -------------------------------------------------------------------------------------
 
 namespace Lens.Tests
 {
+   using System.Drawing;
+   using System.IO;
+
+   using NUnit.Framework;
+
    [TestFixture]
    public class SettingsLoadTests
    {
-      private string _tempPath;
-
       [SetUp]
       public void SetUp()
       {
          Lens.ResetForTesting();
-         _tempPath = Path.GetTempFileName();
+         this.tempPath = Path.GetTempFileName();
       }
 
       [TearDown]
       public void TearDown()
       {
          Lens.ResetForTesting();
-         if (File.Exists(_tempPath)) File.Delete(_tempPath);
-      }
-
-      private void WriteJson(string json) => File.WriteAllText(_tempPath, json);
-
-      // ── Valid config ───────────────────────────────────────────────────────────
-
-      [Test]
-      public void Load_ValidConfig_AppliesAllValues()
-      {
-         WriteJson(@"{
-            ""Width"": 200, ""Height"": 220, ""Magnification"": 6,
-            ""GridSize"": 8, ""GridStyle"": 1, ""GridColor"": ""#FF0000"",
-            ""Scaling"": 2, ""PrecisionSpeed"": 25, ""InfoShowHex"": false
-         }");
-         Lens.Instance.Load(_tempPath);
-
-         Assert.Multiple(() =>
+         if (File.Exists(this.tempPath))
          {
-            Assert.That(Lens.Instance.Width,              Is.EqualTo(200));
-            Assert.That(Lens.Instance.Height,             Is.EqualTo(220));
-            Assert.That(Lens.Instance.Magnification,      Is.EqualTo(6));
-            Assert.That(Lens.Instance.GridSize,           Is.EqualTo(8));
-            Assert.That(Lens.Instance.GridStyle,          Is.EqualTo(1));
-            Assert.That(Lens.Instance.GridColor.ToArgb(), Is.EqualTo(Color.FromArgb(255, 0, 0).ToArgb()));
-            Assert.That(Lens.Instance.Scaling,            Is.EqualTo(ScalingMode.HighQualityBilinear));
-            Assert.That(Lens.Instance.PrecisionSpeed,     Is.EqualTo(25));
-            Assert.That(Lens.Instance.InfoShowHex,        Is.False);
-         });
+            File.Delete(this.tempPath);
+         }
       }
 
-      // ── Width / Height ─────────────────────────────────────────────────────────
+      private string tempPath;
 
-      [Test]
-      public void Load_WidthAboveMax_ClampsToMax()
+      private void WriteJson(string json)
       {
-         WriteJson(@"{""Width"": 9999}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Width, Is.EqualTo(Lens.Defaults.MaxWidth));
+         File.WriteAllText(this.tempPath, json);
       }
 
       [Test]
-      public void Load_WidthBelowMin_ClampsToMin()
+      public void Load_DarkThemeName_Applies()
       {
-         WriteJson(@"{""Width"": 10}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Width, Is.EqualTo(Lens.Defaults.MinWidth));
+         this.WriteJson(@"{""Theme"": ""dark""}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Theme, Is.EqualTo("dark"));
       }
 
       [Test]
-      public void Load_WidthNotOnIncrement_SnapsDown()
+      public void Load_EmptyJsonObject_DoesNotThrow()
       {
-         WriteJson(@"{""Width"": 155}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Width, Is.EqualTo(140));
+         this.WriteJson("{}");
+         Assert.That(() => Lens.Instance.Load(this.tempPath), Throws.Nothing);
       }
 
       [Test]
-      public void Load_HeightAboveMax_ClampsToMax()
+      public void Load_EmptyThemeName_SetsSystem()
       {
-         WriteJson(@"{""Height"": 9999}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Height, Is.EqualTo(Lens.Defaults.MaxHeight));
-      }
-
-      [Test]
-      public void Load_HeightBelowMin_ClampsToMin()
-      {
-         WriteJson(@"{""Height"": 10}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Height, Is.EqualTo(Lens.Defaults.MinHeight));
-      }
-
-      // ── Magnification / GridSize / GridStyle ───────────────────────────────────
-
-      [Test]
-      public void Load_MagnificationAboveMax_ClampsToMax()
-      {
-         WriteJson(@"{""Magnification"": 99}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Magnification, Is.EqualTo(Lens.Defaults.MaxMagnification));
-      }
-
-      [Test]
-      public void Load_MagnificationBelowMin_ClampsToMin()
-      {
-         WriteJson(@"{""Magnification"": 0}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Magnification, Is.EqualTo(Lens.Defaults.MinMagnification));
+         this.WriteJson(@"{""Theme"": """"}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Theme, Is.EqualTo("system"));
       }
 
       [Test]
       public void Load_GridSizeAboveMax_ClampsToMax()
       {
-         WriteJson(@"{""GridSize"": 200}");
-         Lens.Instance.Load(_tempPath);
+         this.WriteJson(@"{""GridSize"": 200}");
+         Lens.Instance.Load(this.tempPath);
          Assert.That(Lens.Instance.GridSize, Is.EqualTo(Lens.Defaults.MaxGridSize));
       }
 
       [Test]
       public void Load_GridSizeBelowMin_ClampsToMin()
       {
-         WriteJson(@"{""GridSize"": 0}");
-         Lens.Instance.Load(_tempPath);
+         this.WriteJson(@"{""GridSize"": 0}");
+         Lens.Instance.Load(this.tempPath);
          Assert.That(Lens.Instance.GridSize, Is.EqualTo(Lens.Defaults.MinGridSize));
       }
 
       [Test]
       public void Load_GridStyleAboveMax_ClampsToMax()
       {
-         WriteJson(@"{""GridStyle"": 99}");
-         Lens.Instance.Load(_tempPath);
+         this.WriteJson(@"{""GridStyle"": 99}");
+         Lens.Instance.Load(this.tempPath);
          Assert.That(Lens.Instance.GridStyle, Is.EqualTo((int)GridStyleOptions.DashDotDot));
       }
 
       [Test]
       public void Load_GridStyleBelowMin_ClampsToMin()
       {
-         WriteJson(@"{""GridStyle"": -1}");
-         Lens.Instance.Load(_tempPath);
+         this.WriteJson(@"{""GridStyle"": -1}");
+         Lens.Instance.Load(this.tempPath);
          Assert.That(Lens.Instance.GridStyle, Is.EqualTo((int)GridStyleOptions.None));
       }
 
-      // ── GridColor ──────────────────────────────────────────────────────────────
+      [Test]
+      public void Load_HeightAboveMax_ClampsToMax()
+      {
+         this.WriteJson(@"{""Height"": 9999}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Height, Is.EqualTo(Lens.Defaults.MaxHeight));
+      }
+
+      [Test]
+      public void Load_HeightBelowMin_ClampsToMin()
+      {
+         this.WriteJson(@"{""Height"": 10}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Height, Is.EqualTo(Lens.Defaults.MinHeight));
+      }
 
       [Test]
       public void Load_InvalidGridColor_FallsBackToBlack()
       {
-         WriteJson(@"{""GridColor"": ""not-a-color""}");
-         Lens.Instance.Load(_tempPath);
+         this.WriteJson(@"{""GridColor"": ""not-a-color""}");
+         Lens.Instance.Load(this.tempPath);
          Assert.That(Lens.Instance.GridColor.ToArgb(), Is.EqualTo(Color.Black.ToArgb()));
       }
-
-      // ── ScalingMode ────────────────────────────────────────────────────────────
 
       [Test]
       public void Load_InvalidScalingMode_KeepsDefault()
       {
-         WriteJson(@"{""Scaling"": 99}");
-         Lens.Instance.Load(_tempPath);
+         this.WriteJson(@"{""Scaling"": 99}");
+         Lens.Instance.Load(this.tempPath);
          Assert.That(Lens.Instance.Scaling, Is.EqualTo(ScalingMode.NearestNeighbor));
       }
 
-      // ── PrecisionSpeed ─────────────────────────────────────────────────────────
-
       [Test]
-      public void Load_PrecisionSpeedNotInOptions_KeepsDefault()
+      public void Load_MagnificationAboveMax_ClampsToMax()
       {
-         WriteJson(@"{""PrecisionSpeed"": 30}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.PrecisionSpeed, Is.EqualTo(45));
+         this.WriteJson(@"{""Magnification"": 99}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Magnification, Is.EqualTo(Lens.Defaults.MaxMagnification));
       }
 
       [Test]
-      public void Load_ValidPrecisionSpeed_Applies()
+      public void Load_MagnificationBelowMin_ClampsToMin()
       {
-         WriteJson(@"{""PrecisionSpeed"": 10}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.PrecisionSpeed, Is.EqualTo(10));
-      }
-
-      // ── Theme ──────────────────────────────────────────────────────────────────
-
-      [Test]
-      public void Load_EmptyThemeName_SetsSystem()
-      {
-         WriteJson(@"{""Theme"": """"}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Theme, Is.EqualTo("system"));
-      }
-
-      [Test]
-      public void Load_SystemThemeName_Applies()
-      {
-         WriteJson(@"{""Theme"": ""system""}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Theme, Is.EqualTo("system"));
-      }
-
-      [Test]
-      public void Load_DarkThemeName_Applies()
-      {
-         WriteJson(@"{""Theme"": ""dark""}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Theme, Is.EqualTo("dark"));
-      }
-
-      [Test]
-      public void Load_UnknownThemeName_FallsBackToOsTheme()
-      {
-         WriteJson(@"{""Theme"": ""nonexistent""}");
-         Lens.Instance.Load(_tempPath);
-         Assert.That(Lens.Instance.Theme, Is.EqualTo("dark").Or.EqualTo("light"));
-      }
-
-      // ── Edge cases ─────────────────────────────────────────────────────────────
-
-      [Test]
-      public void Load_MissingFile_DoesNotThrow()
-      {
-         File.Delete(_tempPath);
-         Assert.That(() => Lens.Instance.Load(_tempPath), Throws.Nothing);
+         this.WriteJson(@"{""Magnification"": 0}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Magnification, Is.EqualTo(Lens.Defaults.MinMagnification));
       }
 
       [Test]
       public void Load_MalformedJson_DoesNotThrow()
       {
-         WriteJson("{ this is not valid json }");
-         Assert.That(() => Lens.Instance.Load(_tempPath), Throws.Nothing);
+         this.WriteJson("{ this is not valid json }");
+         Assert.That(() => Lens.Instance.Load(this.tempPath), Throws.Nothing);
       }
 
       [Test]
-      public void Load_EmptyJsonObject_DoesNotThrow()
+      public void Load_MissingFile_DoesNotThrow()
       {
-         WriteJson("{}");
-         Assert.That(() => Lens.Instance.Load(_tempPath), Throws.Nothing);
+         File.Delete(this.tempPath);
+         Assert.That(() => Lens.Instance.Load(this.tempPath), Throws.Nothing);
+      }
+
+      [Test]
+      public void Load_PrecisionSpeedNotInOptions_KeepsDefault()
+      {
+         this.WriteJson(@"{""PrecisionSpeed"": 30}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.PrecisionSpeed, Is.EqualTo(45));
+      }
+
+      [Test]
+      public void Load_SystemThemeName_Applies()
+      {
+         this.WriteJson(@"{""Theme"": ""system""}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Theme, Is.EqualTo("system"));
+      }
+
+      [Test]
+      public void Load_UnknownThemeName_FallsBackToOsTheme()
+      {
+         this.WriteJson(@"{""Theme"": ""nonexistent""}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Theme, Is.EqualTo("dark").Or.EqualTo("light"));
+      }
+
+      [Test]
+      public void Load_ValidConfig_AppliesAllValues()
+      {
+         this.WriteJson(
+            @"{
+            ""Width"": 200, ""Height"": 220, ""Magnification"": 6,
+            ""GridSize"": 8, ""GridStyle"": 1, ""GridColor"": ""#FF0000"",
+            ""Scaling"": 2, ""PrecisionSpeed"": 25, ""InfoShowHex"": false
+         }");
+         Lens.Instance.Load(this.tempPath);
+
+         Assert.Multiple(() =>
+            {
+               Assert.That(Lens.Instance.Width, Is.EqualTo(200));
+               Assert.That(Lens.Instance.Height, Is.EqualTo(220));
+               Assert.That(Lens.Instance.Magnification, Is.EqualTo(6));
+               Assert.That(Lens.Instance.GridSize, Is.EqualTo(8));
+               Assert.That(Lens.Instance.GridStyle, Is.EqualTo(1));
+               Assert.That(Lens.Instance.GridColor.ToArgb(), Is.EqualTo(Color.FromArgb(255, 0, 0).ToArgb()));
+               Assert.That(Lens.Instance.Scaling, Is.EqualTo(ScalingMode.HighQualityBilinear));
+               Assert.That(Lens.Instance.PrecisionSpeed, Is.EqualTo(25));
+               Assert.That(Lens.Instance.InfoShowHex, Is.False);
+            });
+      }
+
+      [Test]
+      public void Load_ValidPrecisionSpeed_Applies()
+      {
+         this.WriteJson(@"{""PrecisionSpeed"": 10}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.PrecisionSpeed, Is.EqualTo(10));
+      }
+
+      [Test]
+      public void Load_WidthAboveMax_ClampsToMax()
+      {
+         this.WriteJson(@"{""Width"": 9999}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Width, Is.EqualTo(Lens.Defaults.MaxWidth));
+      }
+
+      [Test]
+      public void Load_WidthBelowMin_ClampsToMin()
+      {
+         this.WriteJson(@"{""Width"": 10}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Width, Is.EqualTo(Lens.Defaults.MinWidth));
+      }
+
+      [Test]
+      public void Load_WidthNotOnIncrement_SnapsDown()
+      {
+         this.WriteJson(@"{""Width"": 155}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Width, Is.EqualTo(140));
       }
    }
 }

@@ -1,227 +1,343 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Timers;
-using Microsoft.Win32;
+// -------------------------------------------------------------------------------------
+// <copyright file="LensSetting.cs">
+//   Copyright (c) 2026
+//   Licensed under the MIT License. See LICENSE file in the project root.
+// </copyright>
+// -------------------------------------------------------------------------------------
+
+using Timer = System.Timers.Timer;
 
 namespace Lens
 {
+   using System;
+   using System.Collections.Generic;
+   using System.ComponentModel;
+   using System.Diagnostics;
+   using System.Drawing;
+   using System.IO;
+   using System.Reflection;
+   using System.Runtime.CompilerServices;
+   using System.Text.Json;
+   using System.Text.Json.Serialization;
+
+   using Microsoft.Win32;
+
    public class ThemePalette
    {
-      [JsonPropertyOrder(0)] public Color Inset      { get; init; }
-      [JsonPropertyOrder(1)] public Color Background { get; init; }
-      [JsonPropertyOrder(2)] public Color Control    { get; init; }
-      [JsonPropertyOrder(3)] public Color Border     { get; init; }
-      [JsonPropertyOrder(4)] public Color Accent     { get; init; }
-      [JsonPropertyOrder(5)] public Color TextSubtle { get; init; }
-      [JsonPropertyOrder(6)] public Color TextNormal { get; init; }
-      [JsonPropertyOrder(7)] public Color TextStrong { get; init; }
+      [JsonPropertyOrder(5)]
+      public Color AccentNormal { get; init; }
+
+      [JsonPropertyOrder(6)]
+      public Color AccentStrong { get; init; }
+
+      [JsonPropertyOrder(4)]
+      public Color AccentSubtle { get; init; }
+
+      [JsonPropertyOrder(1)]
+      public Color Background { get; init; }
+
+      [JsonPropertyOrder(3)]
+      public Color Border { get; init; }
+
+      [JsonPropertyOrder(2)]
+      public Color Control { get; init; }
+
+      [JsonPropertyOrder(0)]
+      public Color Inset { get; init; }
+
+      [JsonPropertyOrder(8)]
+      public Color TextNormal { get; init; }
+
+      [JsonPropertyOrder(9)]
+      public Color TextStrong { get; init; }
+
+      [JsonPropertyOrder(7)]
+      public Color TextSubtle { get; init; }
    }
 
    public class Lens : INotifyPropertyChanged
    {
-      private static Lens? instance;
-
-      private Color       _gridColor      = Color.Black;
-      private byte        _gridSize       = 4;
-      private int         _gridStyle      = 2;
-      private short       _height         = 160;
-      private byte        _magnification  = 4;
-      private ScalingMode _scalingMode    = ScalingMode.NearestNeighbor;
-      private int         _precisionSpeed = 45;
-      private short       _width          = 150;
-
-      private bool _infoShowHex   = true;
-      private bool _infoShowRgb   = true;
-      private bool _infoShowHsl   = true;
-      private bool _infoShow12Bit = true;
-      private bool _infoShowWeb   = true;
-      private bool _infoShowMouse = true;
-      private bool _infoShowSize  = true;
-      private bool _infoShowZoom  = true;
-
-      private string _theme = "system";
-      private Dictionary<string, ThemePalette> _themes;
-
-      private readonly Timer _saveTimer;
+      public static readonly int[] PrecisionSpeedOptions = [10, 25, 45, 70];
 
       // ── Default palettes ──────────────────────────────────────────────────────────────
 
-      private static readonly ThemePalette DefaultDark = new()
-      {
-         Inset      = ColorTranslator.FromHtml("#191C22"),
-         Background = ColorTranslator.FromHtml("#2E3440"),
-         Control    = ColorTranslator.FromHtml("#434C5E"),
-         Border     = ColorTranslator.FromHtml("#4C566A"),
-         Accent     = ColorTranslator.FromHtml("#5E81AC"),
-         TextSubtle = ColorTranslator.FromHtml("#D8DEE9"),
-         TextNormal = ColorTranslator.FromHtml("#E5E9F0"),
-         TextStrong = ColorTranslator.FromHtml("#FFFFFF"),
-      };
+      private static readonly ThemePalette defaultDark = new()
+         {
+            Inset = ColorTranslator.FromHtml("#191C22"), // Nord0, -10% L
+            Background = ColorTranslator.FromHtml("#2E3440"), // Nord0
+            Control = ColorTranslator.FromHtml("#434C5E"), // Nord2
+            Border = ColorTranslator.FromHtml("#4C566A"), // Nord3
+            AccentSubtle = ColorTranslator.FromHtml("#55749b"), // Nord10, -10% L
+            AccentNormal = ColorTranslator.FromHtml("#5E81AC"), // Nord10
+            AccentStrong = ColorTranslator.FromHtml("#5791d8"), // Nord10, +15% L +30% S
+            TextSubtle = ColorTranslator.FromHtml("#CAD2E2"), // Nord4 - #D8DEE9
+            TextNormal = ColorTranslator.FromHtml("#E5E9F0"), // Nord5
+            TextStrong = ColorTranslator.FromHtml("#FFFFFF"), // Nord5, +10% L
+         };
 
-      private static readonly ThemePalette DefaultLight = new()
-      {
-         Inset      = ColorTranslator.FromHtml("#B7C2D7"),
-         Background = ColorTranslator.FromHtml("#E5E9F0"),
-         Control    = ColorTranslator.FromHtml("#ECEFF4"),
-         Border     = ColorTranslator.FromHtml("#D8DEE9"),
-         Accent     = ColorTranslator.FromHtml("#5E81AC"),
-         TextSubtle = ColorTranslator.FromHtml("#4C566A"),
-         TextNormal = ColorTranslator.FromHtml("#3B4252"),
-         TextStrong = ColorTranslator.FromHtml("#2E3440"),
-      };
+      private static readonly ThemePalette defaultLight = new()
+         {
+            Inset = ColorTranslator.FromHtml("#B7C2D7"), // Nord4, -10% L
+            Background = ColorTranslator.FromHtml("#E5E9F0"), // Nord5
+            Control = ColorTranslator.FromHtml("#ECEFF4"), // Nord6
+            Border = ColorTranslator.FromHtml("#D8DEE9"), // Nord4
+            AccentSubtle = ColorTranslator.FromHtml("#55749b"), // Nord10, +15% L +30% S
+            AccentNormal = ColorTranslator.FromHtml("#5E81AC"), // Nord10
+            AccentStrong = ColorTranslator.FromHtml("#5791d8"), // Nord10, +10% L +20% S
+            TextSubtle = ColorTranslator.FromHtml("#4C566A"), // Nord3
+            TextNormal = ColorTranslator.FromHtml("#3B4252"), // Nord1
+            TextStrong = ColorTranslator.FromHtml("#2E3440"), // Nord0
+         };
+
+      private static readonly JsonSerializerOptions jsonOptions = new()
+         {
+            WriteIndented = true,
+            Converters =
+               {
+                  new ColorHexConverter(),
+               },
+         };
+      // The InfoShow* properties below (InfoShowHex, InfoShowRgb, ...) are persisted
+      // info-panel display toggles — there's no Settings UI to control them yet.
+
+      private static Lens? instance;
+
+      private readonly Timer saveTimer;
+
+      private Color gridColor = Color.Black;
+
+      private byte gridSize = 4;
+
+      private int gridStyle = 2;
+
+      private short height = 160;
+
+      private bool infoShow12Bit = true;
+
+      private bool infoShowHex = true;
+
+      private bool infoShowHsl = true;
+
+      private bool infoShowMouse = true;
+
+      private bool infoShowRgb = true;
+
+      private bool infoShowSize = true;
+
+      private bool infoShowWeb = true;
+
+      private bool infoShowZoom = true;
+
+      private byte magnification = 4;
+
+      private int precisionSpeed = 45;
+
+      private ScalingMode scalingMode = ScalingMode.NearestNeighbor;
+
+      private string theme = "system";
+
+      private Dictionary<string, ThemePalette> themes;
+
+      private short width = 150;
 
       private Lens()
       {
-         _themes = new Dictionary<string, ThemePalette>(StringComparer.OrdinalIgnoreCase)
-         {
-            ["dark"]  = DefaultDark,
-            ["light"] = DefaultLight,
-         };
-         _saveTimer = new Timer(1500) { AutoReset = false };
-         _saveTimer.Elapsed += (_, _) => Save();
-         PropertyChanged += (_, _) => { _saveTimer.Stop(); _saveTimer.Start(); };
+         this.themes = new Dictionary<string, ThemePalette>(StringComparer.OrdinalIgnoreCase)
+            {
+               ["dark"] = defaultDark,
+               ["light"] = defaultLight,
+            };
+         this.saveTimer = new Timer(1500)
+            {
+               AutoReset = false,
+            };
+         this.saveTimer.Elapsed += (_, _) => this.Save();
+         this.PropertyChanged += (_, _) =>
+            {
+               this.saveTimer.Stop();
+               this.saveTimer.Start();
+            };
       }
 
-      public static Lens Instance => instance ?? (instance = new Lens());
+      public event PropertyChangedEventHandler? PropertyChanged;
 
-      public static string SettingsFilePath
-      {
-         get
-         {
-            var company = Assembly.GetExecutingAssembly()
-               .GetCustomAttribute<AssemblyCompanyAttribute>()?.Company;
-            if (string.IsNullOrWhiteSpace(company)) company = "Strange";
-            var product = Assembly.GetExecutingAssembly()
-               .GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "Lens";
-            return Path.Combine(
-               Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-               company, product, "settings.json");
-         }
-      }
-
-      public Color GridColor
-      {
-         get => _gridColor;
-         set => SetPersisted(ref _gridColor, value);
-      }
-
-      public byte GridSize
-      {
-         get => _gridSize;
-         set => SetPersisted(ref _gridSize, value.Clamp(Defaults.MinGridSize, Defaults.MaxGridSize));
-      }
-
-      public int GridStyle
-      {
-         get => _gridStyle;
-         set => SetPersisted(ref _gridStyle,
-            value.Clamp((int)GridStyleOptions.None, (int)GridStyleOptions.DashDotDot));
-      }
-
-      public short Height
-      {
-         get => _height;
-         set => SetPersisted(ref _height,
-            (short)(value.Clamp(Defaults.MinHeight, Defaults.MaxHeight) / Defaults.SizeIncrement *
-                    Defaults.SizeIncrement));
-      }
-
-      public byte Magnification
-      {
-         get => _magnification;
-         set => SetPersisted(ref _magnification,
-            value.Clamp(Defaults.MinMagnification, Defaults.MaxMagnification));
-      }
-
-      public ScalingMode Scaling
-      {
-         get => _scalingMode;
-         set => SetPersisted(ref _scalingMode,
-            Enum.IsDefined(typeof(ScalingMode), value) ? value : _scalingMode);
-      }
-
-      public static readonly int[] PrecisionSpeedOptions = { 10, 25, 45, 70 };
-
-      public int PrecisionSpeed
-      {
-         get => _precisionSpeed;
-         set => SetPersisted(ref _precisionSpeed,
-            Array.IndexOf(PrecisionSpeedOptions, value) >= 0 ? value : _precisionSpeed);
-      }
-
-      public short Width
-      {
-         get => _width;
-         set => SetPersisted(ref _width,
-            (short)(value.Clamp(Defaults.MinWidth, Defaults.MaxWidth) / Defaults.SizeIncrement *
-                    Defaults.SizeIncrement));
-      }
-
-      public string Theme
-      {
-         get => _theme;
-         set => SetPersisted(ref _theme,
-            string.IsNullOrEmpty(value)                          ? "system" :
-            value == "system" || _themes.ContainsKey(value)     ? value    :
-            IsOsDarkMode()                                       ? "dark"   : "light");
-      }
+      public static Lens Instance => instance ??= new Lens();
 
       public ThemePalette ActivePalette
       {
          get
          {
-            var name = _theme == "system" ? (IsOsDarkMode() ? "dark" : "light") : _theme;
-            return _themes.TryGetValue(name, out var p) ? p : DefaultDark;
+            var name = this.theme == "system" ? IsOsDarkMode() ? "dark" : "light" : this.theme;
+            return this.themes.GetValueOrDefault(name, defaultDark);
          }
+      }
+
+      public Color GridColor
+      {
+         get => this.gridColor;
+         set => this.SetPersisted(ref this.gridColor, value);
+      }
+
+      public byte GridSize
+      {
+         get => this.gridSize;
+         set => this.SetPersisted(ref this.gridSize, value.Clamp(Defaults.MinGridSize, Defaults.MaxGridSize));
+      }
+
+      public int GridStyle
+      {
+         get => this.gridStyle;
+         set =>
+            this.SetPersisted(
+               ref this.gridStyle,
+               value.Clamp((int)GridStyleOptions.None, (int)GridStyleOptions.DashDotDot));
+      }
+
+      public short Height
+      {
+         get => this.height;
+         set =>
+            this.SetPersisted(
+               ref this.height,
+               (short)((value.Clamp(Defaults.MinHeight, Defaults.MaxHeight) / Defaults.SizeIncrement)
+                       * Defaults.SizeIncrement));
+      }
+
+      public bool InfoShow12Bit
+      {
+         get => this.infoShow12Bit;
+         set => this.SetPersisted(ref this.infoShow12Bit, value);
+      }
+
+      public bool InfoShowHex
+      {
+         get => this.infoShowHex;
+         set => this.SetPersisted(ref this.infoShowHex, value);
+      }
+
+      public bool InfoShowHsl
+      {
+         get => this.infoShowHsl;
+         set => this.SetPersisted(ref this.infoShowHsl, value);
+      }
+
+      public bool InfoShowMouse
+      {
+         get => this.infoShowMouse;
+         set => this.SetPersisted(ref this.infoShowMouse, value);
+      }
+
+      public bool InfoShowRgb
+      {
+         get => this.infoShowRgb;
+         set => this.SetPersisted(ref this.infoShowRgb, value);
+      }
+
+      public bool InfoShowSize
+      {
+         get => this.infoShowSize;
+         set => this.SetPersisted(ref this.infoShowSize, value);
+      }
+
+      public bool InfoShowWeb
+      {
+         get => this.infoShowWeb;
+         set => this.SetPersisted(ref this.infoShowWeb, value);
+      }
+
+      public bool InfoShowZoom
+      {
+         get => this.infoShowZoom;
+         set => this.SetPersisted(ref this.infoShowZoom, value);
+      }
+
+      public byte Magnification
+      {
+         get => this.magnification;
+         set =>
+            this.SetPersisted(
+               ref this.magnification,
+               value.Clamp(Defaults.MinMagnification, Defaults.MaxMagnification));
+      }
+
+      public int PrecisionSpeed
+      {
+         get => this.precisionSpeed;
+         set =>
+            this.SetPersisted(
+               ref this.precisionSpeed,
+               Array.IndexOf(PrecisionSpeedOptions, value) >= 0 ? value : this.precisionSpeed);
+      }
+
+      public ScalingMode Scaling
+      {
+         get => this.scalingMode;
+         set =>
+            this.SetPersisted(
+               ref this.scalingMode,
+               Enum.IsDefined(typeof(ScalingMode), value) ? value : this.scalingMode);
+      }
+
+      public string Theme
+      {
+         get => this.theme;
+         private set =>
+            this.SetPersisted(
+               ref this.theme,
+               string.IsNullOrEmpty(value) ? "system" :
+               (value == "system") || this.themes.ContainsKey(value) ? value :
+               IsOsDarkMode() ? "dark" : "light");
       }
 
       public IReadOnlyDictionary<string, ThemePalette> Themes
       {
-         get => _themes;
+         get => this.themes;
          private set
          {
-            _themes = new Dictionary<string, ThemePalette>(StringComparer.OrdinalIgnoreCase)
+            this.themes = new Dictionary<string, ThemePalette>(StringComparer.OrdinalIgnoreCase)
+               {
+                  ["dark"] = defaultDark,
+                  ["light"] = defaultLight,
+               };
+
+            foreach (var kvp in value)
             {
-               ["dark"]  = DefaultDark,
-               ["light"] = DefaultLight,
-            };
-            if (value != null)
-               foreach (var kvp in value)
-                  _themes[kvp.Key] = kvp.Value;
+               this.themes[kvp.Key] = this.themes.TryGetValue(kvp.Key, out var fallback)
+                  ? FillMissing(kvp.Value, fallback)
+                  : kvp.Value;
+            }
          }
       }
 
-      // ── Info panel display toggles — persisted; UI to be added later. ──────────────────
-      public bool InfoShowHex   { get => _infoShowHex;   set => SetPersisted(ref _infoShowHex,   value); }
-      public bool InfoShowRgb   { get => _infoShowRgb;   set => SetPersisted(ref _infoShowRgb,   value); }
-      public bool InfoShowHsl   { get => _infoShowHsl;   set => SetPersisted(ref _infoShowHsl,   value); }
-      public bool InfoShow12Bit { get => _infoShow12Bit; set => SetPersisted(ref _infoShow12Bit, value); }
-      public bool InfoShowWeb   { get => _infoShowWeb;   set => SetPersisted(ref _infoShowWeb,   value); }
-      public bool InfoShowMouse { get => _infoShowMouse; set => SetPersisted(ref _infoShowMouse, value); }
-      public bool InfoShowSize  { get => _infoShowSize;  set => SetPersisted(ref _infoShowSize,  value); }
-      public bool InfoShowZoom  { get => _infoShowZoom;  set => SetPersisted(ref _infoShowZoom,  value); }
-
-      public event PropertyChangedEventHandler? PropertyChanged;
-
-      internal static void ResetForTesting()
+      public short Width
       {
-         instance?._saveTimer.Stop();
-         instance?._saveTimer.Dispose();
-         instance = null;
+         get => this.width;
+         set =>
+            this.SetPersisted(
+               ref this.width,
+               (short)((value.Clamp(Defaults.MinWidth, Defaults.MaxWidth) / Defaults.SizeIncrement)
+                       * Defaults.SizeIncrement));
       }
 
-      private static Color TryParseColor(string html, Color fallback)
+      private static string SettingsFilePath
       {
-         try   { return ColorTranslator.FromHtml(html); }
-         catch { return fallback; }
+         get
+         {
+            var company = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyCompanyAttribute>()
+               ?.Company;
+            if (string.IsNullOrWhiteSpace(company))
+            {
+               company = "Strange";
+            }
+
+            var product = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyProductAttribute>()
+               ?.Product ?? "Lens";
+            return Path.Combine(
+               Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+               company,
+               product,
+               "settings.json");
+         }
       }
 
       public static bool IsOsDarkMode()
@@ -230,52 +346,17 @@ namespace Lens
          {
             using var key = Registry.CurrentUser.OpenSubKey(
                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            return key?.GetValue("AppsUseLightTheme") is int v && v == 0;
+            return key?.GetValue("AppsUseLightTheme") is 0;
          }
-         catch { return false; }
+         catch
+         {
+            return false;
+         }
       }
 
-      private static readonly JsonSerializerOptions JsonOptions = new()
+      public void Load()
       {
-         WriteIndented = true,
-         Converters    = { new ColorHexConverter() }
-      };
-
-      public void Load() => Load(SettingsFilePath);
-
-      internal void Load(string path)
-      {
-         if (!File.Exists(path)) return;
-         try
-         {
-            var data = JsonSerializer.Deserialize<SettingsData>(File.ReadAllText(path), JsonOptions);
-            if (data == null) return;
-            Width          = data.Width;
-            Height         = data.Height;
-            Magnification  = data.Magnification;
-            GridSize       = data.GridSize;
-            GridStyle      = data.GridStyle;
-            GridColor      = TryParseColor(data.GridColor, Color.Black);
-            Scaling        = (ScalingMode)data.Scaling;
-            PrecisionSpeed = data.PrecisionSpeed;
-            _infoShowHex   = data.InfoShowHex;
-            _infoShowRgb   = data.InfoShowRgb;
-            _infoShowHsl   = data.InfoShowHsl;
-            _infoShow12Bit = data.InfoShow12Bit;
-            _infoShowWeb   = data.InfoShowWeb;
-            _infoShowMouse = data.InfoShowMouse;
-            _infoShowSize  = data.InfoShowSize;
-            _infoShowZoom  = data.InfoShowZoom;
-
-            if (data.Themes != null) Themes = data.Themes;
-            Theme  = data.Theme;
-
-            Debug.WriteLine($"Settings loaded from {path}");
-         }
-         catch (Exception ex)
-         {
-            Debug.WriteLine($"Failed to load settings: {ex.Message}");
-         }
+         this.Load(SettingsFilePath);
       }
 
       public void Save()
@@ -285,27 +366,27 @@ namespace Lens
          {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var data = new SettingsData
-            {
-               Width         = _width,
-               Height        = _height,
-               Magnification = _magnification,
-               GridSize      = _gridSize,
-               GridStyle     = _gridStyle,
-               GridColor     = $"#{_gridColor.R:X2}{_gridColor.G:X2}{_gridColor.B:X2}",
-               Scaling        = (int)_scalingMode,
-               PrecisionSpeed = _precisionSpeed,
-               InfoShowHex   = _infoShowHex,
-               InfoShowRgb   = _infoShowRgb,
-               InfoShowHsl   = _infoShowHsl,
-               InfoShow12Bit = _infoShow12Bit,
-               InfoShowWeb   = _infoShowWeb,
-               InfoShowMouse = _infoShowMouse,
-               InfoShowSize  = _infoShowSize,
-               InfoShowZoom  = _infoShowZoom,
-               Theme         = _theme,
-               Themes        = _themes,
-            };
-            File.WriteAllText(path, JsonSerializer.Serialize(data, JsonOptions));
+               {
+                  Width = this.width,
+                  Height = this.height,
+                  Magnification = this.magnification,
+                  GridSize = this.gridSize,
+                  GridStyle = this.gridStyle,
+                  GridColor = $"#{this.gridColor.R:X2}{this.gridColor.G:X2}{this.gridColor.B:X2}",
+                  Scaling = (int)this.scalingMode,
+                  PrecisionSpeed = this.precisionSpeed,
+                  InfoShowHex = this.infoShowHex,
+                  InfoShowRgb = this.infoShowRgb,
+                  InfoShowHsl = this.infoShowHsl,
+                  InfoShow12Bit = this.infoShow12Bit,
+                  InfoShowWeb = this.infoShowWeb,
+                  InfoShowMouse = this.infoShowMouse,
+                  InfoShowSize = this.infoShowSize,
+                  InfoShowZoom = this.infoShowZoom,
+                  Theme = this.theme,
+                  Themes = this.themes,
+               };
+            File.WriteAllText(path, JsonSerializer.Serialize(data, jsonOptions));
          }
          catch (Exception ex)
          {
@@ -313,73 +394,125 @@ namespace Lens
          }
       }
 
+      internal static void ResetForTesting()
+      {
+         instance?.saveTimer.Stop();
+         instance?.saveTimer.Dispose();
+         instance = null;
+      }
+
+      internal void Load(string path)
+      {
+         if (!File.Exists(path))
+         {
+            return;
+         }
+
+         try
+         {
+            var data = JsonSerializer.Deserialize<SettingsData>(File.ReadAllText(path), jsonOptions);
+            if (data == null)
+            {
+               return;
+            }
+
+            this.Width = data.Width;
+            this.Height = data.Height;
+            this.Magnification = data.Magnification;
+            this.GridSize = data.GridSize;
+            this.GridStyle = data.GridStyle;
+            this.GridColor = TryParseColor(data.GridColor, Color.Black);
+            this.Scaling = (ScalingMode)data.Scaling;
+            this.PrecisionSpeed = data.PrecisionSpeed;
+            this.infoShowHex = data.InfoShowHex;
+            this.infoShowRgb = data.InfoShowRgb;
+            this.infoShowHsl = data.InfoShowHsl;
+            this.infoShow12Bit = data.InfoShow12Bit;
+            this.infoShowWeb = data.InfoShowWeb;
+            this.infoShowMouse = data.InfoShowMouse;
+            this.infoShowSize = data.InfoShowSize;
+            this.infoShowZoom = data.InfoShowZoom;
+
+            if (data.Themes != null)
+            {
+               this.Themes = data.Themes;
+            }
+
+            this.Theme = data.Theme;
+
+            Debug.WriteLine($"Settings loaded from {path}");
+         }
+         catch (Exception ex)
+         {
+            Debug.WriteLine($"Failed to load settings: {ex.Message}");
+         }
+      }
+
+      /// <summary>JSON properties absent from an older settings.json deserialize to default
+      ///    (Color) (Color.Empty, A=0). Every persisted color is opaque (A=255), so A==0 reliably
+      ///    means "never set" — backfill those from the built-in palette for that theme name.</summary>
+      private static ThemePalette FillMissing(ThemePalette loaded, ThemePalette fallback)
+      {
+         return new ThemePalette
+            {
+               Inset = loaded.Inset.A == 0 ? fallback.Inset : loaded.Inset,
+               Background = loaded.Background.A == 0 ? fallback.Background : loaded.Background,
+               Control = loaded.Control.A == 0 ? fallback.Control : loaded.Control,
+               Border = loaded.Border.A == 0 ? fallback.Border : loaded.Border,
+               AccentSubtle = loaded.AccentSubtle.A == 0 ? fallback.AccentSubtle : loaded.AccentSubtle,
+               AccentNormal = loaded.AccentNormal.A == 0 ? fallback.AccentNormal : loaded.AccentNormal,
+               AccentStrong = loaded.AccentStrong.A == 0 ? fallback.AccentStrong : loaded.AccentStrong,
+               TextSubtle = loaded.TextSubtle.A == 0 ? fallback.TextSubtle : loaded.TextSubtle,
+               TextNormal = loaded.TextNormal.A == 0 ? fallback.TextNormal : loaded.TextNormal,
+               TextStrong = loaded.TextStrong.A == 0 ? fallback.TextStrong : loaded.TextStrong,
+            };
+      }
+
+      private static Color TryParseColor(string html, Color fallback)
+      {
+         try
+         {
+            return ColorTranslator.FromHtml(html);
+         }
+         catch
+         {
+            return fallback;
+         }
+      }
+
       private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
       {
-         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+         this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
       }
 
-      private bool SetPersisted<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+      private void SetPersisted<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
       {
-         if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+         if (EqualityComparer<T>.Default.Equals(field, value))
+         {
+            return;
+         }
+
          field = value;
          Debug.WriteLine($"{propertyName} = {value}");
-         OnPropertyChanged(propertyName);
-         return true;
-      }
-
-      private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-      {
-         if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-         field = value;
-         OnPropertyChanged(propertyName);
-         return true;
-      }
-
-      private sealed class ColorHexConverter : JsonConverter<Color>
-      {
-         public override Color Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-            => ColorTranslator.FromHtml(reader.GetString() ?? "#000000");
-
-         public override void Write(Utf8JsonWriter writer, Color value, JsonSerializerOptions options)
-            => writer.WriteStringValue($"#{value.R:X2}{value.G:X2}{value.B:X2}");
-      }
-
-      private class SettingsData
-      {
-         public short  Width         { get; set; } = 150;
-         public short  Height        { get; set; } = 160;
-         public byte   Magnification { get; set; } = 4;
-         public byte   GridSize      { get; set; } = 4;
-         public int    GridStyle     { get; set; } = 2;
-         public string GridColor     { get; set; } = "#000000";
-         public int    Scaling        { get; set; } = 0; // ScalingMode.NearestNeighbor
-         public int    PrecisionSpeed { get; set; } = 45;
-
-         public bool   InfoShowHex   { get; set; } = true;
-         public bool   InfoShowRgb   { get; set; } = true;
-         public bool   InfoShowHsl   { get; set; } = true;
-         public bool   InfoShow12Bit { get; set; } = true;
-         public bool   InfoShowWeb   { get; set; } = true;
-         public bool   InfoShowMouse { get; set; } = true;
-         public bool   InfoShowSize  { get; set; } = true;
-         public bool   InfoShowZoom  { get; set; } = true;
-
-         public string Theme  { get; set; } = "system";
-         public Dictionary<string, ThemePalette>? Themes { get; set; }
+         this.OnPropertyChanged(propertyName);
       }
 
       public static class Defaults
       {
          public const byte MaxGridSize = 16;
-         public const byte MinGridSize = 1;
-
-         public const byte MaxMagnification = 16;
-         public const byte MinMagnification = 2;
 
          public const short MaxHeight = 400;
-         public const short MinHeight = 100;
+
+         public const byte MaxMagnification = 16;
 
          public const short MaxWidth = 400;
+
+         public const byte MinGridSize = 1;
+
+         public const short MinHeight = 100;
+
+         public const byte MinMagnification = 2;
+
          public const short MinWidth = 100;
 
          public const byte SizeIncrement = 20;
@@ -392,6 +525,61 @@ namespace Lens
             Debug.Assert(MaxWidth % SizeIncrement == 0);
             Debug.Assert(MinWidth % SizeIncrement == 0);
          }
+      }
+
+      private sealed class ColorHexConverter : JsonConverter<Color>
+      {
+         public override Color Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options)
+         {
+            return ColorTranslator.FromHtml(reader.GetString() ?? "#000000");
+         }
+
+         public override void Write(Utf8JsonWriter writer, Color value, JsonSerializerOptions options)
+         {
+            writer.WriteStringValue($"#{value.R:X2}{value.G:X2}{value.B:X2}");
+         }
+      }
+
+      private class SettingsData
+      {
+         public string GridColor { get; init; } = "#000000";
+
+         public byte GridSize { get; init; } = 4;
+
+         public int GridStyle { get; init; } = 2;
+
+         public short Height { get; init; } = 160;
+
+         public bool InfoShow12Bit { get; init; } = true;
+
+         public bool InfoShowHex { get; init; } = true;
+
+         public bool InfoShowHsl { get; init; } = true;
+
+         public bool InfoShowMouse { get; init; } = true;
+
+         public bool InfoShowRgb { get; init; } = true;
+
+         public bool InfoShowSize { get; init; } = true;
+
+         public bool InfoShowWeb { get; init; } = true;
+
+         public bool InfoShowZoom { get; init; } = true;
+
+         public byte Magnification { get; init; } = 4;
+
+         public int PrecisionSpeed { get; init; } = 45;
+
+         public int Scaling { get; init; } // ScalingMode.NearestNeighbor
+
+         public string Theme { get; init; } = "system";
+
+         public Dictionary<string, ThemePalette>? Themes { get; init; }
+
+         public short Width { get; init; } = 150;
       }
    }
 }

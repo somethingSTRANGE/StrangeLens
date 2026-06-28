@@ -1,54 +1,36 @@
-using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Windows.Forms;
+// -------------------------------------------------------------------------------------
+// <copyright file="Program.cs">
+//   Copyright (c) 2026
+//   Licensed under the MIT License. See LICENSE file in the project root.
+// </copyright>
+// -------------------------------------------------------------------------------------
 
 namespace Lens
 {
+   using System;
+   using System.Diagnostics;
+   using System.IO;
+   using System.Threading;
+   using System.Windows.Forms;
+
    internal static class Program
    {
-      private const uint SW_RESTORE = 0x09;
-
-      private static SettingsForm settingsForm = null!;
-
-      [DllImport("user32.dll")]
-      [return: MarshalAs(UnmanagedType.Bool)]
-      private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-
-      [DllImport("user32.dll")]
-      private static extern IntPtr SetActiveWindow(IntPtr hWnd);
-
-
-      [DllImport("user32.dll")]
-      private static extern int ShowWindow(IntPtr hWnd, uint Msg);
-
-      public static void Restore(this Form form)
-      {
-         if (form.WindowState == FormWindowState.Minimized) ShowWindow(form.Handle, SW_RESTORE);
-      }
-
-
-      /// <summary>
-      ///    The main entry point for the application.
-      /// </summary>
+      /// <summary>The main entry point for the application.</summary>
       [STAThread]
       private static void Main()
       {
-         var logsDir = System.IO.Path.Combine(Application.StartupPath, "Logs");
-         System.IO.Directory.CreateDirectory(logsDir);
-         Trace.Listeners.Add(new TextWriterTraceListener(
-            System.IO.Path.Combine(logsDir, "lens-debug.log")));
+         var logsDir = Path.Combine(Application.StartupPath, "Logs");
+         Directory.CreateDirectory(logsDir);
+         Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(logsDir, "lens-debug.log")));
          Debug.AutoFlush = true;
          Debug.WriteLine("-----");
          Debug.WriteLine($"Lens started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n");
 
-         Application.ThreadException += (s, e) => Debug.WriteLine("ThreadException: " + e.Exception);
-         AppDomain.CurrentDomain.UnhandledException += (s, e) => Debug.WriteLine("UnhandledException: " + e.ExceptionObject);
+         Application.ThreadException += (_, e) => Debug.WriteLine("ThreadException: " + e.Exception);
+         AppDomain.CurrentDomain.UnhandledException +=
+            (_, e) => Debug.WriteLine("UnhandledException: " + e.ExceptionObject);
 
-         var createdNew = true;
-         using (var mutex = new Mutex(true, "strange-lens-app-mutex", out createdNew))
+         using (new Mutex(true, "strange-lens-app-mutex", out var createdNew))
          {
             if (createdNew)
             {
@@ -56,14 +38,16 @@ namespace Lens
                Application.SetCompatibleTextRenderingDefault(false);
                Lens.Instance.Load();
                var colorMode = Lens.Instance.Theme switch
-               {
-                  "dark"  => SystemColorMode.Dark,
-                  "light" => SystemColorMode.Classic,
-                  _       => SystemColorMode.System
-               };
+                  {
+                     "dark" => SystemColorMode.Dark,
+                     "light" => SystemColorMode.Classic,
+                     _ => SystemColorMode.System,
+                  };
+
                Debug.WriteLine($"Theme: {Lens.Instance.Theme} → {colorMode}");
+
                Application.SetColorMode(colorMode);
-               settingsForm = new SettingsForm();
+               _ = new SettingsForm();
                Application.ApplicationExit += (_, _) => Lens.Instance.Save();
                Application.Run();
             }
@@ -71,11 +55,13 @@ namespace Lens
             {
                var current = Process.GetCurrentProcess();
                foreach (var process in Process.GetProcessesByName(current.ProcessName))
+               {
                   if (process.Id != current.Id)
                   {
                      Console.WriteLine("Already open");
                      break;
                   }
+               }
             }
          }
       }

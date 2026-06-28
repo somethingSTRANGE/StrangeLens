@@ -1,31 +1,21 @@
-using System;
-using System.Drawing;
-using System.Drawing.Drawing2D;
+// -------------------------------------------------------------------------------------
+// <copyright file="ExtensionMethods.cs">
+//   Copyright (c) 2026
+//   Licensed under the MIT License. See LICENSE file in the project root.
+// </copyright>
+// -------------------------------------------------------------------------------------
 
 namespace Lens
 {
+   using System;
+   using System.Drawing.Drawing2D;
+
    public static class ExtensionMethods
    {
-      public static T Clamp<T>(this T value, T min, T max) where T : IComparable<T>
+      public static T Clamp<T>(this T value, T min, T max)
+         where T : IComparable<T>
       {
          return value.CompareTo(min) < 0 ? min : value.CompareTo(max) > 0 ? max : value;
-      }
-
-      public static void Deconstruct(this Point point, out int X, out int Y)
-      {
-         X = point.X;
-         Y = point.Y;
-      }
-
-      public static void Deconstruct(this RectangleF rect, out float top, out float bottom, out float left,
-         out float right, out float width, out float height)
-      {
-         top = rect.Top;
-         bottom = rect.Bottom;
-         left = rect.Left;
-         right = rect.Right;
-         width = rect.Width;
-         height = rect.Height;
       }
 
       public static DashStyle DashStyle(this GridStyleOptions gridStyle)
