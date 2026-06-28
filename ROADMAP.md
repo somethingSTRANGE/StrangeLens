@@ -5,6 +5,7 @@ Planned work for Lens. Completed items are removed; see git history for what shi
 ## Settings
 
 - Add **Show Grid / Show Crosshair** checkbox to the Settings panel to toggle the crosshair overlay (and possibly the entire grid).
+- Add a **Crosshair Blend** toggle (Standard / Difference) to the Settings panel. Difference mode applies a per-pixel `|penColor − dst|` blend directly into the DIBSection so the crosshair always contrasts with the content beneath it. The mode enum and rendering paths are already in `LensForm.cs` (`CrosshairBlend`, `CrosshairMode` const, `ApplyDifferenceCrosshair`); a setting and UI picker are all that remain.
 - Make the global toggle hotkey user-configurable in the Settings panel (currently hardcoded to Ctrl+Shift+Z).
 
 ## Info Panel

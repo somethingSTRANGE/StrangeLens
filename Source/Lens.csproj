@@ -20,7 +20,7 @@
     <Company>Strange</Company>
     <Product>Lens</Product>
     <Description>Pixel magnifier and color picker</Description>
-    <Copyright>Copyright © 2026 Michael Ryan</Copyright>
+    <Copyright>© 2026 Michael Ryan</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,6 +39,12 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Fonts\Inter-Regular.ttf" />
+    <EmbeddedResource Include="Resources\Fonts\Inter-Bold.ttf" />
+    <EmbeddedResource Include="Resources\Fonts\JetBrainsMono-Regular.ttf" />
   </ItemGroup>
 
 </Project>
