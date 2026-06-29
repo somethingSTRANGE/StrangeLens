@@ -1,3 +1,10 @@
+// -------------------------------------------------------------------------------------
+// <copyright file="AssemblyInfo.cs">
+//   Copyright (c) 2026
+//   Licensed under the MIT License. See LICENSE file in the project root.
+// </copyright>
+// -------------------------------------------------------------------------------------
+
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 

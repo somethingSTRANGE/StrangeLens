@@ -1,13 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <BuildDate Condition="'$(BuildDate)' == ''">dev</BuildDate>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Lens</RootNamespace>
     <AssemblyName>Lens</AssemblyName>
     <LangVersion>12</LangVersion>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <SupportedOSPlatformVersion>6.1</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
     <ApplicationIcon>Icons\AppIcon.ico</ApplicationIcon>
@@ -16,8 +20,15 @@
     <Company>Strange</Company>
     <Product>Lens</Product>
     <Description>Pixel magnifier and color picker</Description>
-    <Copyright>Copyright © 2026 Michael Ryan</Copyright>
+    <Copyright>© 2026 Michael Ryan</Copyright>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildDate</_Parameter1>
+      <_Parameter2>$(BuildDate)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Update="Properties\Resources.resx">
@@ -28,6 +39,12 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Fonts\Inter-Regular.ttf" />
+    <EmbeddedResource Include="Resources\Fonts\Inter-Bold.ttf" />
+    <EmbeddedResource Include="Resources\Fonts\JetBrainsMono-Regular.ttf" />
   </ItemGroup>
 
 </Project>

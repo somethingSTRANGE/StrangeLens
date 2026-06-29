@@ -28,6 +28,11 @@ jobs:
           dotnet-version: '10.x'
           include-prerelease: true
 
+      - name: Get build date
+        id: date
+        shell: pwsh
+        run: '"value=" + (Get-Date -Format "yyyy-MM-dd") | Out-File -FilePath $env:GITHUB_OUTPUT -Append'
+
       - name: Publish
         shell: pwsh
         run: |
@@ -39,6 +44,7 @@ jobs:
             -p:EnableCompressionInSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:Version=${{ steps.version.outputs.version }} `
+            -p:BuildDate=${{ steps.date.outputs.value }} `
             --output publish
 
       - name: Create GitHub Release
