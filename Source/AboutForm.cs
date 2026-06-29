@@ -65,11 +65,11 @@ namespace Lens
 
       private readonly Bitmap appIconBitmap;
 
-      private readonly FontInfo fontAttribution;
+      private readonly FontInfo fontBold;
 
-      private readonly FontInfo fontHeader;
+      private readonly FontInfo fontRegular;
 
-      private readonly FontInfo fontLabel;
+      private readonly FontInfo fontSmall;
 
       private readonly SvgImage iconDonateBuyMeACoffee;
 
@@ -93,9 +93,9 @@ namespace Lens
 
       internal AboutForm(Icon appIcon)
       {
-         this.fontHeader = FontHelper.CreateHeaderFontInfo();
-         this.fontLabel = FontHelper.CreateLabelFontInfo();
-         this.fontAttribution = FontHelper.CreateAttributionFontInfo();
+         this.fontBold = FontHelper.CreateBoldFontInfo();
+         this.fontRegular = FontHelper.CreateRegularFontInfo();
+         this.fontSmall = FontHelper.CreateSmallFontInfo();
 
          this.palette = Lens.Instance.ActivePalette;
 
@@ -136,9 +136,9 @@ namespace Lens
       {
          if (disposing)
          {
-            this.fontLabel.Dispose();
-            this.fontAttribution.Dispose();
-            this.fontHeader.Dispose();
+            this.fontRegular.Dispose();
+            this.fontSmall.Dispose();
+            this.fontBold.Dispose();
             this.appIconBitmap.Dispose();
             this.toolTip.Dispose();
          }
@@ -186,36 +186,26 @@ namespace Lens
          this.yLocation += size;
       }
 
-      private Label Attribution(string text)
-      {
-         var control = new Label
-            {
-               Text = text,
-               Font = this.fontAttribution.Font,
-               ForeColor = this.palette.TextSubtle,
-               BackColor = this.BackColor,
-               AutoSize = false,
-               Location = new Point(PadX, this.yLocation),
-               Size = new Size(SepW, this.fontAttribution.PixelLineHeight),
-               TextAlign = ContentAlignment.MiddleCenter,
-            };
-         return control;
-      }
-
       private void BuildLayout()
       {
          var assembly = Assembly.GetExecutingAssembly();
 
-         var infoVer = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion.Substring(0, 14) ?? "VERSION";
-         var asmBuildDate = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(a => a.Key == "BuildDate")?.Value ?? "";
-         var versionLine = $"{asmBuildDate} — {infoVer}";
+         var informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+         var plusIdx = informationalVersion?.IndexOf('+') ?? -1;
+         var rawHash = plusIdx >= 0 ? informationalVersion![(plusIdx + 1)..] : null;
 
-         var buildVersion = "Version 1.0.1";
-         var buildDate = "Built on 2026-06-20";
+         var asmBuildDate = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == "BuildDate")?.Value;
+
+         var buildVersion = plusIdx > 0 ? informationalVersion![..plusIdx] : informationalVersion ?? "0.0.0";
+         var buildDate = string.IsNullOrEmpty(asmBuildDate) || (asmBuildDate == "dev")
+            ? DateTime.Today.ToString("yyyy-MM-dd")
+            : asmBuildDate;
+         var commitHash = rawHash?.Length >= 7 ? rawHash[..7] : "HASH";
+         var versionCopy = $"{this.ProductName} {buildVersion}\nBuilt on {buildDate} from commit {commitHash
+         }";
          var copyright = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "";
-         var license = "MIT License";
 
          var attributions = new[]
             {
@@ -252,16 +242,17 @@ namespace Lens
 
          // ── Header ────────────────────────────────────────────────────────────
          this.AddSpace(PadY);
-         this.AddControl(this.SvgImage(this.imageLogo, this.palette.TextStrong, this.palette.AccentSubtle, 0.5f));
+         this.AddControl(
+            this.SvgImage(this.imageLogo, this.palette.TextStrong, this.palette.AccentSubtle, 0.5f));
 
          // ── Version & metadata ────────────────────────────────────────────────
          this.AddSpace();
-         this.AddControl(this.Label(buildVersion, this.palette.TextNormal));
-         this.AddControl(this.Label(buildDate, this.palette.TextSubtle));
+         this.AddControl(this.LabelBuildVersion($"Version {buildVersion}"));
+         this.AddControl(this.LabelBuildDate($"{buildDate}"));
 
          // ── Product Links ─────────────────────────────────────────────────────
-         this.AddSpace(PadY);
-         this.AddControl(this.Header("Resources"));
+         this.AddSpace(PadY + PadY);
+         this.AddControl(this.LabelHeader("Resources"));
          foreach (var link in resourceLinks)
          {
             this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
@@ -269,28 +260,28 @@ namespace Lens
 
          // ── Donation Links ────────────────────────────────────────────────────
          this.AddSpace(PadY);
-         this.AddControl(this.Header("Give support and donate"));
+         this.AddControl(this.LabelHeader("Give support and donate"));
          foreach (var link in donationLinks)
          {
             this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
          }
 
          // ── Copyright ─────────────────────────────────────────────────────────
-         this.AddSpace(PadY);
+         this.AddSpace(PadY + PadY);
          this.AddControl(this.Separator());
          this.AddSpace(PadY);
-         this.AddControl(this.Copyright($"{copyright} — {license}", this.palette.TextSubtle));
+         this.AddControl(this.LabelCopyright($"{copyright} — MIT License"));
 
          // ── Attribution ───────────────────────────────────────────────────────
          this.AddSpace();
          foreach (var attribution in attributions)
          {
-            this.AddControl(this.Attribution(attribution));
+            this.AddControl(this.LabelAttribution(attribution));
          }
 
          // ── Actions ───────────────────────────────────────────────────────────
          this.AddSpace(PadY * 2);
-         this.AddControl(this.ButtonsPanel(versionLine));
+         this.AddControl(this.ButtonsPanel(versionCopy));
 
          this.ClientSize = new Size(FormW, this.yLocation + PadY);
       }
@@ -301,7 +292,7 @@ namespace Lens
          const int CloseWidth = 80;
          const string CopyAndCloseText = "Copy and Close";
 
-         var copyAndCloseWidth = TextRenderer.MeasureText(CopyAndCloseText, this.fontLabel.Font).Width + 24;
+         var copyAndCloseWidth = TextRenderer.MeasureText(CopyAndCloseText, this.fontRegular.Font).Width + 24;
 
          var panel = new Panel
             {
@@ -312,7 +303,7 @@ namespace Lens
 
          var closeBtn = new Button
             {
-               Font = this.fontLabel.Font,
+               Font = this.fontRegular.Font,
                Text = "Close",
                BackColor = this.palette.Control,
                ForeColor = this.palette.TextNormal,
@@ -326,7 +317,7 @@ namespace Lens
 
          var copyAndCloseBtn = new Button
             {
-               Font = this.fontLabel.Font,
+               Font = this.fontRegular.Font,
                Text = CopyAndCloseText,
                BackColor = this.palette.AccentSubtle,
                ForeColor = this.palette.TextStrong,
@@ -339,7 +330,7 @@ namespace Lens
          copyAndCloseBtn.FlatAppearance.MouseDownBackColor = this.palette.AccentStrong;
          copyAndCloseBtn.Click += (_, _) =>
             {
-               Clipboard.SetText($"{this.ProductName}\n{versionLine}");
+               Clipboard.SetText(versionLine);
                this.Close();
             };
          this.toolTip.SetToolTip(copyAndCloseBtn, "Copy version info and close this window");
@@ -354,15 +345,29 @@ namespace Lens
          return panel;
       }
 
-      private Label Copyright(string text, Color color)
+      private Label LabelAttribution(string text)
+      {
+         var control = new Label
+            {
+               Text = text,
+               Font = this.fontSmall.Font,
+               ForeColor = this.palette.TextSubtle,
+               BackColor = Color.Transparent,
+               Location = new Point(PadX, this.yLocation),
+               Size = new Size(SepW, this.fontSmall.PixelLineHeight),
+               TextAlign = ContentAlignment.MiddleCenter,
+            };
+         return control;
+      }
+
+      private Label LabelBuildDate(string text)
       {
          return new Label
             {
                Text = text,
-               Font = this.fontLabel.Font,
-               ForeColor = color,
-               BackColor = this.palette.Background,
-               AutoSize = false,
+               Font = this.fontRegular.Font,
+               ForeColor = this.palette.TextSubtle,
+               BackColor = Color.Transparent,
                Location = new Point(PadX, this.yLocation),
                Size = new Size(SepW, ControlRowHeight),
                TextAlign = ContentAlignment.MiddleCenter,
@@ -370,31 +375,44 @@ namespace Lens
             };
       }
 
-      private Label Header(string label)
+      private Label LabelBuildVersion(string text)
       {
          return new Label
             {
-               Text = label,
-               Font = this.fontHeader.Font,
-               ForeColor = this.palette.AccentNormal,
-               BackColor = this.palette.Background,
-               AutoSize = false,
-               Location = new Point(TextX, this.yLocation),
-               Size = new Size(TextW, ControlRowHeight),
-               TextAlign = ContentAlignment.MiddleLeft,
+               Text = text,
+               Font = this.fontBold.Font,
+               ForeColor = this.palette.TextSubtle,
+               BackColor = Color.Transparent,
+               Location = new Point(PadX, this.yLocation),
+               Size = new Size(SepW, ControlRowHeight),
+               TextAlign = ContentAlignment.MiddleCenter,
                Padding = Padding.Empty,
             };
       }
 
-      private Label Label(string text, Color color)
+      private Label LabelCopyright(string text)
       {
          return new Label
             {
-               Font = this.fontLabel.Font,
                Text = text,
-               ForeColor = color,
+               Font = this.fontRegular.Font,
+               ForeColor = this.palette.TextSubtle,
                BackColor = Color.Transparent,
-               AutoSize = false,
+               Location = new Point(PadX, this.yLocation),
+               Size = new Size(SepW, ControlRowHeight),
+               TextAlign = ContentAlignment.MiddleCenter,
+               Padding = Padding.Empty,
+            };
+      }
+
+      private Label LabelHeader(string label)
+      {
+         return new Label
+            {
+               Text = label,
+               Font = this.fontBold.Font,
+               ForeColor = this.palette.AccentNormal,
+               BackColor = Color.Transparent,
                Location = new Point(TextX, this.yLocation),
                Size = new Size(TextW, ControlRowHeight),
                TextAlign = ContentAlignment.MiddleLeft,
@@ -489,7 +507,7 @@ namespace Lens
       {
          var textRect = new Rectangle(
             new Point(0, -2),
-            TextRenderer.MeasureText(text, this.fontLabel.Font, Size.Empty, LinkTextFlags));
+            TextRenderer.MeasureText(text, this.fontRegular.Font, Size.Empty, LinkTextFlags));
          textRect.Height -= 2;
 
          var btn = new Button
@@ -523,7 +541,7 @@ namespace Lens
                TextRenderer.DrawText(
                   g,
                   text,
-                  this.fontLabel.Font,
+                  this.fontRegular.Font,
                   textRect,
                   hovered ? hoverColor : color,
                   LinkTextFlags);

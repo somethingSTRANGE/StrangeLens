@@ -143,7 +143,7 @@ namespace Lens
          this.ShowInTaskbar = false;
          this.StartPosition = FormStartPosition.Manual;
          // Font must be created before ComputeContentW(), which needs charWidth.
-         this.labelFont = FontHelper.CreateLabelFontInfo();
+         this.labelFont = FontHelper.CreateRegularFontInfo();
          this.valueFont = FontHelper.CreateValueFontInfo();
          this.charWidth = MeasureCharWidth(this.valueFont.Font);
          this.contentH = this.ComputeContentH();

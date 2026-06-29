@@ -98,7 +98,7 @@ namespace Lens
          this.clickTimer = new Timer();
          this.clickTimer.Tick += this.ClickTimer_Elapsed;
 
-         this.textFont = FontHelper.CreateLabelFontInfo();
+         this.textFont = FontHelper.CreateRegularFontInfo();
 
          this.BuildLayout();
 

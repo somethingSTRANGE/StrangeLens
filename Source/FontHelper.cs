@@ -18,17 +18,17 @@ namespace Lens
    {
       private static readonly PrivateFontCollection fonts = LoadFonts();
 
-      public static FontInfo CreateAttributionFontInfo()
-      {
-         return new FontInfo(new Font(GetFamily("Inter"), 11f, FontStyle.Regular, GraphicsUnit.Pixel));
-      }
-
-      public static FontInfo CreateHeaderFontInfo()
+      public static FontInfo CreateBoldFontInfo()
       {
          return new FontInfo(new Font(GetFamily("Inter"), 12f, FontStyle.Bold, GraphicsUnit.Pixel));
       }
 
-      internal static FontInfo CreateLabelFontInfo()
+      public static FontInfo CreateSmallFontInfo()
+      {
+         return new FontInfo(new Font(GetFamily("Inter"), 11f, FontStyle.Regular, GraphicsUnit.Pixel));
+      }
+
+      internal static FontInfo CreateRegularFontInfo()
       {
          return new FontInfo(new Font(GetFamily("Inter"), 12f, FontStyle.Regular, GraphicsUnit.Pixel));
       }
