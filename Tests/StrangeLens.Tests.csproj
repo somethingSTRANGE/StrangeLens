@@ -3,8 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
-    <RootNamespace>Lens.Tests</RootNamespace>
-    <AssemblyName>Lens.Tests</AssemblyName>
+    <RootNamespace>StrangeLens.Tests</RootNamespace>
+    <AssemblyName>StrangeLens.Tests</AssemblyName>
     <LangVersion>12</LangVersion>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Source\Lens.csproj" />
+    <ProjectReference Include="..\Source\StrangeLens.csproj" />
   </ItemGroup>
 
 </Project>

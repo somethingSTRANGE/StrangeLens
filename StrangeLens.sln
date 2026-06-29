@@ -1,10 +1,10 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens", "Source\Lens.csproj", "{240C0C2C-2416-4496-906B-0A3E32141DC7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrangeLens", "Source\StrangeLens.csproj", "{240C0C2C-2416-4496-906B-0A3E32141DC7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Tests", "Tests\Lens.Tests.csproj", "{A7A94C8E-EB76-492B-A742-9636E4D63AB8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrangeLens.Tests", "Tests\StrangeLens.Tests.csproj", "{A7A94C8E-EB76-492B-A742-9636E4D63AB8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source", "Source", "{B8EFCA5F-814F-285C-A8CB-F00F14650265}"
 EndProject

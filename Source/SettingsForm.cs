@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="SettingsForm.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.ComponentModel;
@@ -148,7 +148,7 @@ namespace Lens
          {
             var cp = base.CreateParams;
             cp.ExStyle |=
-               0x02000000; // WS_EX_COMPOSITED — buffers the whole window before presenting, prevents white flash
+               0x02000000; // WS_EX_COMPOSITED -- buffers the whole window before presenting, prevents white flash
             return cp;
          }
       }
@@ -177,7 +177,7 @@ namespace Lens
       {
          base.OnHandleCreated(e);
 
-         // Force dark title bar (focused + unfocused) — SetColorMode alone doesn't set the DWM attribute per-window.
+         // Force dark title bar (focused + unfocused) -- SetColorMode alone doesn't set the DWM attribute per-window.
          if (IsDarkMode())
          {
             var dark = 1;
@@ -195,7 +195,7 @@ namespace Lens
          const int WmHotkey = 0x0312;
          const int WmNcActivate = 0x0086;
 
-         // Re-apply dark title bar on every focus change — WM_NCACTIVATE fires when Windows
+         // Re-apply dark title bar on every focus change -- WM_NCACTIVATE fires when Windows
          // redraws the non-client area, and something (SetColorMode/WinForms internals) can
          // reset the DWM attribute before we see the message.
          if ((m.Msg == WmNcActivate) && IsDarkMode())
@@ -290,7 +290,7 @@ namespace Lens
          return y;
       }
 
-      /// <summary>Builds the entire Settings window layout — sections, controls, and data
+      /// <summary>Builds the entire Settings window layout -- sections, controls, and data
       ///    bindings.</summary>
       private void BuildLayout()
       {

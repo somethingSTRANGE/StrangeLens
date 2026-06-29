@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Lens** is a Windows desktop magnifying glass utility with pixel color picking. It renders a floating zoomed panel that follows the mouse, draws a precise crosshair between pixels, highlights the pixel closest to the origin (used for color sampling), and shows color info (hex/RGB/HSL) plus mouse position in a companion info panel. It lives in the system tray.
+**Strange Lens** is a Windows desktop magnifying glass utility with pixel color picking. It renders a floating zoomed panel that follows the mouse, draws a precise crosshair between pixels, highlights the pixel closest to the origin (used for color sampling), and shows color info (hex/RGB/HSL) plus mouse position in a companion info panel. It lives in the system tray.
 
 **Stack:** C# 12 / .NET 10 / WinForms / GDI+
 
@@ -12,14 +12,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Build (from solution root)
-msbuild Lens.sln /p:Configuration=Debug /p:Platform="Any CPU"
-msbuild Lens.sln /p:Configuration=Release /p:Platform="Any CPU"
+msbuild StrangeLens.sln /p:Configuration=Debug /p:Platform="Any CPU"
+msbuild StrangeLens.sln /p:Configuration=Release /p:Platform="Any CPU"
 
 # Run
-./bin/Debug/net10.0-windows/Lens.exe
+./bin/Debug/net10.0-windows/StrangeLens.exe
 ```
 
-There are no automated tests in this project.
+Tests live in `Tests/StrangeLens.Tests.csproj` (NUnit). Run via Rider or `dotnet test`.
 
 ## Architecture
 
@@ -27,7 +27,7 @@ There are no automated tests in this project.
 - **Program.cs** — enforces single-instance via Mutex (`strange-lens-app-mutex`). `Application.Run` starts with `SettingsForm` as the host; `LensForm` is created/shown on demand.
 
 ### Settings Singleton
-- **LensSetting.cs** (`Lens` class) — `INotifyPropertyChanged` singleton holding all configuration (magnification, grid size/color/style, window dimensions, speed factor, info panel row toggles). Persisted as JSON to `%LOCALAPPDATA%\Strange\Lens\settings.json` via `System.Text.Json`. Debounced save fires 1.5s after the last change; also flushed on clean exit.
+- **LensSetting.cs** (`Lens` class) — `INotifyPropertyChanged` singleton holding all configuration (magnification, grid size/color/style, window dimensions, speed factor, info panel row toggles). Persisted as JSON to `%LOCALAPPDATA%\Strange\Strange Lens\settings.json` via `System.Text.Json`. Debounced save fires 1.5s after the last change; also flushed on clean exit.
 - Default: 150×160px window, 4× magnification, 4px grid, Dash style.
 
 ### Rendering (LensForm)

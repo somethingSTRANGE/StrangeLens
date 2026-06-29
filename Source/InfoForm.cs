@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="InfoForm.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.ComponentModel;
@@ -21,10 +21,10 @@ namespace Lens
    internal class InfoForm : Form
    {
       // Shadow parameters (ShadowBlur/Sigma/OffsetX/OffsetY/MaxAlpha and the derived
-      //   ShadowMargin*) must match LensForm — both panels share the same drop shadow.
-      // layeredMemDC/layeredBitmap/layeredBits: the content DC, sized ContentW × ContentH.
+      //   ShadowMargin*) must match LensForm -- both panels share the same drop shadow.
+      // layeredMemDC/layeredBitmap/layeredBits: the content DC, sized ContentW x ContentH.
       // finalMemDC/finalBitmap/finalBits/finalW/finalH: the shadow+content DC submitted to
-      //   UpdateLayeredWindow, sized totalW × totalH.
+      //   UpdateLayeredWindow, sized totalW x totalH.
       // iconColorPalette/iconColorValues/iconLensSize/iconMagnification/iconMousePosition:
       //   built once at IconSize, reused every frame.
       // EnsureLayeredResources/FreeLayeredResources/EnsureFinalResources/FreeFinalResources
@@ -43,7 +43,7 @@ namespace Lens
 
       private const int LabelX = PanelPadding + IconSize + ColumnGap;
 
-      private const int MaxCharsColor4 = 4; // #RGB  (12-bit, Web)
+      private const int MaxCharsColor4 = 4; // #RGB (12-bit, Web)
 
       private const int MaxCharsHex = 7; // #FFFFFF
 
@@ -180,18 +180,18 @@ namespace Lens
          get
          {
             var cp = base.CreateParams;
-            cp.ExStyle |= 0x00000008; // WS_EX_TOPMOST — always above non-topmost windows
-            cp.ExStyle |= 0x00080000; // WS_EX_LAYERED — required for UpdateLayeredWindow
-            cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE — never activated by the OS
+            cp.ExStyle |= 0x00000008; // WS_EX_TOPMOST -- always above non-topmost windows
+            cp.ExStyle |= 0x00080000; // WS_EX_LAYERED -- required for UpdateLayeredWindow
+            cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE -- never activated by the OS
             return cp;
          }
       }
 
-      /// <summary>Never activates on Show() — must remain true for the window to be
+      /// <summary>Never activates on Show() -- must remain true for the window to be
       ///    non-activatable.</summary>
       protected override bool ShowWithoutActivation => true;
 
-      /// <summary>Convenience overload — computes the bounding rect from <paramref name="path"/>
+      /// <summary>Convenience overload -- computes the bounding rect from <paramref name="path"/>
       ///    and delegates to the explicit (x, y, w, h) overload.</summary>
       public static void DrawDebugBounds(Graphics g, GraphicsPath path, float x, float y)
       {
@@ -262,11 +262,11 @@ namespace Lens
             // Re-assert topmost every frame so popup menus, taskbar thumbnails, and tooltips
             // (also topmost, but created after us) don't permanently cover the info panel.
             // LensForm calls SetWindowPos for itself just before this, so InfoForm ends up
-            // above LensForm — consistent with the current Z-order.
+            // above LensForm -- consistent with the current Z-order.
             //
             // Show via SetWindowPos rather than Form.Show() for two reasons:
             //   1. Form.Show() triggers WinForms paint events (OnPaint, OnPaintBackground) that
-            //      are suppressed here — all rendering goes through UpdateLayeredWindow.
+            //      are suppressed here -- all rendering goes through UpdateLayeredWindow.
             //   2. CommitLayeredWindow runs above, so content is already in DWM's buffer before
             //      SWP_SHOWWINDOW fires. The window appears with content, never blank. Calling
             //      Show() would make the window visible before the layered content is committed,
@@ -843,7 +843,7 @@ namespace Lens
          g.SmoothingMode = SmoothingMode.None;
          g.PixelOffsetMode = PixelOffsetMode.Half;
 
-         // Background: diagonal gradient, black → #333333.
+         // Background: diagonal gradient, black -> #333333.
          var bgRect = new Rectangle(0, 0, this.ContentW, this.contentH);
          using (var bg = new LinearGradientBrush(bgRect, Color.Black, Color.FromArgb(51, 51, 51), 45f))
          {
@@ -858,7 +858,7 @@ namespace Lens
          {
             baselineY += font.BaselineAdjustment;
 
-            // GenericTypographic: PointF.Y is exactly the top of the cell ascent — no internal-leading shift.
+            // GenericTypographic: PointF.Y is exactly the top of the cell ascent -- no internal-leading shift.
             g.DrawString(
                text,
                font.Font,
@@ -893,7 +893,7 @@ namespace Lens
          float y = PanelPadding; // tracked Y; advances as sections are drawn
          var swatchRect = new Rectangle(this.ContentW - PanelPadding - SwatchSize, (int)y, SwatchSize, 0);
 
-         // ── color-values section ────────────────────────────────────────────────────────
+         // -- color-values section --------------------------------------------
          var cvAny = lens.InfoShowHex || lens.InfoShowRgb || lens.InfoShowHsl;
          var rowOffset = RowHeight + RowGap;
          if (cvAny)
@@ -928,7 +928,7 @@ namespace Lens
             }
          }
 
-         // ── color-palette section (swatch) ─────────────────────────────────────────────
+         // -- color-palette section (swatch) ----------------------------------
          if (cvAny)
          {
             y += SectionGap;
@@ -961,7 +961,7 @@ namespace Lens
             }
          }
 
-         // ── mouse-position section ─────────────────────────────────────────────────────
+         // -- mouse-position section ------------------------------------------
          if (cvAny)
          {
             y += SectionGap;
@@ -974,7 +974,7 @@ namespace Lens
             y += rowOffset;
          }
 
-         // ── lens-size section (no gap) ─────────────────────────────────────────────────
+         // -- lens-size section (no gap) --------------------------------------
          if (lens.InfoShowSize)
          {
             this.iconLensSize.Draw(g, Color.White, IconX, y);
@@ -982,7 +982,7 @@ namespace Lens
             y += rowOffset;
          }
 
-         // ── magnification section (no gap) ─────────────────────────────────────────────
+         // -- magnification section (no gap) ----------------------------------
          if (lens.InfoShowZoom)
          {
             this.iconMagnification.Draw(g, Color.White, IconX, y);

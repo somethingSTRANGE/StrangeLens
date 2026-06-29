@@ -1,6 +1,6 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
-namespace Lens
+namespace StrangeLens
 {
    partial class LensForm
    {
@@ -17,7 +17,7 @@ namespace Lens
       {
          if (disposing)
          {
-            // infoControl is now a plain data class — no Dispose needed.
+            // infoControl is now a plain data class -- no Dispose needed.
             timer.Dispose();
             scrBmp?.Dispose();
             scrGrp?.Dispose();
@@ -30,7 +30,7 @@ namespace Lens
       #region Windows Form Designer generated code
 
       /// <summary>
-      /// Required method for Designer support - do not modify
+      /// Required method for Designer support -- do not modify
       /// the contents of this method with the code editor.
       /// </summary>
       private void InitializeComponent()

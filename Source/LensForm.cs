@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="LensForm.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.ComponentModel;
@@ -18,11 +18,11 @@ namespace Lens
 
    public partial class LensForm : Form
    {
-      // ── Field groups ───────────────────────────────────────────────────────────────────
+      // -- Field groups -------------------------------------------------------------------
       // Crosshair blend mode (CrosshairMode/CrosshairBlend): Standard draws a GDI+ line at
       //   full opacity over content + grid; Difference blends |penColor − dst| per pixel
       //   directly into the DIBSection so the line always contrasts with content. Switching
-      //   modes is a code change only — no Settings UI yet.
+      //   modes is a code change only -- no Settings UI yet.
       // Screen capture fields (scrBmp/scrGrp/scrCaptureOrigin/checkerTile/checkerBrush): the
       //   small localized region captured around the cursor each frame.
       // Precision movement state (_lastCursorPos/_isSyntheticMove/_accumX/_accumY): used by
@@ -62,7 +62,7 @@ namespace Lens
 
       private const int ShadowMarginT = ShadowBlur - ShadowOffsetY; // 10
 
-      private const byte ShadowMaxAlpha = 160; // peak shadow opacity (0–255)
+      private const byte ShadowMaxAlpha = 160; // peak shadow opacity (0-255)
 
       private const int ShadowOffsetX = 0;
 
@@ -326,7 +326,7 @@ namespace Lens
       }
 
       /// <summary>Layered window content is managed entirely by <c>UpdateLayeredWindow</c> via
-      ///    <see cref="RenderFrame"/> — no GDI+ painting here.</summary>
+      ///    <see cref="RenderFrame"/> -- no GDI+ painting here.</summary>
       protected override void OnPaint(PaintEventArgs e)
       {
       }
@@ -340,17 +340,17 @@ namespace Lens
       {
          base.OnShown(e);
 
-         // Rough initial position — first RenderFrame will correct it via UpdateLayeredWindow.
+         // Rough initial position -- first RenderFrame will correct it via UpdateLayeredWindow.
          var pos = Cursor.Position;
          this.lastCursorPos = pos;
          this.Left = pos.X + 20;
          this.Top = pos.Y - (this.Height / 2);
 
-         // WDA_EXCLUDEFROMCAPTURE disabled — SetWindowDisplayAffinity deadlocks with DWM
+         // WDA_EXCLUDEFROMCAPTURE disabled -- SetWindowDisplayAffinity deadlocks with DWM
          // on WS_EX_LAYERED windows. Revisit once basic rendering is stable.
          this.timer.Enabled = true;
 
-         // Low-level mouse hook for Ctrl+Alt+Shift+scroll zoom — works even when the lens lacks focus.
+         // Low-level mouse hook for Ctrl+Alt+Shift+scroll zoom -- works even when the lens lacks focus.
          this.mouseHookProc = this.MouseHookCallback;
          this.mouseHook = SetWindowsHookEx(14 /*WH_MOUSE_LL*/, this.mouseHookProc, GetModuleHandle(null), 0);
          if (this.mouseHook == IntPtr.Zero)
@@ -358,7 +358,7 @@ namespace Lens
             Debug.WriteLine($"SetWindowsHookEx failed: error {Marshal.GetLastWin32Error()}");
          }
 
-         // Global copy hotkeys — active only while the lens is open.
+         // Global copy hotkeys -- active only while the lens is open.
          RegisterHotKey(this.Handle, HotkeyHex, ModCtrlAltShift, (uint)Keys.X);
          RegisterHotKey(this.Handle, HotkeyRgb, ModCtrlAltShift, (uint)Keys.R);
          RegisterHotKey(this.Handle, HotkeyHsl, ModCtrlAltShift, (uint)Keys.H);
@@ -429,7 +429,7 @@ namespace Lens
             var pen = CreatePen(0 /*PS_SOLID*/, 1, ToColorRef(color));
             var oldPen = SelectObject(hdc, pen);
             // Outer 2px in the focus/unfocus color, inner 1px in black.
-            // LineTo excludes its endpoint, so (0,0)→(w,0) covers columns 0..w-1 exactly.
+            // LineTo excludes its endpoint, so (0,0)->(w,0) covers columns 0..w-1 exactly.
             for (var i = 0; i < 2; i++)
             {
                MoveToEx(hdc, 0, i, IntPtr.Zero);
@@ -584,7 +584,7 @@ namespace Lens
          uint dwFlags);
 
       /// <summary>Applies per-pixel difference blend to crosshair lines directly in the
-      ///    DIBSection. Result = |penColor − dst| per channel, so the line always contrasts with
+      ///    DIBSection. Result = |penColor - dst| per channel, so the line always contrasts with
       ///    content.</summary>
       private void ApplyDifferenceCrosshair(int w, int h)
       {
@@ -703,7 +703,7 @@ namespace Lens
          var winSize = new Size(w, h);
          var srcPos = Point.Empty;
          // AlphaFormat=1 (AC_SRC_ALPHA): use per-pixel alpha from the DIBSection.
-         // finalBits contains pre-multiplied BGRA — content pixels have alpha=255,
+         // finalBits contains pre-multiplied BGRA -- content pixels have alpha=255,
          // shadow pixels have alpha<255, transparent margin pixels have alpha=0.
          var blend = new BLENDFUNCTION
             {
@@ -728,9 +728,10 @@ namespace Lens
          }
       }
 
-      /// <summary>Composites shadow + content into <c>finalBits</c> for <c>UpdateLayeredWindow</c>
-      ///    . Content pixels are stamped alpha=255 (fully opaque). Shadow pixels carry their
-      ///    Gaussian-blurred alpha. Regions outside both are transparent (alpha=0).</summary>
+      /// <summary>Composites shadow plus content into <c>finalBits</c> for
+      ///    <c>UpdateLayeredWindow</c> . Content pixels are stamped alpha=255 (fully opaque).
+      ///    Shadow pixels carry their Gaussian-blurred alpha. Regions outside both are transparent
+      ///    (alpha=0).</summary>
       private void CompositeFinalFrame(int cw, int ch, int tw, int th)
       {
          if ((this.finalBits == IntPtr.Zero) || (this.layeredBits == IntPtr.Zero))
@@ -747,7 +748,7 @@ namespace Lens
             Marshal.WriteInt32(this.finalBits, i * 4, 0);
          }
 
-         // Write shadow. Pixel is pre-multiplied BGRA: black with alpha=a → (a<<24)|0.
+         // Write shadow. Pixel is pre-multiplied BGRA: black with alpha=a -> (a<<24)|0.
          var alpha = this.shadowAlpha!;
          for (var i = 0; i < totalPixels; i++)
          {
@@ -759,7 +760,7 @@ namespace Lens
          }
 
          // Copy content pixels at (ShadowMarginL, ShadowMarginT), forcing alpha=255.
-         // Content is fully opaque — GDI writes alpha=0, so we override it here.
+         // Content is fully opaque -- GDI writes alpha=0, so we override it here.
          var contentStride = cw * 4;
          var finalStride = tw * 4;
          for (var y = 0; y < ch; y++)
@@ -792,7 +793,7 @@ namespace Lens
             this.scrBmp = new Bitmap(captureW, captureH);
             this.scrGrp = Graphics.FromImage(this.scrBmp);
 
-            // Build a 16×16 checkerboard tile — the standard "no content" indicator.
+            // Build a 16x16 checkerboard tile -- the standard "no content" indicator.
             this.checkerTile = new Bitmap(16, 16);
             using (var tg = Graphics.FromImage(this.checkerTile))
             using (var light = new SolidBrush(Color.FromArgb(200, 200, 200)))
@@ -1000,7 +1001,7 @@ namespace Lens
                DeleteObject(this.layeredBitmap);
             }
 
-            // UpdateLayeredWindow requires a 32-bit DIB section — a DDB is not reliable.
+            // UpdateLayeredWindow requires a 32-bit DIB section -- a DDB is not reliable.
             var bmi = new BITMAPINFO
                {
                   bmiHeader = new BITMAPINFOHEADER
@@ -1125,7 +1126,7 @@ namespace Lens
 
                if (this.isSyntheticMove)
                {
-                  // Always clear — we cannot stay in this state indefinitely.
+                  // Always clear -- we cannot stay in this state indefinitely.
                   this.isSyntheticMove = false;
                   if ((ptX == this.lastCursorPos.X) && (ptY == this.lastCursorPos.Y))
                      // Coordinates match our SetCursorPos target: this is the synthetic.
@@ -1172,7 +1173,7 @@ namespace Lens
                var mouseData = Marshal.ReadInt32(lParam, 8);
                var wheelDelta = (short)(mouseData >> 16);
                if ((GetAsyncKeyState((int)Keys.S) & 0x8000) != 0)
-                  // Wheel up = more precise (lower speed %) — mirrors wheel up = zoom in.
+                  // Wheel up = more precise (lower speed %) -- mirrors wheel up = zoom in.
                {
                   this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
                }
@@ -1225,7 +1226,7 @@ namespace Lens
 
             if (!portrait)
             {
-               // ── L-R mode (landscape) ───────────────────────────────────────────────────
+               // -- L-R mode (landscape) ---------------------------------------------------
                // Two independent thresholds on opposite edges give a large dead zone in the
                // center so neither flip fires until the panel genuinely clips an edge.
                var gapX = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
@@ -1253,7 +1254,7 @@ namespace Lens
             }
             else
             {
-               // ── U-D mode (portrait) ────────────────────────────────────────────────────
+               // -- U-D mode (portrait) ----------------------------------------------------
                // Lens is centered horizontally on the cursor; Info hangs off left or right.
                // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
                // cursor can move near the left/right boundary without clipping the panel.
@@ -1337,7 +1338,7 @@ namespace Lens
                };
 
             this.CopyScreen(cursorPos);
-            // Sample the pixel at the cursor — scrBmp is centered on cursorPos so the
+            // Sample the pixel at the cursor -- scrBmp is centered on cursorPos so the
             // center pixel maps exactly to the crosshair origin (the spec's sampled pixel).
             var sampledColor = this.scrBmp!.GetPixel(this.scrBmp.Width / 2, this.scrBmp.Height / 2);
             g.DrawImage(this.scrBmp, this.scrCaptureOrigin.X, this.scrCaptureOrigin.Y);

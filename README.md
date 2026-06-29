@@ -1,4 +1,4 @@
-# Lens
+# Strange Lens
 
 ![Magnification](Docs/lens-magnification-anim.webp)
 

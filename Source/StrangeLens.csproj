@@ -8,8 +8,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
-    <RootNamespace>Lens</RootNamespace>
-    <AssemblyName>Lens</AssemblyName>
+    <RootNamespace>StrangeLens</RootNamespace>
+    <AssemblyName>StrangeLens</AssemblyName>
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <SupportedOSPlatformVersion>6.1</SupportedOSPlatformVersion>
@@ -18,7 +18,7 @@
     <Deterministic>true</Deterministic>
     <Version>0.1.0</Version>
     <Company>Strange</Company>
-    <Product>Lens</Product>
+    <Product>Strange Lens</Product>
     <Description>Pixel magnifier and color picker</Description>
     <Copyright>© 2026 Michael Ryan</Copyright>
   </PropertyGroup>

@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="FontInfo.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens;
+namespace StrangeLens;
 
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -13,7 +13,7 @@ using System.Drawing;
 
 /// <summary>Immutable, pre-calculated pixel metrics for a <see cref="Font"/>. Every metric
 ///    is only meaningful in pixels, so the font must be created with
-///    <see cref="GraphicsUnit.Pixel"/>. Owns the wrapped <see cref="Font"/> exclusively —
+///    <see cref="GraphicsUnit.Pixel"/>. Owns the wrapped <see cref="Font"/> exclusively --
 ///    disposing a <see cref="FontInfo"/> disposes its font.</summary>
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
@@ -66,7 +66,7 @@ internal sealed class FontInfo : IDisposable
 
    /// <summary>A one-off pixel nudge for this exact font and size, applied when positioning
    ///    text by baseline (Y), to correct optical misalignment that <see cref="PixelAscent"/>
-   ///    alone doesn't account for. Determined empirically per (font, size) — 0 unless tuned.</summary>
+   ///    alone doesn't account for. Determined empirically per (font, size) -- 0 unless tuned.</summary>
    public int BaselineAdjustment { get; }
 
    public float Descent { get; }
@@ -80,7 +80,7 @@ internal sealed class FontInfo : IDisposable
    /// <summary>When centering this font within a taller-than-needed area by splitting the
    ///    leftover height into top/bottom padding one pixel at a time, this says which side gets
    ///    the first (and, on an odd split, the extra) pixel. Determined empirically per (font,
-   ///    size) — true (top-first) unless tuned.</summary>
+   ///    size) -- true (top-first) unless tuned.</summary>
    public bool OverageFavorsTop { get; } = true;
 
    public int PixelAscent { get; }
