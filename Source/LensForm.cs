@@ -530,22 +530,32 @@ namespace StrangeLens
          var lens = Lens.Instance;
          int cx = w / 2, cy = h / 2, mag = lens.Magnification;
          var stride = w * 4;
+
+         // Horizontal center line — owns row cy for all x.
          for (var x = 0; x < w; x++)
          {
             this.ApplyDiffPixel((cy * stride) + (x * 4));
          }
 
+         // Vertical center line — skip y=cy (owned by horizontal).
          for (var y = 0; y < h; y++)
          {
+            if (y == cy)
+            {
+               continue;
+            }
+
             this.ApplyDiffPixel((y * stride) + (cx * 4));
          }
 
-         for (var x = cx; x <= cx + mag; x++)
+         // Bottom of sampled-pixel box — skip corners owned by other segments.
+         for (var x = cx + 1; x < cx + mag; x++)
          {
             this.ApplyDiffPixel(((cy + mag) * stride) + (x * 4));
          }
 
-         for (var y = cy; y <= cy + mag; y++)
+         // Right side of box — skip y=cy (owned by horizontal); y=cy+mag closes the corner.
+         for (var y = cy + 1; y <= cy + mag; y++)
          {
             this.ApplyDiffPixel((y * stride) + ((cx + mag) * 4));
          }
@@ -554,12 +564,19 @@ namespace StrangeLens
       private void ApplyDifferenceGrid(int w, int h)
       {
          if (this.layeredBits == IntPtr.Zero)
+         {
             return;
+         }
 
          this.EnsureGridBitmap(w, h);
          if (this.gridBmp == null)
+         {
             return;
+         }
 
+         var lens = Lens.Instance;
+         int cx = w / 2, cy = h / 2, mag = lens.Magnification;
+         var opacity = (byte)((lens.GridOpacity * 255) / 100);
          var contentStride = w * 4;
          var bmpData = this.gridBmp.LockBits(
             new Rectangle(0, 0, w, h),
@@ -572,8 +589,18 @@ namespace StrangeLens
             {
                var gridPixel = Marshal.ReadInt32(bmpData.Scan0, (y * bmpData.Stride) + (x * 4));
                if ((byte)(gridPixel >> 24) == 0)
+               {
                   continue;
-               this.ApplyDiffPixel((y * contentStride) + (x * 4), (byte)(Lens.Instance.GridOpacity * 255 / 100));
+               }
+
+               // Skip pixels that the crosshair will overwrite; they must read the original background.
+               if ((y == cy) || (x == cx) || ((y == cy + mag) && (x >= cx) && (x <= cx + mag))
+                   || ((x == cx + mag) && (y >= cy) && (y <= cy + mag)))
+               {
+                  continue;
+               }
+
+               this.ApplyDiffPixel((y * contentStride) + (x * 4), opacity);
             }
          }
          finally
@@ -589,7 +616,7 @@ namespace StrangeLens
          var gr = (byte)((pixel >> 8) & 0xFF);
          var r = (byte)((pixel >> 16) & 0xFF);
          // BT.601 luma (integer, >>8 scale): white on dark content, black on light.
-         var luma = (77 * r + 150 * gr + 29 * b) >> 8;
+         var luma = ((77 * r) + (150 * gr) + (29 * b)) >> 8;
          var pen = luma < 128 ? 255 : 0;
          int rb, rg, rr;
          if (opacity == 0xFF)
@@ -599,9 +626,9 @@ namespace StrangeLens
          else
          {
             var inv = 255 - opacity;
-            rb = (opacity * pen + inv * b) >> 8;
-            rg = (opacity * pen + inv * gr) >> 8;
-            rr = (opacity * pen + inv * r) >> 8;
+            rb = ((opacity * pen) + (inv * b)) >> 8;
+            rg = ((opacity * pen) + (inv * gr)) >> 8;
+            rr = ((opacity * pen) + (inv * r)) >> 8;
          }
 
          var result = unchecked((int)((uint)rb | ((uint)rg << 8) | ((uint)rr << 16) | 0xFF000000u));
@@ -1273,11 +1300,12 @@ namespace StrangeLens
             // All overlay drawing is in device space.
             g.ResetTransform();
             g.ResetClip();
-            DrawBorder(g, w, h, this.Focused);
 
             g.Flush();
             this.ApplyDifferenceGrid(w, h);
             this.ApplyDifferenceCrosshair(w, h);
+
+            DrawBorder(g, w, h, this.Focused);
 
             g.Flush();
             this.CompositeFinalFrame(w, h, totalW, totalH);
