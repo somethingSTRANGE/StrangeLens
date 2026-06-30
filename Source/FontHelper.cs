@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="FontHelper.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.Drawing;
@@ -41,10 +41,10 @@ namespace Lens
 
       /// <summary>PrivateFontCollection requires this memory to stay valid for as long as any Font
       ///    created from it is in use. Both the collection and this allocation are intentionally
-      ///    never freed — they live for the process's lifetime, and the OS reclaims them on exit.</summary>
+      ///    never freed -- they live for the process's lifetime, and the OS reclaims them on exit.</summary>
       private static void AddEmbeddedFont(PrivateFontCollection collection, string fileName)
       {
-         var resourceName = $"Lens.Resources.Fonts.{fileName}";
+         var resourceName = $"StrangeLens.Resources.Fonts.{fileName}";
          using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)
                             ?? throw new FileNotFoundException(
                                $"Embedded font resource not found: {resourceName}");

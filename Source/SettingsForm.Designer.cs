@@ -1,4 +1,4 @@
-namespace Lens
+﻿namespace StrangeLens
 {
    partial class SettingsForm
    {
@@ -24,7 +24,6 @@ namespace Lens
          this.colorGrid = new System.Windows.Forms.ColorDialog();
          this.SuspendLayout();
 
-         this.notifyIcon.Text = "Lens";
          this.notifyIcon.Visible = true;
          this.notifyIcon.MouseClick       += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseClick);
          this.notifyIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseClick);
@@ -41,7 +40,7 @@ namespace Lens
          this.MaximizeBox     = false;
          this.MinimizeBox     = false;
          this.Name            = "SettingsForm";
-         this.Text            = "Lens Settings";
+         this.Text            = "Strange Lens Settings";
          this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.SettingsForm_FormClosing);
          this.ResumeLayout(false);
       }

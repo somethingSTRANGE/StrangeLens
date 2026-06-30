@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="AboutForm.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.Diagnostics;
@@ -39,7 +39,7 @@ namespace Lens
       private const int IconGap = 16;
 
       /// <summary>NoPadding keeps the measured (and rendered) bounds identical to the hover/click
-      ///    hit-test area — eliminates the dead zone LinkLabel has between its hit-test rect and
+      ///    hit-test area -- eliminates the dead zone LinkLabel has between its hit-test rect and
       ///    the padded bounds it needs to avoid clipping the last glyph.</summary>
       private const TextFormatFlags LinkTextFlags =
          TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
@@ -160,7 +160,7 @@ namespace Lens
       {
          const int WmNcActivate = 0x0086;
 
-         // Re-apply dark title bar on every focus change — WM_NCACTIVATE fires when Windows
+         // Re-apply dark title bar on every focus change -- WM_NCACTIVATE fires when Windows
          // redraws the non-client area, and something (SetColorMode/WinForms internals) can
          // reset the DWM attribute before we see the message.
          if ((m.Msg == WmNcActivate) && Lens.IsOsDarkMode())
@@ -229,7 +229,7 @@ namespace Lens
                (this.iconResourcesIssues, "Report Issues", "https://github.com/somethingSTRANGE/Lens/issues"),
             ];
 
-         // ── Icon ──────────────────────────────────────────────────────────────
+         // -- Icon -------------------------------------------------------------------------------
          this.Controls.Add(
             new PictureBox
                {
@@ -240,17 +240,17 @@ namespace Lens
                   BackColor = this.palette.Background,
                });
 
-         // ── Header ────────────────────────────────────────────────────────────
+         // -- Header -----------------------------------------------------------------------------
          this.AddSpace(PadY);
          this.AddControl(
             this.SvgImage(this.imageLogo, this.palette.TextStrong, this.palette.AccentSubtle, 0.5f));
 
-         // ── Version & metadata ────────────────────────────────────────────────
+         // -- Version & metadata -----------------------------------------------------------------
          this.AddSpace();
          this.AddControl(this.LabelBuildVersion($"Version {buildVersion}"));
          this.AddControl(this.LabelBuildDate($"{buildDate}"));
 
-         // ── Product Links ─────────────────────────────────────────────────────
+         // -- Product Links ----------------------------------------------------------------------
          this.AddSpace(PadY + PadY);
          this.AddControl(this.LabelHeader("Resources"));
          foreach (var link in resourceLinks)
@@ -258,7 +258,7 @@ namespace Lens
             this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
          }
 
-         // ── Donation Links ────────────────────────────────────────────────────
+         // -- Donation Links ---------------------------------------------------------------------
          this.AddSpace(PadY);
          this.AddControl(this.LabelHeader("Give support and donate"));
          foreach (var link in donationLinks)
@@ -266,20 +266,20 @@ namespace Lens
             this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
          }
 
-         // ── Copyright ─────────────────────────────────────────────────────────
+         // -- Copyright --------------------------------------------------------------------------
          this.AddSpace(PadY + PadY);
          this.AddControl(this.Separator());
          this.AddSpace(PadY);
          this.AddControl(this.LabelCopyright($"{copyright} — MIT License"));
 
-         // ── Attribution ───────────────────────────────────────────────────────
+         // -- Attribution ------------------------------------------------------------------------
          this.AddSpace();
          foreach (var attribution in attributions)
          {
             this.AddControl(this.LabelAttribution(attribution));
          }
 
-         // ── Actions ───────────────────────────────────────────────────────────
+         // -- Actions ----------------------------------------------------------------------------
          this.AddSpace(PadY * 2);
          this.AddControl(this.ButtonsPanel(versionCopy));
 

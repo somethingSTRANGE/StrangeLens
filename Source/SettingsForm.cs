@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="SettingsForm.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.ComponentModel;
@@ -98,25 +98,28 @@ namespace Lens
          this.clickTimer = new Timer();
          this.clickTimer.Tick += this.ClickTimer_Elapsed;
 
+         this.notifyIcon.Text = Application.ProductName;
+
          this.textFont = FontHelper.CreateRegularFontInfo();
 
          this.BuildLayout();
 
          var menuItemOpen = new ToolStripMenuItem
             {
-               Text = "Show",
+               Text = "Toggle Lens",
+               ShortcutKeyDisplayString = "Ctrl+Alt+Shift+Z",
+               ShowShortcutKeys = true,
             };
+         var menuItemSep1 = new ToolStripSeparator();
          var menuItemSettings = new ToolStripMenuItem
             {
                Text = "&Settings...",
-               ShortcutKeys = Keys.Control | Keys.Shift | Keys.S,
-               ShowShortcutKeys = true,
             };
          var menuItemAbout = new ToolStripMenuItem
             {
                Text = "&About...",
             };
-         var menuItemSeparator = new ToolStripSeparator();
+         var menuItemSep2 = new ToolStripSeparator();
          var menuItemExit = new ToolStripMenuItem
             {
                Text = "E&xit",
@@ -129,9 +132,10 @@ namespace Lens
 
          this.contextMenu.Items.AddRange(
             menuItemOpen,
+            menuItemSep1,
             menuItemSettings,
             menuItemAbout,
-            menuItemSeparator,
+            menuItemSep2,
             menuItemExit);
 
          this.notifyIcon.Icon = this.Icon;
@@ -140,6 +144,18 @@ namespace Lens
          // WinForms creates the Win32 handle lazily on first Show(). Force it now so
          // OnHandleCreated fires immediately and RegisterHotKey works from the start.
          this.CreateHandle();
+
+         // Pre-warm child control handles on the first message pump tick. The public
+         // CreateControl() skips hidden controls (checks parent Visible chain), so the
+         // only way to force creation is a real Show()/Hide() cycle. Opacity=0 keeps it
+         // invisible. This prevents the ~950ms UI freeze on first manual Settings open.
+         this.BeginInvoke(() =>
+         {
+            this.Opacity = 0;
+            this.Show();
+            this.Hide();
+            this.Opacity = 1;
+         });
       }
 
       protected override CreateParams CreateParams
@@ -148,7 +164,7 @@ namespace Lens
          {
             var cp = base.CreateParams;
             cp.ExStyle |=
-               0x02000000; // WS_EX_COMPOSITED — buffers the whole window before presenting, prevents white flash
+               0x02000000; // WS_EX_COMPOSITED -- buffers the whole window before presenting, prevents white flash
             return cp;
          }
       }
@@ -177,7 +193,7 @@ namespace Lens
       {
          base.OnHandleCreated(e);
 
-         // Force dark title bar (focused + unfocused) — SetColorMode alone doesn't set the DWM attribute per-window.
+         // Force dark title bar (focused + unfocused) -- SetColorMode alone doesn't set the DWM attribute per-window.
          if (IsDarkMode())
          {
             var dark = 1;
@@ -195,7 +211,7 @@ namespace Lens
          const int WmHotkey = 0x0312;
          const int WmNcActivate = 0x0086;
 
-         // Re-apply dark title bar on every focus change — WM_NCACTIVATE fires when Windows
+         // Re-apply dark title bar on every focus change -- WM_NCACTIVATE fires when Windows
          // redraws the non-client area, and something (SetColorMode/WinForms internals) can
          // reset the DWM attribute before we see the message.
          if ((m.Msg == WmNcActivate) && IsDarkMode())
@@ -290,7 +306,7 @@ namespace Lens
          return y;
       }
 
-      /// <summary>Builds the entire Settings window layout — sections, controls, and data
+      /// <summary>Builds the entire Settings window layout -- sections, controls, and data
       ///    bindings.</summary>
       private void BuildLayout()
       {
@@ -712,8 +728,30 @@ namespace Lens
 
       private void OpenSettings()
       {
-         Console.WriteLine("Open Settings");
-         this.Show();
+         if (!this.Visible)
+         {
+            // Opacity fade via SetLayeredWindowAttributes covers the entire composited
+            // window (DWM chrome included), unlike AnimateWindow which only affects the
+            // client area under DWM and causes chrome-before-content flash.
+            this.Opacity = 0;
+            this.Show();
+            var fadeTimer = new System.Windows.Forms.Timer { Interval = 15 };
+            fadeTimer.Tick += (_, _) =>
+            {
+               this.Opacity = Math.Min(1.0, this.Opacity + 0.1);
+               if (this.Opacity >= 1.0)
+               {
+                  fadeTimer.Stop();
+                  fadeTimer.Dispose();
+               }
+            };
+            fadeTimer.Start();
+         }
+         else
+         {
+            this.Show();
+         }
+
          this.Activate();
       }
 

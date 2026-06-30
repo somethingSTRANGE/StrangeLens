@@ -1,4 +1,4 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="LensSetting.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
@@ -7,7 +7,7 @@
 
 using Timer = System.Timers.Timer;
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.Collections.Generic;
@@ -59,7 +59,7 @@ namespace Lens
    {
       public static readonly int[] PrecisionSpeedOptions = [10, 25, 45, 70];
 
-      // ── Default palettes ──────────────────────────────────────────────────────────────
+      // -- Default palettes --------------------------------------------------------------
 
       private static readonly ThemePalette defaultDark = new()
          {
@@ -70,7 +70,7 @@ namespace Lens
             AccentSubtle = ColorTranslator.FromHtml("#55749b"), // Nord10, -10% L
             AccentNormal = ColorTranslator.FromHtml("#5E81AC"), // Nord10
             AccentStrong = ColorTranslator.FromHtml("#5791d8"), // Nord10, +15% L +30% S
-            TextSubtle = ColorTranslator.FromHtml("#CAD2E2"), // Nord4 - #D8DEE9
+            TextSubtle = ColorTranslator.FromHtml("#CAD2E2"), // Nord4 -- #D8DEE9
             TextNormal = ColorTranslator.FromHtml("#E5E9F0"), // Nord5
             TextStrong = ColorTranslator.FromHtml("#FFFFFF"), // Nord5, +10% L
          };
@@ -98,7 +98,7 @@ namespace Lens
                },
          };
       // The InfoShow* properties below (InfoShowHex, InfoShowRgb, ...) are persisted
-      // info-panel display toggles — there's no Settings UI to control them yet.
+      // info-panel display toggles -- there's no Settings UI to control them yet.
 
       private static Lens? instance;
 
@@ -331,7 +331,7 @@ namespace Lens
             }
 
             var product = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyProductAttribute>()
-               ?.Product ?? "Lens";
+               ?.Product ?? "StrangeLens";
             return Path.Combine(
                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                company,
@@ -450,7 +450,7 @@ namespace Lens
 
       /// <summary>JSON properties absent from an older settings.json deserialize to default
       ///    (Color) (Color.Empty, A=0). Every persisted color is opaque (A=255), so A==0 reliably
-      ///    means "never set" — backfill those from the built-in palette for that theme name.</summary>
+      ///    means "never set" -- backfill those from the built-in palette for that theme name.</summary>
       private static ThemePalette FillMissing(ThemePalette loaded, ThemePalette fallback)
       {
          return new ThemePalette

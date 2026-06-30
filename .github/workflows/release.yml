@@ -36,7 +36,7 @@ jobs:
       - name: Publish
         shell: pwsh
         run: |
-          dotnet publish Source/Lens.csproj `
+          dotnet publish Source/StrangeLens.csproj `
             --configuration Release `
             --runtime win-x64 `
             --self-contained `
@@ -50,6 +50,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Lens ${{ steps.version.outputs.version }}"
-          files: publish/Lens.exe
+          name: "Strange Lens ${{ steps.version.outputs.version }}"
+          files: publish/StrangeLens.exe
           generate_release_notes: true

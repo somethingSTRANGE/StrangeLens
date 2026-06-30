@@ -1,17 +1,17 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="InfoControl.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.Diagnostics.CodeAnalysis;
    using System.Drawing;
 
-   /// <summary>Pure data class — computes and caches the formatted strings displayed in the
+   /// <summary>Pure data class -- computes and caches the formatted strings displayed in the
    ///    info panel. Rendering is handled by <see cref="InfoForm"/>.</summary>
    internal class InfoControl
    {
@@ -19,7 +19,7 @@ namespace Lens
 
       private string copiedLabel = string.Empty;
 
-      // Last-computed values below — updated each frame by UpdateInfo.
+      // Last-computed values below -- updated each frame by UpdateInfo.
 
       public Color Color12Bit { get; private set; }
 

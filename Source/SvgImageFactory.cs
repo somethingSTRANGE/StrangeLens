@@ -1,11 +1,11 @@
-// -------------------------------------------------------------------------------------
+﻿// -------------------------------------------------------------------------------------
 // <copyright file="SvgImageFactory.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
 // -------------------------------------------------------------------------------------
 
-namespace Lens
+namespace StrangeLens
 {
    using System;
    using System.Collections.Generic;
@@ -16,7 +16,7 @@ namespace Lens
    /// <summary>Builds and caches <see cref="SvgImage"/> instances from embedded SVG path data.
    ///    One static method per icon; square icons accept a single <c>size</c> parameter,
    ///    non-square icons accept <c>width, height</c>. The factory owns all
-   ///    <see cref="System.Drawing.Drawing2D.GraphicsPath"/> objects — callers must not dispose
+   ///    <see cref="System.Drawing.Drawing2D.GraphicsPath"/> objects -- callers must not dispose
    ///    the returned <see cref="SvgImage"/> instances.</summary>
    internal static partial class SvgImageFactory
    {
@@ -174,7 +174,7 @@ namespace Lens
          if (phiDeg != 0)
          {
             // Rotated ellipse: apply transform around centre, draw, restore.
-            var state = path.GetLastPoint(); // dummy — handled via Graphics transform at render time
+            var state = path.GetLastPoint(); // dummy -- handled via Graphics transform at render time
             Debug.WriteLine($"[SvgImageFactory] rotated arc (phi={phiDeg}) not fully supported");
          }
 
@@ -188,7 +188,7 @@ namespace Lens
       }
 
       /// <summary>Builds a <see cref="GraphicsPath"/> scaled so the viewBox fills exactly
-      ///    <paramref name="width"/> × <paramref name="height"/> pixels (exact fill, no
+      ///    <paramref name="width"/> x <paramref name="height"/> pixels (exact fill, no
       ///    letterboxing). Absolute coords use separate scaleX/scaleY; relative coords use the
       ///    same per-axis scale.</summary>
       private static GraphicsPath BuildPath(string viewBox, string[] segments, int width, int height)
@@ -208,8 +208,8 @@ namespace Lens
             viewH = float.Parse(vb[3], CultureInfo.InvariantCulture);
          }
 
-         var sx = width / viewW; // scaleX: SVG unit → screen pixel on X axis
-         var sy = height / viewH; // scaleY: SVG unit → screen pixel on Y axis
+         var sx = width / viewW; // scaleX: SVG unit -> screen pixel on X axis
+         var sy = height / viewH; // scaleY: SVG unit -> screen pixel on Y axis
          var ox = minX * sx; // scaled origin offset X
          var oy = minY * sy; // scaled origin offset Y
 
@@ -226,7 +226,7 @@ namespace Lens
          {
             var raw = ParseArgs(argStr);
             var ri = 0;
-            var repeatAs = cmd; // M→L and m→l after first pair; all others stay constant
+            var repeatAs = cmd; // M->L and m->l after first pair; all others stay constant
 
             do
             {
@@ -617,7 +617,7 @@ namespace Lens
       }
 
       /// <summary>Parses SVG number lists, handling whitespace/comma separators AND the compact
-      ///    format where a leading '-' or '+' acts as a separator (e.g. "0-1.5" → 0, -1.5). Also
+      ///    format where a leading '-' or '+' acts as a separator (e.g. "0-1.5" -> 0, -1.5). Also
       ///    handles scientific notation (e.g. "3.6e-4").</summary>
       private static float[] ParseArgs(string argStr)
       {
@@ -686,7 +686,7 @@ namespace Lens
             }
             else
             {
-               i++; // unrecognized character — skip to avoid infinite loop
+               i++; // unrecognized character -- skip to avoid infinite loop
             }
          }
 
