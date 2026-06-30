@@ -23,7 +23,17 @@ namespace StrangeLens
 
       private const int FormW = 335;
 
+      private const int Hotkey12Bit = 6;
+
+      private const int HotkeyHex = 2;
+
+      private const int HotkeyHsl = 4;
+
+      private const int HotkeyRgb = 3;
+
       private const int HotkeyToggle = 1;
+
+      private const int HotkeyWeb = 5;
 
       private const int LabelIndent = 12;
 
@@ -91,9 +101,7 @@ namespace StrangeLens
 
       public SettingsForm()
       {
-         Debug.WriteLine("SETTINGS FORM CONSTRUCTOR - before InitializeComponent");
          this.InitializeComponent();
-         Debug.WriteLine("SETTINGS FORM CONSTRUCTOR - after InitializeComponent");
 
          this.clickTimer = new Timer();
          this.clickTimer.Tick += this.ClickTimer_Elapsed;
@@ -187,6 +195,11 @@ namespace StrangeLens
       {
          base.OnFormClosed(e);
          UnregisterHotKey(this.Handle, HotkeyToggle);
+         UnregisterHotKey(this.Handle, HotkeyHex);
+         UnregisterHotKey(this.Handle, HotkeyRgb);
+         UnregisterHotKey(this.Handle, HotkeyHsl);
+         UnregisterHotKey(this.Handle, HotkeyWeb);
+         UnregisterHotKey(this.Handle, Hotkey12Bit);
       }
 
       protected override void OnHandleCreated(EventArgs e)
@@ -200,10 +213,20 @@ namespace StrangeLens
             DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
          }
 
-         if (!RegisterHotKey(this.Handle, HotkeyToggle, ModCtrlAltShift, (uint)Keys.Z))
+         void TryRegister(int id, Keys key)
          {
-            Debug.WriteLine($"RegisterHotKey failed: error {Marshal.GetLastWin32Error()}");
+            if (!RegisterHotKey(this.Handle, id, ModCtrlAltShift, (uint)key))
+            {
+               AppLog.Error($"RegisterHotKey Ctrl+Alt+Shift+{key} failed: error {Marshal.GetLastWin32Error()}");
+            }
          }
+
+         TryRegister(HotkeyToggle, Keys.Z);
+         TryRegister(HotkeyHex, Keys.X);
+         TryRegister(HotkeyRgb, Keys.R);
+         TryRegister(HotkeyHsl, Keys.S);
+         TryRegister(HotkeyWeb, Keys.W);
+         TryRegister(Hotkey12Bit, Keys.D1);
       }
 
       protected override void WndProc(ref Message m)
@@ -220,9 +243,17 @@ namespace StrangeLens
             DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
          }
 
-         if ((m.Msg == WmHotkey) && (m.WParam.ToInt32() == HotkeyToggle))
+         if (m.Msg == WmHotkey)
          {
-            this.ToggleLens();
+            switch (m.WParam.ToInt32())
+            {
+               case HotkeyToggle: this.ToggleLens(); break;
+               case HotkeyHex:    this.activeLens?.CopyToClipboardColorHex(); break;
+               case HotkeyRgb:    this.activeLens?.CopyToClipboardColorRGB(); break;
+               case HotkeyHsl:    this.activeLens?.CopyToClipboardColorHSL(); break;
+               case HotkeyWeb:    this.activeLens?.CopyToClipboardColorWeb(); break;
+               case Hotkey12Bit:  this.activeLens?.CopyToClipboardColor12Bit(); break;
+            }
          }
 
          base.WndProc(ref m);
@@ -251,7 +282,7 @@ namespace StrangeLens
          return Lens.IsOsDarkMode();
       }
 
-      [DllImport("user32.dll")]
+      [DllImport("user32.dll", SetLastError = true)]
       private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
       [DllImport("user32.dll")]
@@ -495,7 +526,6 @@ namespace StrangeLens
 
       private void CloseToSystemTray(CancelEventArgs e)
       {
-         Console.WriteLine("Closing to System Tray");
          e.Cancel = true;
          this.Hide();
       }
@@ -790,10 +820,6 @@ namespace StrangeLens
          if (!this.shouldExitApplication)
          {
             this.CloseToSystemTray(e);
-         }
-         else
-         {
-            Console.WriteLine("Exiting Application");
          }
       }
 

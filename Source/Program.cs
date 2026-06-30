@@ -26,9 +26,9 @@ namespace StrangeLens
          Debug.WriteLine("-----");
          Debug.WriteLine($"Lens started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n");
 
-         Application.ThreadException += (_, e) => Debug.WriteLine("ThreadException: " + e.Exception);
+         Application.ThreadException += (_, e) => AppLog.Error("ThreadException: " + e.Exception);
          AppDomain.CurrentDomain.UnhandledException +=
-            (_, e) => Debug.WriteLine("UnhandledException: " + e.ExceptionObject);
+            (_, e) => AppLog.Error("UnhandledException: " + e.ExceptionObject);
 
          using (new Mutex(true, "strange-lens-app-mutex", out var createdNew))
          {
@@ -58,7 +58,7 @@ namespace StrangeLens
                {
                   if (process.Id != current.Id)
                   {
-                     Console.WriteLine("Already open");
+                     Debug.WriteLine("Already open");
                      break;
                   }
                }
