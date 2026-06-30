@@ -57,6 +57,8 @@ namespace StrangeLens
 
    public class Lens : INotifyPropertyChanged
    {
+      public static readonly int[] GridOpacityOptions = [20, 40, 60, 80, 100];
+
       public static readonly int[] PrecisionSpeedOptions = [10, 25, 45, 70];
 
       // -- Default palettes --------------------------------------------------------------
@@ -104,7 +106,7 @@ namespace StrangeLens
 
       private readonly Timer saveTimer;
 
-      private Color gridColor = Color.Black;
+      private int gridOpacity = 20;
 
       private byte gridSize = 4;
 
@@ -172,10 +174,13 @@ namespace StrangeLens
          }
       }
 
-      public Color GridColor
+      public int GridOpacity
       {
-         get => this.gridColor;
-         set => this.SetPersisted(ref this.gridColor, value);
+         get => this.gridOpacity;
+         set =>
+            this.SetPersisted(
+               ref this.gridOpacity,
+               Array.IndexOf(GridOpacityOptions, value) >= 0 ? value : this.gridOpacity);
       }
 
       public byte GridSize
@@ -372,7 +377,7 @@ namespace StrangeLens
                   Magnification = this.magnification,
                   GridSize = this.gridSize,
                   GridStyle = this.gridStyle,
-                  GridColor = $"#{this.gridColor.R:X2}{this.gridColor.G:X2}{this.gridColor.B:X2}",
+                  GridOpacity = this.gridOpacity,
                   Scaling = (int)this.scalingMode,
                   PrecisionSpeed = this.precisionSpeed,
                   InfoShowHex = this.infoShowHex,
@@ -421,7 +426,7 @@ namespace StrangeLens
             this.Magnification = data.Magnification;
             this.GridSize = data.GridSize;
             this.GridStyle = data.GridStyle;
-            this.GridColor = TryParseColor(data.GridColor, Color.Black);
+            this.GridOpacity = data.GridOpacity;
             this.Scaling = (ScalingMode)data.Scaling;
             this.PrecisionSpeed = data.PrecisionSpeed;
             this.infoShowHex = data.InfoShowHex;
@@ -466,18 +471,6 @@ namespace StrangeLens
                TextNormal = loaded.TextNormal.A == 0 ? fallback.TextNormal : loaded.TextNormal,
                TextStrong = loaded.TextStrong.A == 0 ? fallback.TextStrong : loaded.TextStrong,
             };
-      }
-
-      private static Color TryParseColor(string html, Color fallback)
-      {
-         try
-         {
-            return ColorTranslator.FromHtml(html);
-         }
-         catch
-         {
-            return fallback;
-         }
       }
 
       private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
@@ -545,7 +538,7 @@ namespace StrangeLens
 
       private class SettingsData
       {
-         public string GridColor { get; init; } = "#000000";
+         public int GridOpacity { get; init; } = 20;
 
          public byte GridSize { get; init; } = 4;
 

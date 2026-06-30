@@ -21,16 +21,11 @@
 
          this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
          this.contextMenu = new System.Windows.Forms.ContextMenuStrip();
-         this.colorGrid = new System.Windows.Forms.ColorDialog();
          this.SuspendLayout();
 
          this.notifyIcon.Visible = true;
          this.notifyIcon.MouseClick       += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseClick);
          this.notifyIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseClick);
-
-         this.colorGrid.AnyColor      = true;
-         this.colorGrid.FullOpen      = true;
-         this.colorGrid.SolidColorOnly = true;
 
          this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
          this.AutoScaleMode   = System.Windows.Forms.AutoScaleMode.Font;
@@ -47,6 +42,5 @@
 
       private System.Windows.Forms.NotifyIcon      notifyIcon;
       private System.Windows.Forms.ContextMenuStrip contextMenu;
-      private System.Windows.Forms.ColorDialog     colorGrid;
    }
 }
