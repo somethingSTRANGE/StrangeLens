@@ -37,20 +37,6 @@ namespace StrangeLens
 
       private const Keys CtrlAltShift = Keys.Control | Keys.Alt | Keys.Shift;
 
-      private const int Hotkey12BitA = 5;
-
-      private const int Hotkey12BitB = 6;
-
-      private const int HotkeyHex = 1;
-
-      private const int HotkeyHsl = 3;
-
-      private const int HotkeyRgb = 2;
-
-      private const int HotkeyWeb = 4;
-
-      private const uint ModCtrlAltShift = 0x0007; // MOD_CONTROL | MOD_ALT | MOD_SHIFT
-
       // Drop shadow parameters.
       private const int ShadowBlur = 16; // window margin on each side (px)
 
@@ -203,12 +189,6 @@ namespace StrangeLens
       protected override void OnClosing(CancelEventArgs e)
       {
          this.timer.Stop();
-         UnregisterHotKey(this.Handle, HotkeyHex);
-         UnregisterHotKey(this.Handle, HotkeyRgb);
-         UnregisterHotKey(this.Handle, HotkeyHsl);
-         UnregisterHotKey(this.Handle, HotkeyWeb);
-         UnregisterHotKey(this.Handle, Hotkey12BitA);
-         UnregisterHotKey(this.Handle, Hotkey12BitB);
          if (this.mouseHook != IntPtr.Zero)
          {
             UnhookWindowsHookEx(this.mouseHook);
@@ -237,18 +217,7 @@ namespace StrangeLens
             case Keys.Up: this.ChangePosition(0, -1); break;
             case Keys.Down: this.ChangePosition(0, 1); break;
             case Keys.Left: this.ChangePosition(-1, 0); break;
-            default:
-               Debug.WriteLine(
-                  "1: " + e + ", " + e.Handled + ", " + e.GetType() + ", " + e.KeyCode + ", " + e.KeyData
-                  + ", " + e.KeyValue);
-               break;
          }
-      }
-
-      protected override void OnKeyPress(KeyPressEventArgs e)
-      {
-         base.OnKeyPress(e);
-         Debug.WriteLine("2: " + e + ", " + e.Handled + ", " + e.GetType() + ", " + e.KeyChar + ", " + e);
       }
 
       protected override void OnKeyUp(KeyEventArgs e)
@@ -278,13 +247,6 @@ namespace StrangeLens
             case Keys.OemCloseBrackets: this.ChangeWidth(Lens.Defaults.SizeIncrement); break;
             case Keys.OemSemicolon: this.ChangeHeight(-Lens.Defaults.SizeIncrement); break;
             case Keys.OemQuotes: this.ChangeHeight(Lens.Defaults.SizeIncrement); break;
-            default:
-               Debug.WriteLine(
-                  (ModifierKeys == Keys.Control ? "CTRL-" : string.Empty)
-                  + (ModifierKeys == Keys.Alt ? "ALT-" : string.Empty)
-                  + (ModifierKeys == Keys.Shift ? "SHIFT-" : string.Empty) + e.KeyCode + " (" + ModifierKeys
-                  + ")");
-               break;
          }
       }
 
@@ -358,42 +320,6 @@ namespace StrangeLens
             Debug.WriteLine($"SetWindowsHookEx failed: error {Marshal.GetLastWin32Error()}");
          }
 
-         // Global copy hotkeys -- active only while the lens is open.
-         RegisterHotKey(this.Handle, HotkeyHex, ModCtrlAltShift, (uint)Keys.X);
-         RegisterHotKey(this.Handle, HotkeyRgb, ModCtrlAltShift, (uint)Keys.R);
-         RegisterHotKey(this.Handle, HotkeyHsl, ModCtrlAltShift, (uint)Keys.H);
-         RegisterHotKey(this.Handle, HotkeyWeb, ModCtrlAltShift, (uint)Keys.W);
-         RegisterHotKey(this.Handle, Hotkey12BitA, ModCtrlAltShift, (uint)Keys.A);
-         RegisterHotKey(this.Handle, Hotkey12BitB, ModCtrlAltShift, (uint)Keys.B);
-      }
-
-      protected override void WndProc(ref Message m)
-      {
-         const int WmHotkey = 0x0312;
-         if (m.Msg == WmHotkey)
-         {
-            switch (m.WParam.ToInt32())
-            {
-               case HotkeyHex:
-                  this.CopyToClipboardColorHex();
-                  return;
-               case HotkeyRgb:
-                  this.CopyToClipboardColorRGB();
-                  return;
-               case HotkeyHsl:
-                  this.CopyToClipboardColorHSL();
-                  return;
-               case HotkeyWeb:
-                  this.CopyToClipboardColorWeb();
-                  return;
-               case Hotkey12BitA:
-               case Hotkey12BitB:
-                  this.CopyToClipboardColor12Bit();
-                  return;
-            }
-         }
-
-         base.WndProc(ref m);
       }
 
       [DllImport("user32.dll")]
@@ -534,9 +460,6 @@ namespace StrangeLens
       [DllImport("Gdi32.dll")]
       private static extern bool MoveToEx(IntPtr hdc, int x, int y, IntPtr lpPoint);
 
-      [DllImport("user32.dll")]
-      private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-
       [DllImport("Gdi32.dll", ExactSpelling = true)]
       private static extern IntPtr SelectObject(IntPtr hdc, IntPtr h);
 
@@ -567,9 +490,6 @@ namespace StrangeLens
 
       [DllImport("user32.dll")]
       private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-      [DllImport("user32.dll")]
-      private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
       [DllImport("User32.dll", ExactSpelling = true, SetLastError = true)]
       private static extern bool UpdateLayeredWindow(
@@ -828,31 +748,31 @@ namespace StrangeLens
          }
       }
 
-      private void CopyToClipboardColor12Bit()
+      internal void CopyToClipboardColor12Bit()
       {
          Clipboard.SetText(this.infoControl.ValueColor12Bit);
          this.infoControl.NotifyCopied("12-Bit");
       }
 
-      private void CopyToClipboardColorHex()
+      internal void CopyToClipboardColorHex()
       {
          Clipboard.SetText(this.infoControl.ValueColorHex);
          this.infoControl.NotifyCopied("HEX");
       }
 
-      private void CopyToClipboardColorHSL()
+      internal void CopyToClipboardColorHSL()
       {
          Clipboard.SetText($"hsl({this.infoControl.ValueColorHSL})");
          this.infoControl.NotifyCopied("HSL");
       }
 
-      private void CopyToClipboardColorRGB()
+      internal void CopyToClipboardColorRGB()
       {
          Clipboard.SetText($"rgb({this.infoControl.ValueColorRGB})");
          this.infoControl.NotifyCopied("RGB");
       }
 
-      private void CopyToClipboardColorWeb()
+      internal void CopyToClipboardColorWeb()
       {
          Clipboard.SetText(this.infoControl.ValueColorWeb);
          this.infoControl.NotifyCopied("Web");
