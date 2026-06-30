@@ -14,7 +14,7 @@ namespace StrangeLens
 
    internal static class AppLog
    {
-      private static readonly string LogPath = Path.Combine(
+      private static readonly string logPath = Path.Combine(
          Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
          "Strange",
          Application.ProductName ?? "Strange Lens",
@@ -25,12 +25,14 @@ namespace StrangeLens
          Debug.WriteLine($"ERROR: {message}");
          try
          {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
             File.AppendAllText(
-               LogPath,
+               logPath,
                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  ERROR  {message}{Environment.NewLine}");
          }
-         catch { }
+         catch
+         {
+         }
       }
    }
 }
