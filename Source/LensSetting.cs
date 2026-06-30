@@ -72,7 +72,7 @@ namespace StrangeLens
             AccentSubtle = ColorTranslator.FromHtml("#55749b"), // Nord10, -10% L
             AccentNormal = ColorTranslator.FromHtml("#5E81AC"), // Nord10
             AccentStrong = ColorTranslator.FromHtml("#5791d8"), // Nord10, +15% L +30% S
-            TextSubtle = ColorTranslator.FromHtml("#CAD2E2"), // Nord4 -- #D8DEE9
+            TextSubtle = ColorTranslator.FromHtml("#A4B2CB"), // Nord5, -20% L
             TextNormal = ColorTranslator.FromHtml("#E5E9F0"), // Nord5
             TextStrong = ColorTranslator.FromHtml("#FFFFFF"), // Nord5, +10% L
          };
