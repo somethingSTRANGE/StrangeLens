@@ -861,10 +861,20 @@ namespace StrangeLens
             return;
          }
 
-         var lensForm = new LensForm
-            {
-               TargetLocation = Cursor.Position,
-            };
+         LensForm lensForm;
+         try
+         {
+            lensForm = new LensForm
+               {
+                  TargetLocation = Cursor.Position,
+               };
+         }
+         catch (Exception ex)
+         {
+            AppLog.Error("ToggleLens: failed to create LensForm: " + ex.Message);
+            return;
+         }
+
          lensForm.FormClosed += (_, _) => this.activeLens = null;
          this.activeLens = lensForm;
          lensForm.Show();

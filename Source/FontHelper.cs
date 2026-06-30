@@ -72,6 +72,11 @@ namespace StrangeLens
 
       private static PrivateFontCollection LoadFonts()
       {
+         // A Graphics object must exist before PrivateFontCollection.Families is queried;
+         // without one, GDI+ may not flush AddMemoryFont additions to its font registry,
+         // making Families return an incomplete set.
+         using var warmup = Graphics.FromHwnd(IntPtr.Zero);
+
          var collection = new PrivateFontCollection();
          AddEmbeddedFont(collection, "Inter-Regular.ttf");
          AddEmbeddedFont(collection, "Inter-Bold.ttf");
