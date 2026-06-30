@@ -111,14 +111,6 @@ namespace StrangeLens.Tests
       }
 
       [Test]
-      public void Load_InvalidGridColor_FallsBackToBlack()
-      {
-         this.WriteJson(@"{""GridColor"": ""not-a-color""}");
-         Lens.Instance.Load(this.tempPath);
-         Assert.That(Lens.Instance.GridColor.ToArgb(), Is.EqualTo(Color.Black.ToArgb()));
-      }
-
-      [Test]
       public void Load_InvalidScalingMode_KeepsDefault()
       {
          this.WriteJson(@"{""Scaling"": 99}");
@@ -186,7 +178,7 @@ namespace StrangeLens.Tests
          this.WriteJson(
             @"{
             ""Width"": 200, ""Height"": 220, ""Magnification"": 6,
-            ""GridSize"": 8, ""GridStyle"": 1, ""GridColor"": ""#FF0000"",
+            ""GridSize"": 8, ""GridStyle"": 1, ""GridOpacity"": 40,
             ""Scaling"": 2, ""PrecisionSpeed"": 25, ""InfoShowHex"": false
          }");
          Lens.Instance.Load(this.tempPath);
@@ -198,7 +190,7 @@ namespace StrangeLens.Tests
                Assert.That(Lens.Instance.Magnification, Is.EqualTo(6));
                Assert.That(Lens.Instance.GridSize, Is.EqualTo(8));
                Assert.That(Lens.Instance.GridStyle, Is.EqualTo(1));
-               Assert.That(Lens.Instance.GridColor.ToArgb(), Is.EqualTo(Color.FromArgb(255, 0, 0).ToArgb()));
+               Assert.That(Lens.Instance.GridOpacity, Is.EqualTo(40));
                Assert.That(Lens.Instance.Scaling, Is.EqualTo(ScalingMode.HighQualityBilinear));
                Assert.That(Lens.Instance.PrecisionSpeed, Is.EqualTo(25));
                Assert.That(Lens.Instance.InfoShowHex, Is.False);

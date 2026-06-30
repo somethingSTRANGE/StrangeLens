@@ -9,7 +9,6 @@ namespace StrangeLens
 {
    using System;
    using System.ComponentModel;
-   using System.Diagnostics;
    using System.Drawing;
    using System.Drawing.Drawing2D;
    using System.Runtime.InteropServices;
@@ -57,8 +56,6 @@ namespace StrangeLens
 
       private LensForm? activeLens;
 
-      private Button buttonLensGridColor = null!;
-
       private CheckBox checkBoxInfoShow12Bit = null!;
 
       private CheckBox checkBoxInfoShowHex = null!;
@@ -82,6 +79,8 @@ namespace StrangeLens
       private Color colorCtrlBorder;
 
       private Color colorFocusBorder;
+
+      private ComboBox comboBoxLensGridOpacity = null!;
 
       private ComboBox comboBoxLensGridSize = null!;
 
@@ -158,12 +157,12 @@ namespace StrangeLens
          // only way to force creation is a real Show()/Hide() cycle. Opacity=0 keeps it
          // invisible. This prevents the ~950ms UI freeze on first manual Settings open.
          this.BeginInvoke(() =>
-         {
-            this.Opacity = 0;
-            this.Show();
-            this.Hide();
-            this.Opacity = 1;
-         });
+            {
+               this.Opacity = 0;
+               this.Show();
+               this.Hide();
+               this.Opacity = 1;
+            });
       }
 
       protected override CreateParams CreateParams
@@ -217,7 +216,8 @@ namespace StrangeLens
          {
             if (!RegisterHotKey(this.Handle, id, ModCtrlAltShift, (uint)key))
             {
-               AppLog.Error($"RegisterHotKey Ctrl+Alt+Shift+{key} failed: error {Marshal.GetLastWin32Error()}");
+               AppLog.Error(
+                  $"RegisterHotKey Ctrl+Alt+Shift+{key} failed: error {Marshal.GetLastWin32Error()}");
             }
          }
 
@@ -248,11 +248,11 @@ namespace StrangeLens
             switch (m.WParam.ToInt32())
             {
                case HotkeyToggle: this.ToggleLens(); break;
-               case HotkeyHex:    this.activeLens?.CopyToClipboardColorHex(); break;
-               case HotkeyRgb:    this.activeLens?.CopyToClipboardColorRGB(); break;
-               case HotkeyHsl:    this.activeLens?.CopyToClipboardColorHSL(); break;
-               case HotkeyWeb:    this.activeLens?.CopyToClipboardColorWeb(); break;
-               case Hotkey12Bit:  this.activeLens?.CopyToClipboardColor12Bit(); break;
+               case HotkeyHex: this.activeLens?.CopyToClipboardColorHex(); break;
+               case HotkeyRgb: this.activeLens?.CopyToClipboardColorRGB(); break;
+               case HotkeyHsl: this.activeLens?.CopyToClipboardColorHSL(); break;
+               case HotkeyWeb: this.activeLens?.CopyToClipboardColorWeb(); break;
+               case Hotkey12Bit: this.activeLens?.CopyToClipboardColor12Bit(); break;
             }
          }
 
@@ -447,23 +447,21 @@ namespace StrangeLens
          this.comboBoxLensGridSize.SelectedIndexChanged += this.OnGridSizeChanged;
          y = this.LayoutRow("Size", this.comboBoxLensGridSize, LabelIndent, y, colorTextNormal);
 
-         this.buttonLensGridColor = new Button
+         this.comboBoxLensGridOpacity = new ComboBox
             {
-               Width = 24,
-               Height = 24,
-               FlatStyle = FlatStyle.Flat,
-               BackColor = ds.GridColor,
-               UseVisualStyleBackColor = false,
+               DropDownStyle = ComboBoxStyle.DropDownList,
+               Width = ComboBoxW,
             };
-         this.buttonLensGridColor.FlatAppearance.BorderColor = colorBorder;
-         this.buttonLensGridColor.DataBindings.Add(
-            nameof(this.buttonLensGridColor.BackColor),
-            ds,
-            nameof(ds.GridColor),
-            false,
-            DataSourceUpdateMode.OnPropertyChanged);
-         this.buttonLensGridColor.Click += this.button1_Click;
-         y = this.LayoutRow("Color", this.buttonLensGridColor, LabelIndent, y, colorTextNormal);
+         foreach (var pct in Lens.GridOpacityOptions)
+         {
+            this.comboBoxLensGridOpacity.Items.Add($"{pct}%");
+         }
+
+         this.comboBoxLensGridOpacity.SelectedIndex = Array.IndexOf(Lens.GridOpacityOptions, ds.GridOpacity);
+         this.comboBoxLensGridOpacity.SelectedIndexChanged += this.OnGridOpacityChanged;
+         y = this.LayoutRow("Opacity", this.comboBoxLensGridOpacity, LabelIndent, y, colorTextNormal);
+
+         this.UpdateGridDependentControls();
 
          y += SubGroupGap;
          y = this.SubHeader("Magnification", y, colorTextSubtle);
@@ -492,15 +490,6 @@ namespace StrangeLens
          y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, colorTextNormal);
 
          return y;
-      }
-
-      private void button1_Click(object? sender, EventArgs e)
-      {
-         this.colorGrid.Color = this.buttonLensGridColor.BackColor;
-         if (this.colorGrid.ShowDialog() == DialogResult.OK)
-         {
-            this.buttonLensGridColor.BackColor = this.colorGrid.Color;
-         }
       }
 
       private void ClickTimer_Elapsed(object? sender, EventArgs e)
@@ -656,6 +645,14 @@ namespace StrangeLens
          this.clickTimer.Start();
       }
 
+      private void OnGridOpacityChanged(object? sender, EventArgs e)
+      {
+         if (this.comboBoxLensGridOpacity.SelectedIndex >= 0)
+         {
+            Lens.Instance.GridOpacity = Lens.GridOpacityOptions[this.comboBoxLensGridOpacity.SelectedIndex];
+         }
+      }
+
       private void OnGridSizeChanged(object? sender, EventArgs e)
       {
          if (this.comboBoxLensGridSize.SelectedIndex >= 0)
@@ -670,6 +667,7 @@ namespace StrangeLens
          if (this.comboBoxLensGridStyle.SelectedIndex >= 0)
          {
             Lens.Instance.GridStyle = this.comboBoxLensGridStyle.SelectedIndex;
+            this.UpdateGridDependentControls();
          }
       }
 
@@ -724,9 +722,18 @@ namespace StrangeLens
                break;
             case nameof(ds.GridStyle):
                this.comboBoxLensGridStyle.SelectedIndex = ds.GridStyle;
+               this.UpdateGridDependentControls();
                break;
             case nameof(ds.GridSize):
                this.comboBoxLensGridSize.SelectedIndex = ds.GridSize - Lens.Defaults.MinGridSize;
+               break;
+            case nameof(ds.GridOpacity):
+               var oidx = Array.IndexOf(Lens.GridOpacityOptions, ds.GridOpacity);
+               if (oidx >= 0)
+               {
+                  this.comboBoxLensGridOpacity.SelectedIndex = oidx;
+               }
+
                break;
             case nameof(ds.Magnification):
                this.comboBoxLensMagnification.SelectedIndex =
@@ -765,16 +772,19 @@ namespace StrangeLens
             // client area under DWM and causes chrome-before-content flash.
             this.Opacity = 0;
             this.Show();
-            var fadeTimer = new System.Windows.Forms.Timer { Interval = 15 };
-            fadeTimer.Tick += (_, _) =>
-            {
-               this.Opacity = Math.Min(1.0, this.Opacity + 0.1);
-               if (this.Opacity >= 1.0)
+            var fadeTimer = new Timer
                {
-                  fadeTimer.Stop();
-                  fadeTimer.Dispose();
-               }
-            };
+                  Interval = 15,
+               };
+            fadeTimer.Tick += (_, _) =>
+               {
+                  this.Opacity = Math.Min(1.0, this.Opacity + 0.1);
+                  if (this.Opacity >= 1.0)
+                  {
+                     fadeTimer.Stop();
+                     fadeTimer.Dispose();
+                  }
+               };
             fadeTimer.Start();
          }
          else
@@ -859,6 +869,13 @@ namespace StrangeLens
          this.activeLens = lensForm;
          lensForm.Show();
          lensForm.Activate();
+      }
+
+      private void UpdateGridDependentControls()
+      {
+         var hasGrid = this.comboBoxLensGridStyle.SelectedIndex != (int)GridStyleOptions.None;
+         this.comboBoxLensGridSize.Enabled = hasGrid;
+         this.comboBoxLensGridOpacity.Enabled = hasGrid;
       }
    }
 }

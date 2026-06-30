@@ -19,10 +19,6 @@ namespace StrangeLens
    public partial class LensForm : Form
    {
       // -- Field groups -------------------------------------------------------------------
-      // Crosshair blend mode (CrosshairMode/CrosshairBlend): Standard draws a GDI+ line at
-      //   full opacity over content + grid; Difference blends |penColor − dst| per pixel
-      //   directly into the DIBSection so the line always contrasts with content. Switching
-      //   modes is a code change only -- no Settings UI yet.
       // Screen capture fields (scrBmp/scrGrp/scrCaptureOrigin/checkerTile/checkerBrush): the
       //   small localized region captured around the cursor each frame.
       // Precision movement state (_lastCursorPos/_isSyntheticMove/_accumX/_accumY): used by
@@ -32,8 +28,6 @@ namespace StrangeLens
       // Grid cache (gridBmp/cachedGrid*): rebuilt only when a relevant setting changes.
       // Shadow alpha cache (shadowAlpha/cachedShadowContent*): the Gaussian-blurred shadow
       //   alpha map, rebuilt only when the content size changes.
-
-      private const CrosshairBlend CrosshairMode = CrosshairBlend.Difference;
 
       private const Keys CtrlAltShift = Keys.Control | Keys.Alt | Keys.Shift;
 
@@ -67,8 +61,6 @@ namespace StrangeLens
       private double accumX;
 
       private double accumY;
-
-      private Color cachedGridColor;
 
       private GridStyleOptions cachedGridStyle;
 
@@ -162,13 +154,6 @@ namespace StrangeLens
 
       private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
-      private enum CrosshairBlend
-      {
-         Standard,
-
-         Difference,
-      }
-
       [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
       public Point TargetLocation
       {
@@ -184,6 +169,36 @@ namespace StrangeLens
             cp.ExStyle |= 0x00080000; // WS_EX_LAYERED
             return cp;
          }
+      }
+
+      internal void CopyToClipboardColor12Bit()
+      {
+         Clipboard.SetText(this.infoControl.ValueColor12Bit);
+         this.infoControl.NotifyCopied("12-Bit");
+      }
+
+      internal void CopyToClipboardColorHex()
+      {
+         Clipboard.SetText(this.infoControl.ValueColorHex);
+         this.infoControl.NotifyCopied("HEX");
+      }
+
+      internal void CopyToClipboardColorHSL()
+      {
+         Clipboard.SetText($"hsl({this.infoControl.ValueColorHSL})");
+         this.infoControl.NotifyCopied("HSL");
+      }
+
+      internal void CopyToClipboardColorRGB()
+      {
+         Clipboard.SetText($"rgb({this.infoControl.ValueColorRGB})");
+         this.infoControl.NotifyCopied("RGB");
+      }
+
+      internal void CopyToClipboardColorWeb()
+      {
+         Clipboard.SetText(this.infoControl.ValueColorWeb);
+         this.infoControl.NotifyCopied("Web");
       }
 
       protected override void OnClosing(CancelEventArgs e)
@@ -319,7 +334,6 @@ namespace StrangeLens
          {
             Debug.WriteLine($"SetWindowsHookEx failed: error {Marshal.GetLastWin32Error()}");
          }
-
       }
 
       [DllImport("user32.dll")]
@@ -505,7 +519,7 @@ namespace StrangeLens
 
       /// <summary>Applies per-pixel difference blend to crosshair lines directly in the
       ///    DIBSection. Result = |penColor - dst| per channel, so the line always contrasts with
-      ///    content.</summary>
+      ///    the content.</summary>
       private void ApplyDifferenceCrosshair(int w, int h)
       {
          if (this.layeredBits == IntPtr.Zero)
@@ -516,37 +530,108 @@ namespace StrangeLens
          var lens = Lens.Instance;
          int cx = w / 2, cy = h / 2, mag = lens.Magnification;
          var stride = w * 4;
-         var c = lens.GridColor;
+
+         // Horizontal center line — owns row cy for all x.
          for (var x = 0; x < w; x++)
          {
-            this.ApplyDiffPixel((cy * stride) + (x * 4), c);
+            this.ApplyDiffPixel((cy * stride) + (x * 4));
          }
 
+         // Vertical center line — skip y=cy (owned by horizontal).
          for (var y = 0; y < h; y++)
          {
-            this.ApplyDiffPixel((y * stride) + (cx * 4), c);
+            if (y == cy)
+            {
+               continue;
+            }
+
+            this.ApplyDiffPixel((y * stride) + (cx * 4));
          }
 
-         for (var x = cx; x <= cx + mag; x++)
+         // Bottom of sampled-pixel box — skip corners owned by other segments.
+         for (var x = cx + 1; x < cx + mag; x++)
          {
-            this.ApplyDiffPixel(((cy + mag) * stride) + (x * 4), c);
+            this.ApplyDiffPixel(((cy + mag) * stride) + (x * 4));
          }
 
-         for (var y = cy; y <= cy + mag; y++)
+         // Right side of box — skip y=cy (owned by horizontal); y=cy+mag closes the corner.
+         for (var y = cy + 1; y <= cy + mag; y++)
          {
-            this.ApplyDiffPixel((y * stride) + ((cx + mag) * 4), c);
+            this.ApplyDiffPixel((y * stride) + ((cx + mag) * 4));
          }
       }
 
-      private void ApplyDiffPixel(int offset, Color c)
+      private void ApplyDifferenceGrid(int w, int h)
+      {
+         if (this.layeredBits == IntPtr.Zero)
+         {
+            return;
+         }
+
+         this.EnsureGridBitmap(w, h);
+         if (this.gridBmp == null)
+         {
+            return;
+         }
+
+         var lens = Lens.Instance;
+         int cx = w / 2, cy = h / 2, mag = lens.Magnification;
+         var opacity = (byte)((lens.GridOpacity * 255) / 100);
+         var contentStride = w * 4;
+         var bmpData = this.gridBmp.LockBits(
+            new Rectangle(0, 0, w, h),
+            ImageLockMode.ReadOnly,
+            PixelFormat.Format32bppArgb);
+         try
+         {
+            for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+            {
+               var gridPixel = Marshal.ReadInt32(bmpData.Scan0, (y * bmpData.Stride) + (x * 4));
+               if ((byte)(gridPixel >> 24) == 0)
+               {
+                  continue;
+               }
+
+               // Skip pixels that the crosshair will overwrite; they must read the original background.
+               if ((y == cy) || (x == cx) || ((y == cy + mag) && (x >= cx) && (x <= cx + mag))
+                   || ((x == cx + mag) && (y >= cy) && (y <= cy + mag)))
+               {
+                  continue;
+               }
+
+               this.ApplyDiffPixel((y * contentStride) + (x * 4), opacity);
+            }
+         }
+         finally
+         {
+            this.gridBmp.UnlockBits(bmpData);
+         }
+      }
+
+      private void ApplyDiffPixel(int offset, byte opacity = 0xFF)
       {
          var pixel = Marshal.ReadInt32(this.layeredBits, offset);
          var b = (byte)(pixel & 0xFF);
          var gr = (byte)((pixel >> 8) & 0xFF);
          var r = (byte)((pixel >> 16) & 0xFF);
-         var result = unchecked((int)((uint)Math.Abs(c.B - b) | ((uint)Math.Abs(c.G - gr) << 8)
-                                                              | ((uint)Math.Abs(c.R - r) << 16)
-                                                              | 0xFF000000u));
+         // BT.601 luma (integer, >>8 scale): white on dark content, black on light.
+         var luma = ((77 * r) + (150 * gr) + (29 * b)) >> 8;
+         var pen = luma < 128 ? 255 : 0;
+         int rb, rg, rr;
+         if (opacity == 0xFF)
+         {
+            rb = rg = rr = pen;
+         }
+         else
+         {
+            var inv = 255 - opacity;
+            rb = ((opacity * pen) + (inv * b)) >> 8;
+            rg = ((opacity * pen) + (inv * gr)) >> 8;
+            rr = ((opacity * pen) + (inv * r)) >> 8;
+         }
+
+         var result = unchecked((int)((uint)rb | ((uint)rg << 8) | ((uint)rr << 16) | 0xFF000000u));
          Marshal.WriteInt32(this.layeredBits, offset, result);
       }
 
@@ -748,36 +833,6 @@ namespace StrangeLens
          }
       }
 
-      internal void CopyToClipboardColor12Bit()
-      {
-         Clipboard.SetText(this.infoControl.ValueColor12Bit);
-         this.infoControl.NotifyCopied("12-Bit");
-      }
-
-      internal void CopyToClipboardColorHex()
-      {
-         Clipboard.SetText(this.infoControl.ValueColorHex);
-         this.infoControl.NotifyCopied("HEX");
-      }
-
-      internal void CopyToClipboardColorHSL()
-      {
-         Clipboard.SetText($"hsl({this.infoControl.ValueColorHSL})");
-         this.infoControl.NotifyCopied("HSL");
-      }
-
-      internal void CopyToClipboardColorRGB()
-      {
-         Clipboard.SetText($"rgb({this.infoControl.ValueColorRGB})");
-         this.infoControl.NotifyCopied("RGB");
-      }
-
-      internal void CopyToClipboardColorWeb()
-      {
-         Clipboard.SetText(this.infoControl.ValueColorWeb);
-         this.infoControl.NotifyCopied("Web");
-      }
-
       private void DecreaseGridSize()
       {
          Lens.Instance.GridSize--;
@@ -786,26 +841,6 @@ namespace StrangeLens
       private void DecreaseSize()
       {
          Debug.WriteLine("DECREASE FORM SIZE KEEPING ASPECT RATIO");
-      }
-
-      private void DrawGrid(Graphics g, int w, int h)
-      {
-         this.EnsureGridBitmap(w, h);
-         if (this.gridBmp != null)
-         {
-            g.DrawImage(this.gridBmp, 0, 0);
-         }
-      }
-
-      private void DrawOrigin(Graphics g, int w, int h)
-      {
-         var lens = Lens.Instance;
-         int cx = w / 2, cy = h / 2, mag = lens.Magnification;
-         using var pen = new Pen(lens.GridColor, 1f);
-         g.DrawLine(pen, 0, cy, w, cy);
-         g.DrawLine(pen, cx, 0, cx, h);
-         g.DrawLine(pen, cx, cy + mag, cx + mag, cy + mag);
-         g.DrawLine(pen, cx + mag, cy, cx + mag, cy + mag);
       }
 
       private void EnsureFinalResources(int w, int h)
@@ -849,7 +884,7 @@ namespace StrangeLens
          var gridStyle = (GridStyleOptions)lens.GridStyle;
          if ((this.gridBmp != null) && (this.cachedGridW == w) && (this.cachedGridH == h)
              && (this.cachedGridMag == lens.Magnification) && (this.cachedGridSize == lens.GridSize)
-             && (this.cachedGridStyle == gridStyle) && (this.cachedGridColor == lens.GridColor))
+             && (this.cachedGridStyle == gridStyle))
          {
             return;
          }
@@ -861,7 +896,6 @@ namespace StrangeLens
          this.cachedGridMag = lens.Magnification;
          this.cachedGridSize = lens.GridSize;
          this.cachedGridStyle = gridStyle;
-         this.cachedGridColor = lens.GridColor;
 
          if (gridStyle == GridStyleOptions.None)
          {
@@ -873,7 +907,7 @@ namespace StrangeLens
          g.Clear(Color.Transparent);
          int cx = w / 2, cy = h / 2;
          var step = lens.GridSize * lens.Magnification;
-         using var pen = new Pen(Color.FromArgb(0x33, lens.GridColor), 1f)
+         using var pen = new Pen(Color.White, 1f)
             {
                DashStyle = gridStyle.DashStyle(),
             };
@@ -1266,19 +1300,12 @@ namespace StrangeLens
             // All overlay drawing is in device space.
             g.ResetTransform();
             g.ResetClip();
-            this.DrawGrid(g, w, h);
-            if (CrosshairMode == CrosshairBlend.Standard)
-            {
-               this.DrawOrigin(g, w, h);
-            }
+
+            g.Flush();
+            this.ApplyDifferenceGrid(w, h);
+            this.ApplyDifferenceCrosshair(w, h);
 
             DrawBorder(g, w, h, this.Focused);
-
-            if (CrosshairMode == CrosshairBlend.Difference)
-            {
-               g.Flush();
-               this.ApplyDifferenceCrosshair(w, h);
-            }
 
             g.Flush();
             this.CompositeFinalFrame(w, h, totalW, totalH);

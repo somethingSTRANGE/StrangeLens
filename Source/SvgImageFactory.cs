@@ -16,8 +16,8 @@ namespace StrangeLens
    /// <summary>Builds and caches <see cref="SvgImage"/> instances from embedded SVG path data.
    ///    One static method per icon; square icons accept a single <c>size</c> parameter,
    ///    non-square icons accept <c>width, height</c>. The factory owns all
-   ///    <see cref="System.Drawing.Drawing2D.GraphicsPath"/> objects -- callers must not dispose
-   ///    the returned <see cref="SvgImage"/> instances.</summary>
+   ///    <see cref="System.Drawing.Drawing2D.GraphicsPath"/> objects -- callers must not
+   ///    dispose the returned <see cref="SvgImage"/> instances.</summary>
    internal static partial class SvgImageFactory
    {
       private static readonly Dictionary<(int, int), SvgImage> cachedAboutDonateBuyMeACoffee = new();
