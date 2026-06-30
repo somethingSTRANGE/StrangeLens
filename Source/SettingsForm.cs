@@ -98,25 +98,28 @@ namespace StrangeLens
          this.clickTimer = new Timer();
          this.clickTimer.Tick += this.ClickTimer_Elapsed;
 
+         this.notifyIcon.Text = Application.ProductName;
+
          this.textFont = FontHelper.CreateRegularFontInfo();
 
          this.BuildLayout();
 
          var menuItemOpen = new ToolStripMenuItem
             {
-               Text = "Show",
+               Text = "Toggle Lens",
+               ShortcutKeyDisplayString = "Ctrl+Alt+Shift+Z",
+               ShowShortcutKeys = true,
             };
+         var menuItemSep1 = new ToolStripSeparator();
          var menuItemSettings = new ToolStripMenuItem
             {
                Text = "&Settings...",
-               ShortcutKeys = Keys.Control | Keys.Shift | Keys.S,
-               ShowShortcutKeys = true,
             };
          var menuItemAbout = new ToolStripMenuItem
             {
                Text = "&About...",
             };
-         var menuItemSeparator = new ToolStripSeparator();
+         var menuItemSep2 = new ToolStripSeparator();
          var menuItemExit = new ToolStripMenuItem
             {
                Text = "E&xit",
@@ -129,9 +132,10 @@ namespace StrangeLens
 
          this.contextMenu.Items.AddRange(
             menuItemOpen,
+            menuItemSep1,
             menuItemSettings,
             menuItemAbout,
-            menuItemSeparator,
+            menuItemSep2,
             menuItemExit);
 
          this.notifyIcon.Icon = this.Icon;
@@ -140,6 +144,18 @@ namespace StrangeLens
          // WinForms creates the Win32 handle lazily on first Show(). Force it now so
          // OnHandleCreated fires immediately and RegisterHotKey works from the start.
          this.CreateHandle();
+
+         // Pre-warm child control handles on the first message pump tick. The public
+         // CreateControl() skips hidden controls (checks parent Visible chain), so the
+         // only way to force creation is a real Show()/Hide() cycle. Opacity=0 keeps it
+         // invisible. This prevents the ~950ms UI freeze on first manual Settings open.
+         this.BeginInvoke(() =>
+         {
+            this.Opacity = 0;
+            this.Show();
+            this.Hide();
+            this.Opacity = 1;
+         });
       }
 
       protected override CreateParams CreateParams
@@ -712,8 +728,30 @@ namespace StrangeLens
 
       private void OpenSettings()
       {
-         Console.WriteLine("Open Settings");
-         this.Show();
+         if (!this.Visible)
+         {
+            // Opacity fade via SetLayeredWindowAttributes covers the entire composited
+            // window (DWM chrome included), unlike AnimateWindow which only affects the
+            // client area under DWM and causes chrome-before-content flash.
+            this.Opacity = 0;
+            this.Show();
+            var fadeTimer = new System.Windows.Forms.Timer { Interval = 15 };
+            fadeTimer.Tick += (_, _) =>
+            {
+               this.Opacity = Math.Min(1.0, this.Opacity + 0.1);
+               if (this.Opacity >= 1.0)
+               {
+                  fadeTimer.Stop();
+                  fadeTimer.Dispose();
+               }
+            };
+            fadeTimer.Start();
+         }
+         else
+         {
+            this.Show();
+         }
+
          this.Activate();
       }
 
