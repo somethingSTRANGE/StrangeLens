@@ -55,7 +55,7 @@ namespace StrangeLens
       public Color TextSubtle { get; init; }
    }
 
-   public class Lens : INotifyPropertyChanged
+   public partial class Lens : INotifyPropertyChanged
    {
       public static readonly int[] GridOpacityOptions = [20, 40, 60, 80, 100];
 
@@ -106,7 +106,7 @@ namespace StrangeLens
 
       private byte gridSize = 4;
 
-      private int gridStyle = (int)GridStyleOption.Dash;
+      private GridStyleOption gridStyle = GridStyleOption.Dash;
 
       private short height = 160;
 
@@ -185,13 +185,13 @@ namespace StrangeLens
          set => this.SetPersisted(ref this.gridSize, value.Clamp(Defaults.MinGridSize, Defaults.MaxGridSize));
       }
 
-      public int GridStyle
+      public GridStyleOption GridStyle
       {
          get => this.gridStyle;
          set =>
             this.SetPersisted(
                ref this.gridStyle,
-               value.Clamp((int)GridStyleOption.None, (int)GridStyleOption.DashDotDot));
+               Enum.IsDefined(typeof(GridStyleOption), value) ? value : this.gridStyle);
       }
 
       public short Height
@@ -372,7 +372,7 @@ namespace StrangeLens
                   Height = this.height,
                   Magnification = this.magnification,
                   GridSize = this.gridSize,
-                  GridStyle = this.gridStyle,
+                  GridStyle = (int)this.gridStyle,
                   GridOpacity = this.gridOpacity,
                   Scaling = (int)this.scalingMode,
                   PrecisionSpeed = this.precisionSpeed,
@@ -421,7 +421,7 @@ namespace StrangeLens
             this.Height = data.Height;
             this.Magnification = data.Magnification;
             this.GridSize = data.GridSize;
-            this.GridStyle = data.GridStyle;
+            this.GridStyle = (GridStyleOption)data.GridStyle;
             this.GridOpacity = data.GridOpacity;
             this.Scaling = (ScalingModeOption)data.Scaling;
             this.PrecisionSpeed = data.PrecisionSpeed;
@@ -484,91 +484,6 @@ namespace StrangeLens
          field = value;
          Debug.WriteLine($"{propertyName} = {value}");
          this.OnPropertyChanged(propertyName);
-      }
-
-      public static class Defaults
-      {
-         public const byte MaxGridSize = 16;
-
-         public const short MaxHeight = 400;
-
-         public const byte MaxMagnification = 16;
-
-         public const short MaxWidth = 400;
-
-         public const byte MinGridSize = 1;
-
-         public const short MinHeight = 100;
-
-         public const byte MinMagnification = 2;
-
-         public const short MinWidth = 100;
-
-         public const byte SizeIncrement = 20;
-
-         static Defaults()
-         {
-            Debug.Assert(SizeIncrement % 2 == 0);
-            Debug.Assert(MaxHeight % SizeIncrement == 0);
-            Debug.Assert(MinHeight % SizeIncrement == 0);
-            Debug.Assert(MaxWidth % SizeIncrement == 0);
-            Debug.Assert(MinWidth % SizeIncrement == 0);
-         }
-      }
-
-      private sealed class ColorHexConverter : JsonConverter<Color>
-      {
-         public override Color Read(
-            ref Utf8JsonReader reader,
-            Type typeToConvert,
-            JsonSerializerOptions options)
-         {
-            return ColorTranslator.FromHtml(reader.GetString() ?? "#000000");
-         }
-
-         public override void Write(Utf8JsonWriter writer, Color value, JsonSerializerOptions options)
-         {
-            writer.WriteStringValue($"#{value.R:X2}{value.G:X2}{value.B:X2}");
-         }
-      }
-
-      private class SettingsData
-      {
-         public int GridOpacity { get; init; } = 20;
-
-         public byte GridSize { get; init; } = 4;
-
-         public int GridStyle { get; init; } = (int)GridStyleOption.Dash;
-
-         public short Height { get; init; } = 160;
-
-         public bool InfoShow12Bit { get; init; } = true;
-
-         public bool InfoShowHex { get; init; } = true;
-
-         public bool InfoShowHsl { get; init; } = true;
-
-         public bool InfoShowMouse { get; init; } = true;
-
-         public bool InfoShowRgb { get; init; } = true;
-
-         public bool InfoShowSize { get; init; } = true;
-
-         public bool InfoShowWeb { get; init; } = true;
-
-         public bool InfoShowZoom { get; init; } = true;
-
-         public byte Magnification { get; init; } = 4;
-
-         public int PrecisionSpeed { get; init; } = 45;
-
-         public int Scaling { get; init; } = (int)ScalingModeOption.NearestNeighbor;
-
-         public string Theme { get; init; } = "system";
-
-         public Dictionary<string, ThemePalette>? Themes { get; init; }
-
-         public short Width { get; init; } = 150;
       }
    }
 }

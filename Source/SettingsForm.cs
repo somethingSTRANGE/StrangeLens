@@ -435,7 +435,7 @@ namespace StrangeLens
             "Dot",
             "Dash, Dot",
             "Dash, Dot, Dot");
-         this.comboBoxLensGridStyle.SelectedIndex = ds.GridStyle;
+         this.comboBoxLensGridStyle.SelectedIndex = (int)ds.GridStyle;
          this.comboBoxLensGridStyle.SelectedIndexChanged += this.OnGridStyleChanged;
          y = this.LayoutRow("Style", this.comboBoxLensGridStyle, LabelIndent, y, colorTextNormal);
 
@@ -666,7 +666,7 @@ namespace StrangeLens
       {
          if (this.comboBoxLensGridStyle.SelectedIndex >= 0)
          {
-            Lens.Instance.GridStyle = this.comboBoxLensGridStyle.SelectedIndex;
+            Lens.Instance.GridStyle = (GridStyleOption)this.comboBoxLensGridStyle.SelectedIndex;
             this.UpdateGridDependentControls();
          }
       }
@@ -721,7 +721,7 @@ namespace StrangeLens
                   (ds.Height - Lens.Defaults.MinHeight) / Lens.Defaults.SizeIncrement;
                break;
             case nameof(ds.GridStyle):
-               this.comboBoxLensGridStyle.SelectedIndex = ds.GridStyle;
+               this.comboBoxLensGridStyle.SelectedIndex = (int)ds.GridStyle;
                this.UpdateGridDependentControls();
                break;
             case nameof(ds.GridSize):

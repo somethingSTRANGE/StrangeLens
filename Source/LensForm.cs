@@ -881,7 +881,7 @@ namespace StrangeLens
       private void EnsureGridBitmap(int w, int h)
       {
          var lens = Lens.Instance;
-         var gridStyle = (GridStyleOption)lens.GridStyle;
+         var gridStyle = lens.GridStyle;
          if ((this.gridBmp != null) && (this.cachedGridW == w) && (this.cachedGridH == h)
              && (this.cachedGridMag == lens.Magnification) && (this.cachedGridSize == lens.GridSize)
              && (this.cachedGridStyle == gridStyle))
@@ -1281,7 +1281,8 @@ namespace StrangeLens
 
             (g.InterpolationMode, g.PixelOffsetMode) = lens.Scaling switch
                {
-                  ScalingModeOption.NearestNeighbor => (InterpolationMode.NearestNeighbor, PixelOffsetMode.Half),
+                  ScalingModeOption.NearestNeighbor => (InterpolationMode.NearestNeighbor,
+                     PixelOffsetMode.Half),
                   ScalingModeOption.Bilinear => (InterpolationMode.Bilinear, PixelOffsetMode.Default),
                   ScalingModeOption.HighQualityBilinear => (InterpolationMode.HighQualityBilinear,
                      PixelOffsetMode.Default),
