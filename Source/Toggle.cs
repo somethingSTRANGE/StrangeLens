@@ -12,7 +12,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
-public sealed class Toggle : CheckBox
+public sealed partial class Toggle : CheckBox
 {
    private Rectangle figureBounds;
 
@@ -126,20 +126,5 @@ public sealed class Toggle : CheckBox
    private void HandleSizeChange(object? sender, EventArgs e)
    {
       this.BuildPaths();
-   }
-
-   public static class Colors
-   {
-      public static Color Focus { get; set; } = Color.MediumSlateBlue;
-
-      public static Color Thumb { get; set; } = Color.Gainsboro;
-
-      public static Color ThumbHover { get; set; } = Color.White;
-
-      public static Color TrackActive { get; set; } = Color.MediumSlateBlue;
-
-      public static Color TrackBase { get; set; } = Color.Gray;
-
-      public static Color TrackHover { get; set; } = Color.RoyalBlue;
    }
 }
