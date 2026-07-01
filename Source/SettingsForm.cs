@@ -703,7 +703,7 @@ namespace StrangeLens
       {
          if (this.comboBoxLensScalingMode.SelectedIndex >= 0)
          {
-            Lens.Instance.Scaling = (ScalingMode)this.comboBoxLensScalingMode.SelectedIndex;
+            Lens.Instance.Scaling = (ScalingModeOption)this.comboBoxLensScalingMode.SelectedIndex;
          }
       }
 
@@ -883,7 +883,7 @@ namespace StrangeLens
 
       private void UpdateGridDependentControls()
       {
-         var hasGrid = this.comboBoxLensGridStyle.SelectedIndex != (int)GridStyleOptions.None;
+         var hasGrid = this.comboBoxLensGridStyle.SelectedIndex != (int)GridStyleOption.None;
          this.comboBoxLensGridSize.Enabled = hasGrid;
          this.comboBoxLensGridOpacity.Enabled = hasGrid;
       }

@@ -18,18 +18,16 @@ namespace StrangeLens
          return value.CompareTo(min) < 0 ? min : value.CompareTo(max) > 0 ? max : value;
       }
 
-      public static DashStyle DashStyle(this GridStyleOptions gridStyle)
+      public static DashStyle DashStyle(this GridStyleOption gridStyle)
       {
          switch (gridStyle)
          {
-            case GridStyleOptions.Solid: return System.Drawing.Drawing2D.DashStyle.Solid;
-            case GridStyleOptions.Dash: return System.Drawing.Drawing2D.DashStyle.Dash;
-            case GridStyleOptions.Dot: return System.Drawing.Drawing2D.DashStyle.Dot;
-            case GridStyleOptions.DashDot:
-               return System.Drawing.Drawing2D.DashStyle.DashDot;
-            case GridStyleOptions.DashDotDot:
-               return System.Drawing.Drawing2D.DashStyle.DashDotDot;
-            case GridStyleOptions.None:
+            case GridStyleOption.Solid: return System.Drawing.Drawing2D.DashStyle.Solid;
+            case GridStyleOption.Dash: return System.Drawing.Drawing2D.DashStyle.Dash;
+            case GridStyleOption.Dot: return System.Drawing.Drawing2D.DashStyle.Dot;
+            case GridStyleOption.DashDot: return System.Drawing.Drawing2D.DashStyle.DashDot;
+            case GridStyleOption.DashDotDot: return System.Drawing.Drawing2D.DashStyle.DashDotDot;
+            case GridStyleOption.None:
             default:
                throw new ArgumentOutOfRangeException(nameof(gridStyle), gridStyle, null);
          }

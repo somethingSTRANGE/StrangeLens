@@ -62,7 +62,7 @@ namespace StrangeLens
 
       private double accumY;
 
-      private GridStyleOptions cachedGridStyle;
+      private GridStyleOption cachedGridStyle;
 
       private int cachedGridW, cachedGridH, cachedGridMag, cachedGridSize;
 
@@ -881,7 +881,7 @@ namespace StrangeLens
       private void EnsureGridBitmap(int w, int h)
       {
          var lens = Lens.Instance;
-         var gridStyle = (GridStyleOptions)lens.GridStyle;
+         var gridStyle = (GridStyleOption)lens.GridStyle;
          if ((this.gridBmp != null) && (this.cachedGridW == w) && (this.cachedGridH == h)
              && (this.cachedGridMag == lens.Magnification) && (this.cachedGridSize == lens.GridSize)
              && (this.cachedGridStyle == gridStyle))
@@ -897,7 +897,7 @@ namespace StrangeLens
          this.cachedGridSize = lens.GridSize;
          this.cachedGridStyle = gridStyle;
 
-         if (gridStyle == GridStyleOptions.None)
+         if (gridStyle == GridStyleOption.None)
          {
             return;
          }
@@ -1281,12 +1281,12 @@ namespace StrangeLens
 
             (g.InterpolationMode, g.PixelOffsetMode) = lens.Scaling switch
                {
-                  ScalingMode.NearestNeighbor => (InterpolationMode.NearestNeighbor, PixelOffsetMode.Half),
-                  ScalingMode.Bilinear => (InterpolationMode.Bilinear, PixelOffsetMode.Default),
-                  ScalingMode.HighQualityBilinear => (InterpolationMode.HighQualityBilinear,
+                  ScalingModeOption.NearestNeighbor => (InterpolationMode.NearestNeighbor, PixelOffsetMode.Half),
+                  ScalingModeOption.Bilinear => (InterpolationMode.Bilinear, PixelOffsetMode.Default),
+                  ScalingModeOption.HighQualityBilinear => (InterpolationMode.HighQualityBilinear,
                      PixelOffsetMode.Default),
-                  ScalingMode.Bicubic => (InterpolationMode.Bicubic, PixelOffsetMode.Default),
-                  ScalingMode.HighQualityBicubic => (InterpolationMode.HighQualityBicubic,
+                  ScalingModeOption.Bicubic => (InterpolationMode.Bicubic, PixelOffsetMode.Default),
+                  ScalingModeOption.HighQualityBicubic => (InterpolationMode.HighQualityBicubic,
                      PixelOffsetMode.Default),
                   _ => (InterpolationMode.NearestNeighbor, PixelOffsetMode.Half),
                };

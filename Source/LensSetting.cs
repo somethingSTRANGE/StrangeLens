@@ -61,8 +61,6 @@ namespace StrangeLens
 
       public static readonly int[] PrecisionSpeedOptions = [10, 25, 45, 70];
 
-      // -- Default palettes --------------------------------------------------------------
-
       private static readonly ThemePalette defaultDark = new()
          {
             Inset = ColorTranslator.FromHtml("#191C22"), // Nord0, -10% L
@@ -99,8 +97,6 @@ namespace StrangeLens
                   new ColorHexConverter(),
                },
          };
-      // The InfoShow* properties below (InfoShowHex, InfoShowRgb, ...) are persisted
-      // info-panel display toggles -- there's no Settings UI to control them yet.
 
       private static Lens? instance;
 
@@ -110,7 +106,7 @@ namespace StrangeLens
 
       private byte gridSize = 4;
 
-      private int gridStyle = 2;
+      private int gridStyle = (int)GridStyleOption.Dash;
 
       private short height = 160;
 
@@ -134,7 +130,7 @@ namespace StrangeLens
 
       private int precisionSpeed = 45;
 
-      private ScalingMode scalingMode = ScalingMode.NearestNeighbor;
+      private ScalingModeOption scalingMode = ScalingModeOption.NearestNeighbor;
 
       private string theme = "system";
 
@@ -195,7 +191,7 @@ namespace StrangeLens
          set =>
             this.SetPersisted(
                ref this.gridStyle,
-               value.Clamp((int)GridStyleOptions.None, (int)GridStyleOptions.DashDotDot));
+               value.Clamp((int)GridStyleOption.None, (int)GridStyleOption.DashDotDot));
       }
 
       public short Height
@@ -274,13 +270,13 @@ namespace StrangeLens
                Array.IndexOf(PrecisionSpeedOptions, value) >= 0 ? value : this.precisionSpeed);
       }
 
-      public ScalingMode Scaling
+      public ScalingModeOption Scaling
       {
          get => this.scalingMode;
          set =>
             this.SetPersisted(
                ref this.scalingMode,
-               Enum.IsDefined(typeof(ScalingMode), value) ? value : this.scalingMode);
+               Enum.IsDefined(typeof(ScalingModeOption), value) ? value : this.scalingMode);
       }
 
       public string Theme
@@ -427,7 +423,7 @@ namespace StrangeLens
             this.GridSize = data.GridSize;
             this.GridStyle = data.GridStyle;
             this.GridOpacity = data.GridOpacity;
-            this.Scaling = (ScalingMode)data.Scaling;
+            this.Scaling = (ScalingModeOption)data.Scaling;
             this.PrecisionSpeed = data.PrecisionSpeed;
             this.infoShowHex = data.InfoShowHex;
             this.infoShowRgb = data.InfoShowRgb;
@@ -542,7 +538,7 @@ namespace StrangeLens
 
          public byte GridSize { get; init; } = 4;
 
-         public int GridStyle { get; init; } = 2;
+         public int GridStyle { get; init; } = (int)GridStyleOption.Dash;
 
          public short Height { get; init; } = 160;
 
@@ -566,7 +562,7 @@ namespace StrangeLens
 
          public int PrecisionSpeed { get; init; } = 45;
 
-         public int Scaling { get; init; } // ScalingMode.NearestNeighbor
+         public int Scaling { get; init; } = (int)ScalingModeOption.NearestNeighbor;
 
          public string Theme { get; init; } = "system";
 

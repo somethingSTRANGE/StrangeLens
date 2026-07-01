@@ -83,7 +83,7 @@ namespace StrangeLens.Tests
       {
          this.WriteJson(@"{""GridStyle"": 99}");
          Lens.Instance.Load(this.tempPath);
-         Assert.That(Lens.Instance.GridStyle, Is.EqualTo((int)GridStyleOptions.DashDotDot));
+         Assert.That(Lens.Instance.GridStyle, Is.EqualTo((int)GridStyleOption.DashDotDot));
       }
 
       [Test]
@@ -91,7 +91,7 @@ namespace StrangeLens.Tests
       {
          this.WriteJson(@"{""GridStyle"": -1}");
          Lens.Instance.Load(this.tempPath);
-         Assert.That(Lens.Instance.GridStyle, Is.EqualTo((int)GridStyleOptions.None));
+         Assert.That(Lens.Instance.GridStyle, Is.EqualTo((int)GridStyleOption.None));
       }
 
       [Test]
@@ -115,7 +115,7 @@ namespace StrangeLens.Tests
       {
          this.WriteJson(@"{""Scaling"": 99}");
          Lens.Instance.Load(this.tempPath);
-         Assert.That(Lens.Instance.Scaling, Is.EqualTo(ScalingMode.NearestNeighbor));
+         Assert.That(Lens.Instance.Scaling, Is.EqualTo(ScalingModeOption.NearestNeighbor));
       }
 
       [Test]
@@ -191,7 +191,7 @@ namespace StrangeLens.Tests
                Assert.That(Lens.Instance.GridSize, Is.EqualTo(8));
                Assert.That(Lens.Instance.GridStyle, Is.EqualTo(1));
                Assert.That(Lens.Instance.GridOpacity, Is.EqualTo(40));
-               Assert.That(Lens.Instance.Scaling, Is.EqualTo(ScalingMode.HighQualityBilinear));
+               Assert.That(Lens.Instance.Scaling, Is.EqualTo(ScalingModeOption.HighQualityBilinear));
                Assert.That(Lens.Instance.PrecisionSpeed, Is.EqualTo(25));
                Assert.That(Lens.Instance.InfoShowHex, Is.False);
             });

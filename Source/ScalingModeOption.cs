@@ -1,5 +1,5 @@
 ﻿// -------------------------------------------------------------------------------------
-// <copyright file="ScalingMode.cs">
+// <copyright file="ScalingModeOption.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
@@ -7,7 +7,7 @@
 
 namespace StrangeLens
 {
-   public enum ScalingMode
+   public enum ScalingModeOption
    {
       NearestNeighbor = 0,
 

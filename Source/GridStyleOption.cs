@@ -1,5 +1,5 @@
 ﻿// -------------------------------------------------------------------------------------
-// <copyright file="GridStyle.cs">
+// <copyright file="GridStyleOption.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
@@ -9,7 +9,7 @@ namespace StrangeLens
 {
    using System.ComponentModel;
 
-   public enum GridStyleOptions
+   public enum GridStyleOption
    {
       [Description("None")]
       None = 0,
