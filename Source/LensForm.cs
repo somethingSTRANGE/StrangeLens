@@ -228,27 +228,13 @@ namespace StrangeLens
 
          switch (e.KeyCode)
          {
-            case Keys.Escape:
-               this.Close();
-               break;
-            case Keys.Oemplus:
-               if (e.Control)
-               {
-                  this.ChangeMagnification(1);
-               }
-
-               break;
-            case Keys.OemMinus:
-               if (e.Control)
-               {
-                  this.ChangeMagnification(-1);
-               }
-
-               break;
-            case Keys.OemOpenBrackets: this.ChangeWidth(-Lens.Defaults.SizeIncrement); break;
-            case Keys.OemCloseBrackets: this.ChangeWidth(Lens.Defaults.SizeIncrement); break;
-            case Keys.OemSemicolon: this.ChangeHeight(-Lens.Defaults.SizeIncrement); break;
-            case Keys.OemQuotes: this.ChangeHeight(Lens.Defaults.SizeIncrement); break;
+            case Keys.Escape:                this.Close();                                       break;
+            case Keys.Oemplus when e.Control: this.ChangeMagnification(1);                      break;
+            case Keys.OemMinus when e.Control: this.ChangeMagnification(-1);                    break;
+            case Keys.OemOpenBrackets:       this.ChangeWidth(-Lens.Defaults.SizeIncrement);    break;
+            case Keys.OemCloseBrackets:      this.ChangeWidth(Lens.Defaults.SizeIncrement);     break;
+            case Keys.OemSemicolon:          this.ChangeHeight(-Lens.Defaults.SizeIncrement);   break;
+            case Keys.OemQuotes:             this.ChangeHeight(Lens.Defaults.SizeIncrement);    break;
          }
       }
 
