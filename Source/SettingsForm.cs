@@ -9,6 +9,7 @@ namespace StrangeLens
 {
    using System;
    using System.ComponentModel;
+   using System.Diagnostics.CodeAnalysis;
    using System.Drawing;
    using System.Drawing.Drawing2D;
    using System.Runtime.InteropServices;
@@ -153,9 +154,9 @@ namespace StrangeLens
          this.CreateHandle();
 
          // Pre-warm child control handles on the first message pump tick. The public
-         // CreateControl() skips hidden controls (checks parent Visible chain), so the
+         // CreateControl() skips hidden controls (checks the parent Visible chain), so the
          // only way to force creation is a real Show()/Hide() cycle. Opacity=0 keeps it
-         // invisible. This prevents the ~950ms UI freeze on first manual Settings open.
+         // invisible. This prevents the ~950ms UI freeze on the first manual Settings open.
          this.BeginInvoke(() =>
             {
                this.Opacity = 0;
@@ -229,6 +230,7 @@ namespace StrangeLens
          TryRegister(Hotkey12Bit, Keys.D1);
       }
 
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       protected override void WndProc(ref Message m)
       {
          const int WmHotkey = 0x0312;
@@ -707,6 +709,7 @@ namespace StrangeLens
          }
       }
 
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private void OnSettingChanged(object? sender, PropertyChangedEventArgs e)
       {
          var ds = Lens.Instance;
@@ -728,10 +731,10 @@ namespace StrangeLens
                this.comboBoxLensGridSize.SelectedIndex = ds.GridSize - Lens.Defaults.MinGridSize;
                break;
             case nameof(ds.GridOpacity):
-               var oidx = Array.IndexOf(Lens.GridOpacityOptions, ds.GridOpacity);
-               if (oidx >= 0)
+               var opacityIdx = Array.IndexOf(Lens.GridOpacityOptions, ds.GridOpacity);
+               if (opacityIdx >= 0)
                {
-                  this.comboBoxLensGridOpacity.SelectedIndex = oidx;
+                  this.comboBoxLensGridOpacity.SelectedIndex = opacityIdx;
                }
 
                break;
@@ -740,10 +743,10 @@ namespace StrangeLens
                   ds.Magnification - Lens.Defaults.MinMagnification;
                break;
             case nameof(ds.PrecisionSpeed):
-               var pidx = Array.IndexOf(Lens.PrecisionSpeedOptions, ds.PrecisionSpeed);
-               if (pidx >= 0)
+               var precisionIdx = Array.IndexOf(Lens.PrecisionSpeedOptions, ds.PrecisionSpeed);
+               if (precisionIdx >= 0)
                {
-                  this.comboBoxPrecisionSpeed.SelectedIndex = pidx;
+                  this.comboBoxPrecisionSpeed.SelectedIndex = precisionIdx;
                }
 
                break;
@@ -768,7 +771,7 @@ namespace StrangeLens
          if (!this.Visible)
          {
             // Opacity fade via SetLayeredWindowAttributes covers the entire composited
-            // window (DWM chrome included), unlike AnimateWindow which only affects the
+            // window (DWM chrome included), unlike AnimateWindow, which only affects the
             // client area under DWM and causes chrome-before-content flash.
             this.Opacity = 0;
             this.Show();
