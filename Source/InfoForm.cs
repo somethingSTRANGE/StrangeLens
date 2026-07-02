@@ -738,6 +738,7 @@ namespace StrangeLens
          this.cachedLayeredH = -1;
       }
 
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private void RenderContent()
       {
          var d = this.infoData;
