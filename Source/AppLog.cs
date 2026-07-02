@@ -30,8 +30,9 @@ namespace StrangeLens
                logPath,
                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  ERROR  {message}{Environment.NewLine}");
          }
-         catch
+         catch (Exception)
          {
+            // Logging must never throw regardless of cause (disk full, permissions, etc.)
          }
       }
    }
