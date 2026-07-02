@@ -806,29 +806,24 @@ namespace StrangeLens
          var step = lens.GridSize * lens.Magnification;
          using var pen = new Pen(Color.White, 1f);
          pen.DashStyle = gridStyle.DashStyle();
-         for (var dy = step; (cy - dy >= 0) || (cy + dy < h); dy += step)
+         DrawCenteredLines(g, pen, horizontal: true,  center: cy, step: step, w: w, h: h);
+         DrawCenteredLines(g, pen, horizontal: false, center: cx, step: step, w: w, h: h);
+      }
+
+      private static void DrawCenteredLines(Graphics g, Pen pen, bool horizontal, int center, int step, int w, int h)
+      {
+         for (var d = step; (center - d >= 0) || (center + d < (horizontal ? h : w)); d += step)
          {
-            if (cy - dy >= 0)
+            if (center - d >= 0)
             {
-               g.DrawLine(pen, 0, cy - dy, w, cy - dy);
+               if (horizontal) g.DrawLine(pen, 0, center - d, w, center - d);
+               else            g.DrawLine(pen, center - d, 0, center - d, h);
             }
 
-            if (cy + dy < h)
+            if (center + d < (horizontal ? h : w))
             {
-               g.DrawLine(pen, 0, cy + dy, w, cy + dy);
-            }
-         }
-
-         for (var dx = step; (cx - dx >= 0) || (cx + dx < w); dx += step)
-         {
-            if (cx - dx >= 0)
-            {
-               g.DrawLine(pen, cx - dx, 0, cx - dx, h);
-            }
-
-            if (cx + dx < w)
-            {
-               g.DrawLine(pen, cx + dx, 0, cx + dx, h);
+               if (horizontal) g.DrawLine(pen, 0, center + d, w, center + d);
+               else            g.DrawLine(pen, center + d, 0, center + d, h);
             }
          }
       }
