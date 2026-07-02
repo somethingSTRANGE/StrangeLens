@@ -8,12 +8,14 @@
 namespace StrangeLens
 {
    using System;
-   using System.ComponentModel;
+   using System.Diagnostics.CodeAnalysis;
    using System.Drawing;
    using System.Drawing.Drawing2D;
    using System.Drawing.Text;
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
+
+   using static NativeMethods;
 
    /// <summary>Layered, non-activatable, click-through overlay that displays color and cursor
    ///    info beside the lens window. Rendered via <c>UpdateLayeredWindow</c> with the same
@@ -88,9 +90,9 @@ namespace StrangeLens
 
       private const int SwatchSize = 24;
 
-      private const uint ULW_ALPHA = 0x00000002;
-
       private const int ValueX = LabelX + LabelWidth + ColumnGap;
+
+      private readonly float charWidth;
 
       private readonly SvgImage iconColorPalette;
 
@@ -104,11 +106,11 @@ namespace StrangeLens
 
       private readonly InfoControl infoData;
 
+      private readonly FontInfo labelFont;
+
       private int cachedLayeredW = -1, cachedLayeredH = -1;
 
       private int cachedShadowContentW = -1, cachedShadowContentH = -1;
-
-      private float charWidth;
 
       private int contentH; // dynamic; recomputed from enabled settings each frame
 
@@ -121,8 +123,6 @@ namespace StrangeLens
       private IntPtr finalMemDC = IntPtr.Zero;
 
       private int finalW, finalH;
-
-      private FontInfo labelFont;
 
       private IntPtr layeredBitmap = IntPtr.Zero;
 
@@ -180,9 +180,9 @@ namespace StrangeLens
          get
          {
             var cp = base.CreateParams;
-            cp.ExStyle |= 0x00000008; // WS_EX_TOPMOST -- always above non-topmost windows
-            cp.ExStyle |= 0x00080000; // WS_EX_LAYERED -- required for UpdateLayeredWindow
-            cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE -- never activated by the OS
+            cp.ExStyle |= WS_EX_TOPMOST;
+            cp.ExStyle |= WS_EX_LAYERED;
+            cp.ExStyle |= WS_EX_NOACTIVATE;
             return cp;
          }
       }
@@ -215,10 +215,6 @@ namespace StrangeLens
          {
             if (this.panelShown)
             {
-               const uint SWP_NOSIZE = 0x0001;
-               const uint SWP_NOMOVE = 0x0002;
-               const uint SWP_NOACTIVATE = 0x0010;
-               const uint SWP_HIDEWINDOW = 0x0080;
                SetWindowPos(
                   this.Handle,
                   IntPtr.Zero,
@@ -271,50 +267,32 @@ namespace StrangeLens
             //      SWP_SHOWWINDOW fires. The window appears with content, never blank. Calling
             //      Show() would make the window visible before the layered content is committed,
             //      producing a one-frame blank or positional offset between the two panels.
-            var hwndTopmost = new IntPtr(-1);
-            const uint SWP_NOSIZE = 0x0001;
-            const uint SWP_NOMOVE = 0x0002;
-            const uint SWP_NOACTIVATE = 0x0010;
-            const uint SWP_SHOWWINDOW = 0x0040;
             var flags = SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE;
             if (!this.panelShown)
             {
                flags |= SWP_SHOWWINDOW;
             }
 
-            SetWindowPos(this.Handle, hwndTopmost, 0, 0, 0, 0, flags);
+            SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, 0, 0, flags);
             this.panelShown = true;
          }
       }
 
-      internal static void DrawDebugBounds(Graphics g, float x, float y, float w, float h)
+      protected override void OnFormClosing(FormClosingEventArgs e)
       {
-         var left = MathF.Floor(x);
-         var top = MathF.Floor(y);
-         var rect = new RectangleF(left, top, MathF.Ceiling(x + w) - left, MathF.Ceiling(y + h) - top);
-         DrawRect(g, rect, Color.Blue);
-         DrawOutline(g, rect);
-      }
-
-      protected override void OnClosing(CancelEventArgs e)
-      {
-         this.labelFont?.Dispose();
+         this.labelFont.Dispose();
          this.valueFont?.Dispose();
          this.valueFont = null;
          this.FreeLayeredResources();
          this.FreeFinalResources();
          this.shadowAlpha = null;
-         base.OnClosing(e);
+         base.OnFormClosing(e);
       }
 
       /// <summary>Fully non-interactive: mouse input falls through to whatever is underneath, and
       ///    the window cannot be activated by click.</summary>
       protected override void WndProc(ref Message m)
       {
-         const int WM_MOUSEACTIVATE = 0x0021;
-         const int WM_NCHITTEST = 0x0084;
-         const int MA_NOACTIVATE = 3;
-         const int HTTRANSPARENT = -1;
          switch (m.Msg)
          {
             case WM_MOUSEACTIVATE:
@@ -328,23 +306,41 @@ namespace StrangeLens
          base.WndProc(ref m);
       }
 
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+      /// <summary>Adds one section's worth of height. Prepends <see cref="SectionGap"/> if a prior
+      ///    section was already emitted, then accumulates <c>RowHeight + RowGap</c> per enabled
+      ///    row. Sets <paramref name="needGap"/> if any row was added.</summary>
+      private static int AddSectionH(int h, ref bool needGap, params bool[] rows)
+      {
+         if (!Array.Exists(rows, r => r))
+         {
+            return h;
+         }
 
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateDIBSection(
-         IntPtr hdc,
-         ref BITMAPINFO pbmi,
-         uint usage,
-         out IntPtr ppvBits,
-         IntPtr hSection,
-         uint offset);
+         if (needGap)
+         {
+            h += SectionGap;
+         }
 
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteDC(IntPtr hdc);
+         foreach (var r in rows)
+         {
+            if (r)
+            {
+               h += RowHeight + RowGap;
+            }
+         }
 
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteObject(IntPtr hobj);
+         needGap = true;
+         return h;
+      }
+
+      private static void DrawDebugBounds(Graphics g, float x, float y, float w, float h)
+      {
+         var left = MathF.Floor(x);
+         var top = MathF.Floor(y);
+         var rect = new RectangleF(left, top, MathF.Ceiling(x + w) - left, MathF.Ceiling(y + h) - top);
+         DrawRect(g, rect, Color.Blue);
+         DrawOutline(g, rect);
+      }
 
       private static void DrawOutline(Graphics g, RectangleF rect)
       {
@@ -353,10 +349,8 @@ namespace StrangeLens
          g.SmoothingMode = SmoothingMode.None;
          g.PixelOffsetMode = PixelOffsetMode.Half;
 
-         using var outlinePen = new Pen(Color.DarkSlateGray)
-            {
-               Alignment = PenAlignment.Inset,
-            };
+         using var outlinePen = new Pen(Color.DarkSlateGray);
+         outlinePen.Alignment = PenAlignment.Inset;
 
          g.DrawLine(outlinePen, rect.Left, rect.Top + 1, rect.Right, rect.Top + 1);
          g.DrawLine(outlinePen, rect.Right, rect.Top, rect.Right, rect.Bottom);
@@ -397,6 +391,7 @@ namespace StrangeLens
          }
       }
 
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private static float[] GaussianBlur1D(float[] src, int w, int h, float sigma, bool horizontal)
       {
          var radius = (int)Math.Ceiling(sigma * 3);
@@ -479,31 +474,6 @@ namespace StrangeLens
          return g.MeasureString("0", font, PointF.Empty, StringFormat.GenericTypographic).Width;
       }
 
-      [DllImport("Gdi32.dll", ExactSpelling = true)]
-      private static extern IntPtr SelectObject(IntPtr hdc, IntPtr h);
-
-      [DllImport("user32.dll", SetLastError = true)]
-      private static extern bool SetWindowPos(
-         IntPtr hWnd,
-         IntPtr hWndInsertAfter,
-         int x,
-         int y,
-         int cx,
-         int cy,
-         uint uFlags);
-
-      [DllImport("User32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool UpdateLayeredWindow(
-         IntPtr hwnd,
-         IntPtr hdcDst,
-         ref Point pptDst,
-         ref Size psize,
-         IntPtr hdcSrc,
-         ref Point pptSrc,
-         uint crKey,
-         ref BLENDFUNCTION pblend,
-         uint dwFlags);
-
       private void CommitLayeredWindow(Point winPos, int w, int h)
       {
          var winSize = new Size(w, h);
@@ -575,84 +545,19 @@ namespace StrangeLens
       {
          var lens = Lens.Instance;
          var h = PanelPadding;
-
-         // color-values section.
          var needGap = false;
-         var showSection = lens.InfoShowHex || lens.InfoShowRgb || lens.InfoShowHsl;
-         if (showSection)
-         {
-            if (lens.InfoShowHex)
-            {
-               h += RowHeight + RowGap;
-            }
 
-            if (lens.InfoShowRgb)
-            {
-               h += RowHeight + RowGap;
-            }
+         h = AddSectionH(h, ref needGap, lens.InfoShowHex, lens.InfoShowRgb, lens.InfoShowHsl);
+         h = AddSectionH(h, ref needGap, lens.InfoShow12Bit, lens.InfoShowWeb);
+         h = AddSectionH(h, ref needGap, lens.InfoShowMouse, lens.InfoShowSize, lens.InfoShowZoom);
 
-            if (lens.InfoShowHsl)
-            {
-               h += RowHeight + RowGap;
-            }
-
-            needGap = true;
-         }
-
-         // color-palette section
-         showSection = lens.InfoShow12Bit || lens.InfoShowWeb;
-         if (showSection)
-         {
-            if (needGap)
-            {
-               h += SectionGap;
-            }
-
-            if (lens.InfoShow12Bit)
-            {
-               h += RowHeight + RowGap;
-            }
-
-            if (lens.InfoShowWeb)
-            {
-               h += RowHeight + RowGap;
-            }
-
-            needGap = true;
-         }
-
-         showSection = lens.InfoShowMouse || lens.InfoShowSize || lens.InfoShowZoom;
-         if (showSection)
-         {
-            if (needGap)
-            {
-               h += SectionGap;
-            }
-
-            if (lens.InfoShowMouse)
-            {
-               h += RowHeight + RowGap;
-            }
-
-            if (lens.InfoShowSize)
-            {
-               h += RowHeight + RowGap;
-            }
-
-            if (lens.InfoShowZoom)
-            {
-               h += RowHeight + RowGap;
-            }
-         }
-
-         // if at least one row was drawn, the final row added an unnecessary trailing gap
+         // The final enabled row appended a trailing RowGap; remove it.
          if (h > PanelPadding)
          {
             h -= RowGap;
          }
 
-         h += PanelPadding;
-         return h;
+         return h + PanelPadding;
       }
 
       /// <summary>Computes the dynamic panel width from the currently visible rows and the
@@ -833,6 +738,7 @@ namespace StrangeLens
          this.cachedLayeredH = -1;
       }
 
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private void RenderContent()
       {
          var d = this.infoData;
@@ -988,36 +894,6 @@ namespace StrangeLens
             this.iconMagnification.Draw(g, Color.White, IconX, y);
             DrawRow("Zoom", d.ZoomFactor, y);
          }
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFO
-      {
-         public BITMAPINFOHEADER bmiHeader;
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFOHEADER
-      {
-         public uint biSize;
-
-         public int biWidth, biHeight;
-
-         public ushort biPlanes, biBitCount;
-
-         public uint biCompression;
-
-         public uint biSizeImage;
-
-         public int biXPelsPerMeter, biYPelsPerMeter;
-
-         public uint biClrUsed, biClrImportant;
-      }
-
-      [StructLayout(LayoutKind.Sequential, Pack = 1)]
-      private struct BLENDFUNCTION
-      {
-         public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat;
       }
    }
 }

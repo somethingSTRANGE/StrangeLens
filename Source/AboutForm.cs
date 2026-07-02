@@ -12,8 +12,9 @@ namespace StrangeLens
    using System.Drawing;
    using System.Linq;
    using System.Reflection;
-   using System.Runtime.InteropServices;
    using System.Windows.Forms;
+
+   using static NativeMethods;
 
    internal sealed class AboutForm : Form
    {
@@ -22,17 +23,6 @@ namespace StrangeLens
       private const int BtnSize = 20;
 
       private const int ControlRowHeight = 17;
-
-      /// <summary>
-      ///    <para>Desktop Window Manager (DWM) attribute applied to a window.</para>
-      ///    <para>Use with DwmSetWindowAttribute. Allows the window frame for this window to be
-      ///       drawn in dark mode colors when the dark mode system setting is enabled. For
-      ///       compatibility reasons, all windows default to light mode regardless of the system
-      ///       setting. The pvAttribute parameter points to a value of type BOOL. TRUE to honor
-      ///       dark mode for the window, FALSE to always use light mode.</para>
-      ///    <para>This value is supported starting with Windows 11 Build 22000.</para>
-      /// </summary>
-      private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
       private const int FormW = 360;
 
@@ -55,13 +45,6 @@ namespace StrangeLens
       private const int TextX = PadX + AppIconSize + IconGap; // 80
 
       private const int VerticalControlGap = 3;
-
-      /// <summary>Paints all descendants of a window in bottom-to-top painting order using
-      ///    double-buffering. Bottom-to-top painting order allows a descendent window to have
-      ///    translucency (alpha) and transparency (color-key) effects, but only if the descendent
-      ///    window also has the WS_EX_TRANSPARENT bit set. Double-buffering allows the window and
-      ///    its descendents to be painted without a flicker.</summary>
-      private const int WS_EX_COMPOSITED = 0x02000000;
 
       private readonly Bitmap appIconBitmap;
 
@@ -158,12 +141,10 @@ namespace StrangeLens
 
       protected override void WndProc(ref Message m)
       {
-         const int WmNcActivate = 0x0086;
-
          // Re-apply dark title bar on every focus change -- WM_NCACTIVATE fires when Windows
          // redraws the non-client area, and something (SetColorMode/WinForms internals) can
          // reset the DWM attribute before we see the message.
-         if ((m.Msg == WmNcActivate) && Lens.IsOsDarkMode())
+         if ((m.Msg == WM_NCACTIVATE) && Lens.IsOsDarkMode())
          {
             var dark = 1;
             DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
@@ -171,9 +152,6 @@ namespace StrangeLens
 
          base.WndProc(ref m);
       }
-
-      [DllImport("dwmapi.dll")]
-      private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
       private void AddControl(Control control)
       {

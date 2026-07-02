@@ -32,5 +32,10 @@ namespace StrangeLens
                throw new ArgumentOutOfRangeException(nameof(gridStyle), gridStyle, null);
          }
       }
+
+      public static bool IsNearlyEqual(this float value, float other, float tolerance = 1e-6f)
+      {
+         return Math.Abs(value - other) < tolerance;
+      }
    }
 }

@@ -10,6 +10,7 @@ namespace StrangeLens
    using System;
    using System.Collections.Generic;
    using System.Diagnostics;
+   using System.Diagnostics.CodeAnalysis;
    using System.Drawing.Drawing2D;
    using System.Globalization;
 
@@ -104,7 +105,27 @@ namespace StrangeLens
          return Get(cachedInfoMousePosition, Data.InfoMouseCursorIcon, size, size);
       }
 
-      /// <summary>Converts SVG endpoint arc parameterisation to a GDI+ AddArc call. Implements the
+      private static void AddQuadBezier(
+         GraphicsPath path,
+         float cx,
+         float cy,
+         float qcpX,
+         float qcpY,
+         float x3,
+         float y3)
+      {
+         path.AddBezier(
+            cx,
+            cy,
+            cx + ((2f / 3) * (qcpX - cx)),
+            cy + ((2f / 3) * (qcpY - cy)),
+            x3 + ((2f / 3) * (qcpX - x3)),
+            y3 + ((2f / 3) * (qcpY - y3)),
+            x3,
+            y3);
+      }
+
+      /// <summary>Converts SVG endpoint arc parameterization to a GDI+ AddArc call. Implements the
       ///    algorithm from SVG 1.1 spec appendix B (F.6).</summary>
       private static void AddSvgArc(
          GraphicsPath path,
@@ -118,7 +139,7 @@ namespace StrangeLens
          float x2,
          float y2)
       {
-         if ((x1 == x2) && (y1 == y2))
+         if (x1.IsNearlyEqual(x2) && y1.IsNearlyEqual(y2))
          {
             return;
          }
@@ -133,11 +154,11 @@ namespace StrangeLens
          double cosP = Math.Cos(phi), sinP = Math.Sin(phi);
 
          double dx = (x1 - x2) / 2.0, dy = (y1 - y2) / 2.0;
-         var x1p = (cosP * dx) + (sinP * dy);
-         var y1p = (-sinP * dx) + (cosP * dy);
+         var x1P = (cosP * dx) + (sinP * dy);
+         var y1P = (-sinP * dx) + (cosP * dy);
 
          // Ensure radii are large enough.
-         var lambda = ((x1p * x1p) / (rx * (double)rx)) + ((y1p * y1p) / (ry * (double)ry));
+         var lambda = ((x1P * x1P) / (rx * (double)rx)) + ((y1P * y1P) / (ry * (double)ry));
          if (lambda > 1)
          {
             var s = Math.Sqrt(lambda);
@@ -146,18 +167,18 @@ namespace StrangeLens
          }
 
          double rxq = (double)rx * rx, ryq = (double)ry * ry;
-         double x1pq = x1p * x1p, y1pq = y1p * y1p;
-         var num = Math.Max(0, (rxq * ryq) - (rxq * y1pq) - (ryq * x1pq));
-         var den = (rxq * y1pq) + (ryq * x1pq);
+         double x1Pq = x1P * x1P, y1Pq = y1P * y1P;
+         var num = Math.Max(0, (rxq * ryq) - (rxq * y1Pq) - (ryq * x1Pq));
+         var den = (rxq * y1Pq) + (ryq * x1Pq);
          var sq = (fa == fs ? -1 : 1) * Math.Sqrt(den == 0 ? 0 : num / den);
-         var cxp = (sq * rx * y1p) / ry;
-         var cyp = (-sq * ry * x1p) / rx;
+         var cxp = (sq * rx * y1P) / ry;
+         var cyp = (-sq * ry * x1P) / rx;
 
          var cx = ((cosP * cxp) - (sinP * cyp)) + ((x1 + x2) / 2.0);
          var cy = (sinP * cxp) + (cosP * cyp) + ((y1 + y2) / 2.0);
 
-         double ux = (x1p - cxp) / rx, uy = (y1p - cyp) / ry;
-         double vx = (-x1p - cxp) / rx, vy = (-y1p - cyp) / ry;
+         double ux = (x1P - cxp) / rx, uy = (y1P - cyp) / ry;
+         double vx = (-x1P - cxp) / rx, vy = (-y1P - cyp) / ry;
 
          var startAngle = SvgAngle(1, 0, ux, uy);
          var sweepAngle = SvgAngle(ux, uy, vx, vy);
@@ -174,7 +195,6 @@ namespace StrangeLens
          if (phiDeg != 0)
          {
             // Rotated ellipse: apply transform around centre, draw, restore.
-            var state = path.GetLastPoint(); // dummy -- handled via Graphics transform at render time
             Debug.WriteLine($"[SvgImageFactory] rotated arc (phi={phiDeg}) not fully supported");
          }
 
@@ -185,6 +205,362 @@ namespace StrangeLens
             ry * 2,
             (float)startAngle,
             (float)sweepAngle);
+      }
+
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
+      private static char ApplyCommand(
+         ref PathCursor cur,
+         char cmd,
+         float[] raw,
+         ref int ri,
+         GraphicsPath path,
+         float sx,
+         float sy,
+         float ox,
+         float oy)
+      {
+         static bool Need(int n, int have, char c)
+         {
+            if (have >= n)
+            {
+               return true;
+            }
+
+            Debug.WriteLine($"[SvgImageFactory] '{c}': need {n} args, have {have}");
+            return false;
+         }
+
+         float tx, ty, x1, y1, x2, y2, x3, y3, dx, dy, quadCpX, quadCpY;
+         var avail = raw.Length - ri;
+
+         switch (cmd)
+         {
+            case 'M':
+               if (!Need(2, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               cur.Cx = cur.Mx = (raw[ri] * sx) - ox;
+               cur.Cy = cur.My = (raw[ri + 1] * sy) - oy;
+               ri += 2;
+               path.StartFigure();
+               return 'L';
+            case 'm':
+               if (!Need(2, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               cur.Cx = cur.Mx = cur.Cx + (raw[ri] * sx);
+               cur.Cy = cur.My = cur.Cy + (raw[ri + 1] * sy);
+               ri += 2;
+               path.StartFigure();
+               return 'l';
+
+            case 'L':
+               if (!Need(2, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               tx = (raw[ri] * sx) - ox;
+               ty = (raw[ri + 1] * sy) - oy;
+               ri += 2;
+               path.AddLine(cur.Cx, cur.Cy, tx, ty);
+               cur.Cx = tx;
+               cur.Cy = ty;
+               break;
+            case 'l':
+               if (!Need(2, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               dx = raw[ri] * sx;
+               dy = raw[ri + 1] * sy;
+               ri += 2;
+               path.AddLine(cur.Cx, cur.Cy, cur.Cx + dx, cur.Cy + dy);
+               cur.Cx += dx;
+               cur.Cy += dy;
+               break;
+
+            case 'H':
+               if (!Need(1, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               tx = (raw[ri] * sx) - ox;
+               ri++;
+               path.AddLine(cur.Cx, cur.Cy, tx, cur.Cy);
+               cur.Cx = tx;
+               break;
+            case 'h':
+               if (!Need(1, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               dx = raw[ri] * sx;
+               ri++;
+               path.AddLine(cur.Cx, cur.Cy, cur.Cx + dx, cur.Cy);
+               cur.Cx += dx;
+               break;
+
+            case 'V':
+               if (!Need(1, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               ty = (raw[ri] * sy) - oy;
+               ri++;
+               path.AddLine(cur.Cx, cur.Cy, cur.Cx, ty);
+               cur.Cy = ty;
+               break;
+            case 'v':
+               if (!Need(1, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               dy = raw[ri] * sy;
+               ri++;
+               path.AddLine(cur.Cx, cur.Cy, cur.Cx, cur.Cy + dy);
+               cur.Cy += dy;
+               break;
+
+            case 'C':
+               if (!Need(6, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               x1 = (raw[ri] * sx) - ox;
+               y1 = (raw[ri + 1] * sy) - oy;
+               x2 = (raw[ri + 2] * sx) - ox;
+               y2 = (raw[ri + 3] * sy) - oy;
+               x3 = (raw[ri + 4] * sx) - ox;
+               y3 = (raw[ri + 5] * sy) - oy;
+               ri += 6;
+               path.AddBezier(cur.Cx, cur.Cy, x1, y1, x2, y2, x3, y3);
+               cur.PrevCp2X = x2;
+               cur.PrevCp2Y = y2;
+               cur.Cx = x3;
+               cur.Cy = y3;
+               break;
+            case 'c':
+               if (!Need(6, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               x1 = cur.Cx + (raw[ri] * sx);
+               y1 = cur.Cy + (raw[ri + 1] * sy);
+               x2 = cur.Cx + (raw[ri + 2] * sx);
+               y2 = cur.Cy + (raw[ri + 3] * sy);
+               x3 = cur.Cx + (raw[ri + 4] * sx);
+               y3 = cur.Cy + (raw[ri + 5] * sy);
+               ri += 6;
+               path.AddBezier(cur.Cx, cur.Cy, x1, y1, x2, y2, x3, y3);
+               cur.PrevCp2X = x2;
+               cur.PrevCp2Y = y2;
+               cur.Cx = x3;
+               cur.Cy = y3;
+               break;
+
+            case 'S':
+               {
+                  if (!Need(4, avail, cmd))
+                  {
+                     ri = raw.Length;
+                     break;
+                  }
+
+                  var wasCubic = cur.PrevCmd is 'C' or 'c' or 'S' or 's';
+                  x1 = wasCubic ? (2 * cur.Cx) - cur.PrevCp2X : cur.Cx;
+                  y1 = wasCubic ? (2 * cur.Cy) - cur.PrevCp2Y : cur.Cy;
+                  x2 = (raw[ri] * sx) - ox;
+                  y2 = (raw[ri + 1] * sy) - oy;
+                  x3 = (raw[ri + 2] * sx) - ox;
+                  y3 = (raw[ri + 3] * sy) - oy;
+                  ri += 4;
+                  path.AddBezier(cur.Cx, cur.Cy, x1, y1, x2, y2, x3, y3);
+                  cur.PrevCp2X = x2;
+                  cur.PrevCp2Y = y2;
+                  cur.Cx = x3;
+                  cur.Cy = y3;
+               }
+               break;
+            case 's':
+               {
+                  if (!Need(4, avail, cmd))
+                  {
+                     ri = raw.Length;
+                     break;
+                  }
+
+                  var wasCubic = cur.PrevCmd is 'C' or 'c' or 'S' or 's';
+                  x1 = wasCubic ? (2 * cur.Cx) - cur.PrevCp2X : cur.Cx;
+                  y1 = wasCubic ? (2 * cur.Cy) - cur.PrevCp2Y : cur.Cy;
+                  x2 = cur.Cx + (raw[ri] * sx);
+                  y2 = cur.Cy + (raw[ri + 1] * sy);
+                  x3 = cur.Cx + (raw[ri + 2] * sx);
+                  y3 = cur.Cy + (raw[ri + 3] * sy);
+                  ri += 4;
+                  path.AddBezier(cur.Cx, cur.Cy, x1, y1, x2, y2, x3, y3);
+                  cur.PrevCp2X = x2;
+                  cur.PrevCp2Y = y2;
+                  cur.Cx = x3;
+                  cur.Cy = y3;
+               }
+               break;
+
+            case 'Q':
+               if (!Need(4, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               quadCpX = (raw[ri] * sx) - ox;
+               quadCpY = (raw[ri + 1] * sy) - oy;
+               x3 = (raw[ri + 2] * sx) - ox;
+               y3 = (raw[ri + 3] * sy) - oy;
+               ri += 4;
+               AddQuadBezier(path, cur.Cx, cur.Cy, quadCpX, quadCpY, x3, y3);
+               cur.PrevQuadCpX = quadCpX;
+               cur.PrevQuadCpY = quadCpY;
+               cur.Cx = x3;
+               cur.Cy = y3;
+               break;
+            case 'q':
+               if (!Need(4, avail, cmd))
+               {
+                  ri = raw.Length;
+                  break;
+               }
+
+               quadCpX = cur.Cx + (raw[ri] * sx);
+               quadCpY = cur.Cy + (raw[ri + 1] * sy);
+               x3 = cur.Cx + (raw[ri + 2] * sx);
+               y3 = cur.Cy + (raw[ri + 3] * sy);
+               ri += 4;
+               AddQuadBezier(path, cur.Cx, cur.Cy, quadCpX, quadCpY, x3, y3);
+               cur.PrevQuadCpX = quadCpX;
+               cur.PrevQuadCpY = quadCpY;
+               cur.Cx = x3;
+               cur.Cy = y3;
+               break;
+
+            case 'T':
+               {
+                  if (!Need(2, avail, cmd))
+                  {
+                     ri = raw.Length;
+                     break;
+                  }
+
+                  var wasQuad = cur.PrevCmd is 'Q' or 'q' or 'T' or 't';
+                  quadCpX = wasQuad ? (2 * cur.Cx) - cur.PrevQuadCpX : cur.Cx;
+                  quadCpY = wasQuad ? (2 * cur.Cy) - cur.PrevQuadCpY : cur.Cy;
+                  x3 = (raw[ri] * sx) - ox;
+                  y3 = (raw[ri + 1] * sy) - oy;
+                  ri += 2;
+                  AddQuadBezier(path, cur.Cx, cur.Cy, quadCpX, quadCpY, x3, y3);
+                  cur.PrevQuadCpX = quadCpX;
+                  cur.PrevQuadCpY = quadCpY;
+                  cur.Cx = x3;
+                  cur.Cy = y3;
+               }
+               break;
+            case 't':
+               {
+                  if (!Need(2, avail, cmd))
+                  {
+                     ri = raw.Length;
+                     break;
+                  }
+
+                  var wasQuad = cur.PrevCmd is 'Q' or 'q' or 'T' or 't';
+                  quadCpX = wasQuad ? (2 * cur.Cx) - cur.PrevQuadCpX : cur.Cx;
+                  quadCpY = wasQuad ? (2 * cur.Cy) - cur.PrevQuadCpY : cur.Cy;
+                  x3 = cur.Cx + (raw[ri] * sx);
+                  y3 = cur.Cy + (raw[ri + 1] * sy);
+                  ri += 2;
+                  AddQuadBezier(path, cur.Cx, cur.Cy, quadCpX, quadCpY, x3, y3);
+                  cur.PrevQuadCpX = quadCpX;
+                  cur.PrevQuadCpY = quadCpY;
+                  cur.Cx = x3;
+                  cur.Cy = y3;
+               }
+               break;
+
+            case 'A':
+               {
+                  if (!Need(7, avail, cmd))
+                  {
+                     ri = raw.Length;
+                     break;
+                  }
+
+                  float arx = Math.Abs(raw[ri] * sx), ary = Math.Abs(raw[ri + 1] * sy);
+                  var phi = raw[ri + 2];
+                  bool fa = raw[ri + 3] != 0, fs = raw[ri + 4] != 0;
+                  x2 = (raw[ri + 5] * sx) - ox;
+                  y2 = (raw[ri + 6] * sy) - oy;
+                  ri += 7;
+                  AddSvgArc(path, cur.Cx, cur.Cy, arx, ary, phi, fa, fs, x2, y2);
+                  cur.Cx = x2;
+                  cur.Cy = y2;
+               }
+               break;
+            case 'a':
+               {
+                  if (!Need(7, avail, cmd))
+                  {
+                     ri = raw.Length;
+                     break;
+                  }
+
+                  float arx = Math.Abs(raw[ri] * sx), ary = Math.Abs(raw[ri + 1] * sy);
+                  var phi = raw[ri + 2];
+                  bool fa = raw[ri + 3] != 0, fs = raw[ri + 4] != 0;
+                  x2 = cur.Cx + (raw[ri + 5] * sx);
+                  y2 = cur.Cy + (raw[ri + 6] * sy);
+                  ri += 7;
+                  AddSvgArc(path, cur.Cx, cur.Cy, arx, ary, phi, fa, fs, x2, y2);
+                  cur.Cx = x2;
+                  cur.Cy = y2;
+               }
+               break;
+
+            case 'Z':
+            case 'z':
+               path.CloseFigure();
+               cur.Cx = cur.Mx;
+               cur.Cy = cur.My;
+               ri = raw.Length;
+               break;
+
+            default:
+               Debug.WriteLine($"[SvgImageFactory] unhandled command '{cmd}'");
+               ri = raw.Length;
+               break;
+         }
+
+         return cmd;
       }
 
       /// <summary>Builds a <see cref="GraphicsPath"/> scaled so the viewBox fills exactly
@@ -214,387 +590,18 @@ namespace StrangeLens
          var oy = minY * sy; // scaled origin offset Y
 
          var path = new GraphicsPath(FillMode.Winding);
-         float cx = -ox, cy = -oy;
-         float mx = cx, my = cy;
-
-         var prevCmd = '\0';
-         float prevCp2x = 0, prevCp2y = 0; // 2nd control point of last C/c/S/s (for S/s reflection)
-         float prevQcpx = 0, prevQcpy = 0; // control point of last Q/q/T/t (for T/t reflection)
+         var cursor = new PathCursor(-ox, -oy);
 
          foreach (var seg in segments)
          foreach (var (cmd, argStr) in Tokenize(seg))
          {
             var raw = ParseArgs(argStr);
             var ri = 0;
-            var repeatAs = cmd; // M->L and m->l after first pair; all others stay constant
-
+            var repeatAs = cmd;
             do
             {
-               // Validate enough args remain before consuming.
-               static bool Need(int n, int have, char c)
-               {
-                  if (have >= n)
-                  {
-                     return true;
-                  }
-
-                  Debug.WriteLine($"[SvgImageFactory] '{c}': need {n} args, have {have}");
-                  return false;
-               }
-
-               float tx, ty, x1, y1, x2, y2, x3, y3, dx, dy, qcpx, qcpy;
-               var avail = raw.Length - ri;
-
-               switch (repeatAs)
-               {
-                  case 'M':
-                     if (!Need(2, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     cx = mx = (raw[ri] * sx) - ox;
-                     cy = my = (raw[ri + 1] * sy) - oy;
-                     ri += 2;
-                     path.StartFigure();
-                     repeatAs = 'L';
-                     break;
-                  case 'm':
-                     if (!Need(2, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     cx = mx = cx + (raw[ri] * sx);
-                     cy = my = cy + (raw[ri + 1] * sy);
-                     ri += 2;
-                     path.StartFigure();
-                     repeatAs = 'l';
-                     break;
-
-                  case 'L':
-                     if (!Need(2, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     tx = (raw[ri] * sx) - ox;
-                     ty = (raw[ri + 1] * sy) - oy;
-                     ri += 2;
-                     path.AddLine(cx, cy, tx, ty);
-                     cx = tx;
-                     cy = ty;
-                     break;
-                  case 'l':
-                     if (!Need(2, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     dx = raw[ri] * sx;
-                     dy = raw[ri + 1] * sy;
-                     ri += 2;
-                     path.AddLine(cx, cy, cx + dx, cy + dy);
-                     cx += dx;
-                     cy += dy;
-                     break;
-
-                  case 'H':
-                     if (!Need(1, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     tx = (raw[ri] * sx) - ox;
-                     ri++;
-                     path.AddLine(cx, cy, tx, cy);
-                     cx = tx;
-                     break;
-                  case 'h':
-                     if (!Need(1, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     dx = raw[ri] * sx;
-                     ri++;
-                     path.AddLine(cx, cy, cx + dx, cy);
-                     cx += dx;
-                     break;
-
-                  case 'V':
-                     if (!Need(1, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     ty = (raw[ri] * sy) - oy;
-                     ri++;
-                     path.AddLine(cx, cy, cx, ty);
-                     cy = ty;
-                     break;
-                  case 'v':
-                     if (!Need(1, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     dy = raw[ri] * sy;
-                     ri++;
-                     path.AddLine(cx, cy, cx, cy + dy);
-                     cy += dy;
-                     break;
-
-                  case 'C':
-                     if (!Need(6, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     x1 = (raw[ri] * sx) - ox;
-                     y1 = (raw[ri + 1] * sy) - oy;
-                     x2 = (raw[ri + 2] * sx) - ox;
-                     y2 = (raw[ri + 3] * sy) - oy;
-                     x3 = (raw[ri + 4] * sx) - ox;
-                     y3 = (raw[ri + 5] * sy) - oy;
-                     ri += 6;
-                     path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                     prevCp2x = x2;
-                     prevCp2y = y2;
-                     cx = x3;
-                     cy = y3;
-                     break;
-                  case 'c':
-                     if (!Need(6, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     x1 = cx + (raw[ri] * sx);
-                     y1 = cy + (raw[ri + 1] * sy);
-                     x2 = cx + (raw[ri + 2] * sx);
-                     y2 = cy + (raw[ri + 3] * sy);
-                     x3 = cx + (raw[ri + 4] * sx);
-                     y3 = cy + (raw[ri + 5] * sy);
-                     ri += 6;
-                     path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                     prevCp2x = x2;
-                     prevCp2y = y2;
-                     cx = x3;
-                     cy = y3;
-                     break;
-
-                  case 'S':
-                     {
-                        if (!Need(4, avail, repeatAs))
-                        {
-                           ri = raw.Length;
-                           break;
-                        }
-
-                        var wasCubic = (prevCmd == 'C') || (prevCmd == 'c') || (prevCmd == 'S')
-                                       || (prevCmd == 's');
-                        x1 = wasCubic ? (2 * cx) - prevCp2x : cx;
-                        y1 = wasCubic ? (2 * cy) - prevCp2y : cy;
-                        x2 = (raw[ri] * sx) - ox;
-                        y2 = (raw[ri + 1] * sy) - oy;
-                        x3 = (raw[ri + 2] * sx) - ox;
-                        y3 = (raw[ri + 3] * sy) - oy;
-                        ri += 4;
-                        path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                        prevCp2x = x2;
-                        prevCp2y = y2;
-                        cx = x3;
-                        cy = y3;
-                     }
-                     break;
-                  case 's':
-                     {
-                        if (!Need(4, avail, repeatAs))
-                        {
-                           ri = raw.Length;
-                           break;
-                        }
-
-                        var wasCubic = (prevCmd == 'C') || (prevCmd == 'c') || (prevCmd == 'S')
-                                       || (prevCmd == 's');
-                        x1 = wasCubic ? (2 * cx) - prevCp2x : cx;
-                        y1 = wasCubic ? (2 * cy) - prevCp2y : cy;
-                        x2 = cx + (raw[ri] * sx);
-                        y2 = cy + (raw[ri + 1] * sy);
-                        x3 = cx + (raw[ri + 2] * sx);
-                        y3 = cy + (raw[ri + 3] * sy);
-                        ri += 4;
-                        path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                        prevCp2x = x2;
-                        prevCp2y = y2;
-                        cx = x3;
-                        cy = y3;
-                     }
-                     break;
-
-                  case 'Q':
-                     if (!Need(4, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     qcpx = (raw[ri] * sx) - ox;
-                     qcpy = (raw[ri + 1] * sy) - oy;
-                     x3 = (raw[ri + 2] * sx) - ox;
-                     y3 = (raw[ri + 3] * sy) - oy;
-                     ri += 4;
-                     x1 = cx + ((2f / 3) * (qcpx - cx));
-                     y1 = cy + ((2f / 3) * (qcpy - cy));
-                     x2 = x3 + ((2f / 3) * (qcpx - x3));
-                     y2 = y3 + ((2f / 3) * (qcpy - y3));
-                     path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                     prevQcpx = qcpx;
-                     prevQcpy = qcpy;
-                     cx = x3;
-                     cy = y3;
-                     break;
-                  case 'q':
-                     if (!Need(4, avail, repeatAs))
-                     {
-                        ri = raw.Length;
-                        break;
-                     }
-
-                     qcpx = cx + (raw[ri] * sx);
-                     qcpy = cy + (raw[ri + 1] * sy);
-                     x3 = cx + (raw[ri + 2] * sx);
-                     y3 = cy + (raw[ri + 3] * sy);
-                     ri += 4;
-                     x1 = cx + ((2f / 3) * (qcpx - cx));
-                     y1 = cy + ((2f / 3) * (qcpy - cy));
-                     x2 = x3 + ((2f / 3) * (qcpx - x3));
-                     y2 = y3 + ((2f / 3) * (qcpy - y3));
-                     path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                     prevQcpx = qcpx;
-                     prevQcpy = qcpy;
-                     cx = x3;
-                     cy = y3;
-                     break;
-
-                  case 'T':
-                     {
-                        if (!Need(2, avail, repeatAs))
-                        {
-                           ri = raw.Length;
-                           break;
-                        }
-
-                        var wasQuad = (prevCmd == 'Q') || (prevCmd == 'q') || (prevCmd == 'T')
-                                      || (prevCmd == 't');
-                        qcpx = wasQuad ? (2 * cx) - prevQcpx : cx;
-                        qcpy = wasQuad ? (2 * cy) - prevQcpy : cy;
-                        x3 = (raw[ri] * sx) - ox;
-                        y3 = (raw[ri + 1] * sy) - oy;
-                        ri += 2;
-                        x1 = cx + ((2f / 3) * (qcpx - cx));
-                        y1 = cy + ((2f / 3) * (qcpy - cy));
-                        x2 = x3 + ((2f / 3) * (qcpx - x3));
-                        y2 = y3 + ((2f / 3) * (qcpy - y3));
-                        path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                        prevQcpx = qcpx;
-                        prevQcpy = qcpy;
-                        cx = x3;
-                        cy = y3;
-                     }
-                     break;
-                  case 't':
-                     {
-                        if (!Need(2, avail, repeatAs))
-                        {
-                           ri = raw.Length;
-                           break;
-                        }
-
-                        var wasQuad = (prevCmd == 'Q') || (prevCmd == 'q') || (prevCmd == 'T')
-                                      || (prevCmd == 't');
-                        qcpx = wasQuad ? (2 * cx) - prevQcpx : cx;
-                        qcpy = wasQuad ? (2 * cy) - prevQcpy : cy;
-                        x3 = cx + (raw[ri] * sx);
-                        y3 = cy + (raw[ri + 1] * sy);
-                        ri += 2;
-                        x1 = cx + ((2f / 3) * (qcpx - cx));
-                        y1 = cy + ((2f / 3) * (qcpy - cy));
-                        x2 = x3 + ((2f / 3) * (qcpx - x3));
-                        y2 = y3 + ((2f / 3) * (qcpy - y3));
-                        path.AddBezier(cx, cy, x1, y1, x2, y2, x3, y3);
-                        prevQcpx = qcpx;
-                        prevQcpy = qcpy;
-                        cx = x3;
-                        cy = y3;
-                     }
-                     break;
-
-                  case 'A':
-                     {
-                        if (!Need(7, avail, repeatAs))
-                        {
-                           ri = raw.Length;
-                           break;
-                        }
-
-                        float arx = Math.Abs(raw[ri] * sx), ary = Math.Abs(raw[ri + 1] * sy);
-                        var phi = raw[ri + 2];
-                        bool fa = raw[ri + 3] != 0, fs = raw[ri + 4] != 0;
-                        x2 = (raw[ri + 5] * sx) - ox;
-                        y2 = (raw[ri + 6] * sy) - oy;
-                        ri += 7;
-                        AddSvgArc(path, cx, cy, arx, ary, phi, fa, fs, x2, y2);
-                        cx = x2;
-                        cy = y2;
-                     }
-                     break;
-                  case 'a':
-                     {
-                        if (!Need(7, avail, repeatAs))
-                        {
-                           ri = raw.Length;
-                           break;
-                        }
-
-                        float arx = Math.Abs(raw[ri] * sx), ary = Math.Abs(raw[ri + 1] * sy);
-                        var phi = raw[ri + 2];
-                        bool fa = raw[ri + 3] != 0, fs = raw[ri + 4] != 0;
-                        x2 = cx + (raw[ri + 5] * sx);
-                        y2 = cy + (raw[ri + 6] * sy);
-                        ri += 7;
-                        AddSvgArc(path, cx, cy, arx, ary, phi, fa, fs, x2, y2);
-                        cx = x2;
-                        cy = y2;
-                     }
-                     break;
-
-                  case 'Z':
-                  case 'z':
-                     path.CloseFigure();
-                     cx = mx;
-                     cy = my;
-                     ri = raw.Length; // Z takes no params; exit loop
-                     break;
-
-                  default:
-                     Debug.WriteLine($"[SvgImageFactory] unhandled command '{repeatAs}' (args: {argStr})");
-                     ri = raw.Length;
-                     break;
-               }
-
-               prevCmd = repeatAs;
+               repeatAs = ApplyCommand(ref cursor, repeatAs, raw, ref ri, path, sx, sy, ox, oy);
+               cursor.PrevCmd = repeatAs;
             }
             while (ri < raw.Length);
          }
@@ -619,6 +626,7 @@ namespace StrangeLens
       /// <summary>Parses SVG number lists, handling whitespace/comma separators AND the compact
       ///    format where a leading '-' or '+' acts as a separator (e.g. "0-1.5" -> 0, -1.5). Also
       ///    handles scientific notation (e.g. "3.6e-4").</summary>
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private static float[] ParseArgs(string argStr)
       {
          if (argStr.Length == 0)
@@ -630,7 +638,7 @@ namespace StrangeLens
          int i = 0, n = argStr.Length;
          while (i < n)
          {
-            while ((i < n) && ((argStr[i] == ' ') || (argStr[i] == '\t') || (argStr[i] == ',')))
+            while ((i < n) && argStr[i] is ' ' or '\t' or ',')
             {
                i++;
             }
@@ -640,49 +648,11 @@ namespace StrangeLens
                break;
             }
 
-            var start = i;
-            if ((argStr[i] == '-') || (argStr[i] == '+'))
+            var len = ScanNumber(argStr, i, n);
+            if (len > 0)
             {
-               i++;
-            }
-
-            var hasDot = false;
-            while (i < n)
-            {
-               var c = argStr[i];
-               if ((c >= '0') && (c <= '9'))
-               {
-                  i++;
-               }
-               else if ((c == '.') && !hasDot)
-               {
-                  hasDot = true;
-                  i++;
-               }
-               else if ((c == 'e') || (c == 'E'))
-               {
-                  i++;
-                  if ((i < n) && ((argStr[i] == '-') || (argStr[i] == '+')))
-                  {
-                     i++;
-                  }
-
-                  while ((i < n) && (argStr[i] >= '0') && (argStr[i] <= '9'))
-                  {
-                     i++;
-                  }
-
-                  break;
-               }
-               else
-               {
-                  break;
-               }
-            }
-
-            if (i > start)
-            {
-               nums.Add(float.Parse(argStr.Substring(start, i - start), CultureInfo.InvariantCulture));
+               nums.Add(float.Parse(argStr.Substring(i, len), CultureInfo.InvariantCulture));
+               i += len;
             }
             else
             {
@@ -691,6 +661,52 @@ namespace StrangeLens
          }
 
          return nums.ToArray();
+      }
+
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
+      private static int ScanNumber(string s, int start, int n)
+      {
+         var i = start;
+         if (s[i] is '-' or '+')
+         {
+            i++;
+         }
+
+         var hasDot = false;
+         while (i < n)
+         {
+            var c = s[i];
+            if (c is >= '0' and <= '9')
+            {
+               i++;
+            }
+            else if ((c == '.') && !hasDot)
+            {
+               hasDot = true;
+               i++;
+            }
+            else if (c is 'e' or 'E')
+            {
+               i++;
+               if ((i < n) && s[i] is '-' or '+')
+               {
+                  i++;
+               }
+
+               while ((i < n) && s[i] is >= '0' and <= '9')
+               {
+                  i++;
+               }
+
+               break;
+            }
+            else
+            {
+               break;
+            }
+         }
+
+         return i - start;
       }
 
       private static double SvgAngle(double ux, double uy, double vx, double vy)

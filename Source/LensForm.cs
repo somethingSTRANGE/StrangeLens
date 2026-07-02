@@ -8,13 +8,15 @@
 namespace StrangeLens
 {
    using System;
-   using System.ComponentModel;
    using System.Diagnostics;
+   using System.Diagnostics.CodeAnalysis;
    using System.Drawing;
    using System.Drawing.Drawing2D;
    using System.Drawing.Imaging;
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
+
+   using static NativeMethods;
 
    public partial class LensForm : Form
    {
@@ -49,8 +51,6 @@ namespace StrangeLens
       private const int ShadowOffsetY = 6; // shadow shifts this many px downward
 
       private const float ShadowSigma = 4.5f; // Gaussian standard deviation (px)
-
-      private const uint ULW_ALPHA = 0x00000002;
 
       private readonly InfoControl infoControl;
 
@@ -119,8 +119,6 @@ namespace StrangeLens
 
       private byte[]? shadowAlpha;
 
-      private Point targetLocation;
-
       /// <summary>U-D mode (portrait): true when Info is positioned left of Lens.</summary>
       private bool udInfoLeft;
 
@@ -137,7 +135,6 @@ namespace StrangeLens
          this.TopMost = true;
          this.StartPosition = FormStartPosition.Manual;
 
-         this.targetLocation = Cursor.Position;
          this.ApplyWidth();
          this.ApplyHeight();
 
@@ -152,21 +149,12 @@ namespace StrangeLens
          this.infoForm = new InfoForm(this.infoControl);
       }
 
-      private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-
-      [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-      public Point TargetLocation
-      {
-         get => this.targetLocation;
-         set => this.targetLocation = value;
-      }
-
       protected override CreateParams CreateParams
       {
          get
          {
             var cp = base.CreateParams;
-            cp.ExStyle |= 0x00080000; // WS_EX_LAYERED
+            cp.ExStyle |= WS_EX_LAYERED;
             return cp;
          }
       }
@@ -201,7 +189,7 @@ namespace StrangeLens
          this.infoControl.NotifyCopied("Web");
       }
 
-      protected override void OnClosing(CancelEventArgs e)
+      protected override void OnFormClosing(FormClosingEventArgs e)
       {
          this.timer.Stop();
          if (this.mouseHook != IntPtr.Zero)
@@ -219,7 +207,7 @@ namespace StrangeLens
          this.checkerTile?.Dispose();
          this.scrGrp?.Dispose();
          this.scrBmp?.Dispose();
-         base.OnClosing(e);
+         base.OnFormClosing(e);
       }
 
       protected override void OnKeyDown(KeyEventArgs e)
@@ -241,34 +229,14 @@ namespace StrangeLens
 
          switch (e.KeyCode)
          {
-            case Keys.Escape:
-               this.Close();
-               break;
-            case Keys.Oemplus:
-               if (e.Control)
-               {
-                  this.ChangeMagnification(1);
-               }
-
-               break;
-            case Keys.OemMinus:
-               if (e.Control)
-               {
-                  this.ChangeMagnification(-1);
-               }
-
-               break;
+            case Keys.Escape: this.Close(); break;
+            case Keys.Oemplus when e.Control: this.ChangeMagnification(1); break;
+            case Keys.OemMinus when e.Control: this.ChangeMagnification(-1); break;
             case Keys.OemOpenBrackets: this.ChangeWidth(-Lens.Defaults.SizeIncrement); break;
             case Keys.OemCloseBrackets: this.ChangeWidth(Lens.Defaults.SizeIncrement); break;
             case Keys.OemSemicolon: this.ChangeHeight(-Lens.Defaults.SizeIncrement); break;
             case Keys.OemQuotes: this.ChangeHeight(Lens.Defaults.SizeIncrement); break;
          }
-      }
-
-      protected override void OnMouseMove(MouseEventArgs e)
-      {
-         base.OnMouseMove(e);
-         this.TargetLocation = e.Location;
       }
 
       protected override void OnMouseWheel(MouseEventArgs e)
@@ -316,6 +284,7 @@ namespace StrangeLens
       protected override void OnShown(EventArgs e)
       {
          base.OnShown(e);
+         // SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE) deadlocks with DWM on WS_EX_LAYERED windows.
 
          // Rough initial position -- first RenderFrame will correct it via UpdateLayeredWindow.
          var pos = Cursor.Position;
@@ -323,42 +292,16 @@ namespace StrangeLens
          this.Left = pos.X + 20;
          this.Top = pos.Y - (this.Height / 2);
 
-         // WDA_EXCLUDEFROMCAPTURE disabled -- SetWindowDisplayAffinity deadlocks with DWM
-         // on WS_EX_LAYERED windows. Revisit once basic rendering is stable.
          this.timer.Enabled = true;
 
          // Low-level mouse hook for Ctrl+Alt+Shift+scroll zoom -- works even when the lens lacks focus.
          this.mouseHookProc = this.MouseHookCallback;
-         this.mouseHook = SetWindowsHookEx(14 /*WH_MOUSE_LL*/, this.mouseHookProc, GetModuleHandle(null), 0);
+         this.mouseHook = SetWindowsHookEx(WH_MOUSE_LL, this.mouseHookProc, GetModuleHandle(null), 0);
          if (this.mouseHook == IntPtr.Zero)
          {
             Debug.WriteLine($"SetWindowsHookEx failed: error {Marshal.GetLastWin32Error()}");
          }
       }
-
-      [DllImport("user32.dll")]
-      private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateDIBSection(
-         IntPtr hdc,
-         ref BITMAPINFO pbmi,
-         uint usage,
-         out IntPtr ppvBits,
-         IntPtr hSection,
-         uint offset);
-
-      [DllImport("Gdi32.dll")]
-      private static extern IntPtr CreatePen(int fnPenStyle, int nWidth, uint crColor);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteDC(IntPtr hdc);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteObject(IntPtr hobj);
 
       private static void DrawBorder(Graphics g, int w, int h, bool focused)
       {
@@ -369,7 +312,7 @@ namespace StrangeLens
             var pen = CreatePen(0 /*PS_SOLID*/, 1, ToColorRef(color));
             var oldPen = SelectObject(hdc, pen);
             // Outer 2px in the focus/unfocus color, inner 1px in black.
-            // LineTo excludes its endpoint, so (0,0)->(w,0) covers columns 0..w-1 exactly.
+            // LineTo excludes its endpoint, so (0, 0)->(w, 0) covers columns 0...w-1 exactly.
             for (var i = 0; i < 2; i++)
             {
                MoveToEx(hdc, 0, i, IntPtr.Zero);
@@ -405,6 +348,39 @@ namespace StrangeLens
          }
       }
 
+      private static void DrawHorizontalLines(Graphics g, Pen pen, int cy, int step, int w, int h)
+      {
+         for (var d = step; (cy - d >= 0) || (cy + d < h); d += step)
+         {
+            if (cy - d >= 0)
+            {
+               g.DrawLine(pen, 0, cy - d, w, cy - d);
+            }
+
+            if (cy + d < h)
+            {
+               g.DrawLine(pen, 0, cy + d, w, cy + d);
+            }
+         }
+      }
+
+      private static void DrawVerticalLines(Graphics g, Pen pen, int cx, int step, int w, int h)
+      {
+         for (var d = step; (cx - d >= 0) || (cx + d < w); d += step)
+         {
+            if (cx - d >= 0)
+            {
+               g.DrawLine(pen, cx - d, 0, cx - d, h);
+            }
+
+            if (cx + d < w)
+            {
+               g.DrawLine(pen, cx + d, 0, cx + d, h);
+            }
+         }
+      }
+
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private static float[] GaussianBlur1D(float[] src, int w, int h, float sigma, bool horizontal)
       {
          var radius = (int)Math.Ceiling(sigma * 3);
@@ -462,60 +438,16 @@ namespace StrangeLens
          return dst;
       }
 
-      [DllImport("User32.dll")]
-      private static extern short GetAsyncKeyState(int vKey);
-
-      [DllImport("kernel32.dll")]
-      private static extern IntPtr GetModuleHandle(string? lpModuleName);
-
-      [DllImport("Gdi32.dll")]
-      private static extern bool LineTo(IntPtr hdc, int x, int y);
-
-      [DllImport("Gdi32.dll")]
-      private static extern bool MoveToEx(IntPtr hdc, int x, int y, IntPtr lpPoint);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true)]
-      private static extern IntPtr SelectObject(IntPtr hdc, IntPtr h);
-
-      [DllImport("User32.dll")]
-      private static extern bool SetCursorPos(int x, int y);
-
-      [DllImport("user32.dll", SetLastError = true)]
-      private static extern bool SetWindowPos(
-         IntPtr hWnd,
-         IntPtr hWndInsertAfter,
-         int x,
-         int y,
-         int cx,
-         int cy,
-         uint uFlags);
-
-      [DllImport("user32.dll")]
-      private static extern IntPtr SetWindowsHookEx(
-         int idHook,
-         LowLevelMouseProc lpfn,
-         IntPtr hMod,
-         uint dwThreadId);
+      private static bool IsOnCrosshairBoundary(int x, int y, int cx, int cy, int mag)
+      {
+         return (y == cy) || (x == cx) || ((y == cy + mag) && (x >= cx) && (x <= cx + mag))
+                || ((x == cx + mag) && (y >= cy) && (y <= cy + mag));
+      }
 
       private static uint ToColorRef(Color c)
       {
          return (uint)(c.R | (c.G << 8) | (c.B << 16));
       }
-
-      [DllImport("user32.dll")]
-      private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-      [DllImport("User32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool UpdateLayeredWindow(
-         IntPtr hwnd,
-         IntPtr hdcDst,
-         ref Point pptDst,
-         ref Size psize,
-         IntPtr hdcSrc,
-         ref Point pptSrc,
-         uint crKey,
-         ref BLENDFUNCTION pblend,
-         uint dwFlags);
 
       /// <summary>Applies per-pixel difference blend to crosshair lines directly in the
       ///    DIBSection. Result = |penColor - dst| per channel, so the line always contrasts with
@@ -588,14 +520,8 @@ namespace StrangeLens
             for (var x = 0; x < w; x++)
             {
                var gridPixel = Marshal.ReadInt32(bmpData.Scan0, (y * bmpData.Stride) + (x * 4));
-               if ((byte)(gridPixel >> 24) == 0)
-               {
-                  continue;
-               }
-
-               // Skip pixels that the crosshair will overwrite; they must read the original background.
-               if ((y == cy) || (x == cx) || ((y == cy + mag) && (x >= cx) && (x <= cx + mag))
-                   || ((x == cx + mag) && (y >= cy) && (y <= cy + mag)))
+               // Skip transparent pixels and pixels the crosshair will overwrite.
+               if (((byte)(gridPixel >> 24) == 0) || IsOnCrosshairBoundary(x, y, cx, cy, mag))
                {
                   continue;
                }
@@ -708,8 +634,8 @@ namespace StrangeLens
          var winSize = new Size(w, h);
          var srcPos = Point.Empty;
          // AlphaFormat=1 (AC_SRC_ALPHA): use per-pixel alpha from the DIBSection.
-         // finalBits contains pre-multiplied BGRA -- content pixels have alpha=255,
-         // shadow pixels have alpha<255, transparent margin pixels have alpha=0.
+         // finalBits: pre-multiplied BGRA -- content pixels have alpha=255,
+         // shadow pixels have alpha < 255, transparent margin pixels have alpha = 0.
          var blend = new BLENDFUNCTION
             {
                BlendOp = 0,
@@ -782,6 +708,122 @@ namespace StrangeLens
          }
       }
 
+      /// <summary>L-R mode (landscape): positions Lens left or right of the cursor with
+      ///    two-threshold hysteresis to avoid edge flicker.</summary>
+      private (int lensLeft, int lensTop, bool infoLeft) ComputeLandscapeLayout(
+         Point cursorPos,
+         Screen screen,
+         int w,
+         int h,
+         int infoW,
+         int maxH,
+         bool screenChanged)
+      {
+         // Two independent thresholds on opposite edges give a large dead zone in the
+         // center, so neither flip fires until the panel genuinely clips an edge.
+         var gapX = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
+         var rightClips = cursorPos.X + gapX + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
+         var leftClips = cursorPos.X - gapX - w - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
+
+         if (screenChanged)
+         {
+            this.infoOnLeft = rightClips;
+         }
+         else if (!this.infoOnLeft && rightClips && !leftClips)
+         {
+            this.infoOnLeft = true;
+         }
+         else if (this.infoOnLeft && leftClips && !rightClips)
+         {
+            this.infoOnLeft = false;
+         }
+
+         var lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
+         var lensTop = Math.Max(
+            screen.Bounds.Top + InfoForm.PanelMargin,
+            Math.Min(cursorPos.Y - (h / 2), screen.Bounds.Bottom - maxH - InfoForm.PanelMargin));
+         return (lensLeft, lensTop, this.infoOnLeft);
+      }
+
+      /// <summary>Computes the lens window position and info-panel side for one frame. Updates
+      ///    hysteresis state fields so repeated calls converge without flickering.</summary>
+      private (int lensLeft, int lensTop, bool infoLeft) ComputeLayout(
+         Point cursorPos,
+         Screen screen,
+         int w,
+         int h,
+         int infoW,
+         int maxH,
+         bool screenChanged,
+         bool portrait)
+      {
+         return portrait
+            ? this.ComputePortraitLayout(cursorPos, screen, w, h, infoW, maxH, screenChanged)
+            : this.ComputeLandscapeLayout(cursorPos, screen, w, h, infoW, maxH, screenChanged);
+      }
+
+      /// <summary>U-D mode (portrait): positions Lens above or below the cursor; Info hangs left
+      ///    or right of the Lens.</summary>
+      private (int lensLeft, int lensTop, bool infoLeft) ComputePortraitLayout(
+         Point cursorPos,
+         Screen screen,
+         int w,
+         int h,
+         int infoW,
+         int maxH,
+         bool screenChanged)
+      {
+         // Lens is centered horizontally on the cursor; Info hangs off left or right.
+         // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
+         // cursor can move near the left/right boundary without clipping the panel.
+         var gapY = (int)(Math.Ceiling(h / (float)Lens.Defaults.MinMagnification) / 2) + 10;
+         var topClips = cursorPos.Y - gapY - h < screen.Bounds.Top + InfoForm.PanelMargin;
+         var bottomClips = cursorPos.Y + gapY + maxH > screen.Bounds.Bottom - InfoForm.PanelMargin;
+
+         if (screenChanged)
+         {
+            this.udLensAbove = !topClips;
+         }
+         else if (this.udLensAbove && topClips && !bottomClips)
+         {
+            this.udLensAbove = false;
+         }
+         else if (!this.udLensAbove && bottomClips && !topClips)
+         {
+            this.udLensAbove = true;
+         }
+
+         var lensLeft = Math.Clamp(
+            cursorPos.X - (w / 2),
+            screen.Bounds.Left + InfoForm.PanelMargin,
+            screen.Bounds.Right - w - InfoForm.PanelMargin);
+         var lensTop = this.udLensAbove
+            ? Math.Clamp(
+               cursorPos.Y - gapY - h,
+               screen.Bounds.Top + InfoForm.PanelMargin,
+               screen.Bounds.Bottom - maxH - InfoForm.PanelMargin)
+            : Math.Min(cursorPos.Y + gapY, screen.Bounds.Bottom - maxH - InfoForm.PanelMargin);
+
+         // Info left/right of Lens, with the same two-threshold hysteresis.
+         var rightClipsUD = lensLeft + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
+         var leftClipsUD = lensLeft - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
+
+         if (screenChanged)
+         {
+            this.udInfoLeft = rightClipsUD;
+         }
+         else if (!this.udInfoLeft && rightClipsUD && !leftClipsUD)
+         {
+            this.udInfoLeft = true;
+         }
+         else if (this.udInfoLeft && leftClipsUD && !rightClipsUD)
+         {
+            this.udInfoLeft = false;
+         }
+
+         return (lensLeft, lensTop, this.udInfoLeft);
+      }
+
       private void CopyScreen(Point cursorPos)
       {
          var lens = Lens.Instance;
@@ -816,7 +858,7 @@ namespace StrangeLens
          this.scrCaptureOrigin = new Point(cursorPos.X - (captureW / 2), cursorPos.Y - (captureH / 2));
          var captureRect = new Rectangle(this.scrCaptureOrigin, new Size(captureW, captureH));
 
-         // Pre-fill with checkerboard. Anything not overwritten below is out of monitor bounds.
+         // Pre-fill with a checkerboard. Anything not overwritten below is out of monitor bounds.
          this.scrGrp!.FillRectangle(this.checkerBrush!, 0, 0, captureW, captureH);
 
          // Copy only the portions that fall within actual monitor bounds.
@@ -907,35 +949,10 @@ namespace StrangeLens
          g.Clear(Color.Transparent);
          int cx = w / 2, cy = h / 2;
          var step = lens.GridSize * lens.Magnification;
-         using var pen = new Pen(Color.White, 1f)
-            {
-               DashStyle = gridStyle.DashStyle(),
-            };
-         for (var dy = step; (cy - dy >= 0) || (cy + dy < h); dy += step)
-         {
-            if (cy - dy >= 0)
-            {
-               g.DrawLine(pen, 0, cy - dy, w, cy - dy);
-            }
-
-            if (cy + dy < h)
-            {
-               g.DrawLine(pen, 0, cy + dy, w, cy + dy);
-            }
-         }
-
-         for (var dx = step; (cx - dx >= 0) || (cx + dx < w); dx += step)
-         {
-            if (cx - dx >= 0)
-            {
-               g.DrawLine(pen, cx - dx, 0, cx - dx, h);
-            }
-
-            if (cx + dx < w)
-            {
-               g.DrawLine(pen, cx + dx, 0, cx + dx, h);
-            }
-         }
+         using var pen = new Pen(Color.White, 1f);
+         pen.DashStyle = gridStyle.DashStyle();
+         DrawHorizontalLines(g, pen, cy, step, w, h);
+         DrawVerticalLines(g, pen, cx, step, w, h);
       }
 
       /// <summary>Ensures the GDI memory DC and bitmap are allocated and match the requested size.</summary>
@@ -1052,6 +1069,77 @@ namespace StrangeLens
          }
       }
 
+      /// <summary>Handles WM_MOUSEMOVE inside the low-level hook. Returns a hook return value when
+      ///    the event should be consumed or forwarded immediately; returns null to fall through to
+      ///    CallNextHookEx.</summary>
+      private IntPtr? HandlePrecisionMove(IntPtr lParam, bool hasCtrlAltShift, int nCode, IntPtr wParam)
+      {
+         // MSLLHOOKSTRUCT: POINT is at offset 0 (two int32s).
+         var ptX = Marshal.ReadInt32(lParam, 0);
+         var ptY = Marshal.ReadInt32(lParam, 4);
+
+         if (this.isSyntheticMove)
+         {
+            // Always clear -- we cannot stay in this state indefinitely.
+            this.isSyntheticMove = false;
+            if ((ptX == this.lastCursorPos.X) && (ptY == this.lastCursorPos.Y))
+               // Coordinates match our SetCursorPos target: this is the synthetic.
+            {
+               return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
+            }
+
+            // Coordinates don't match: stale real event queued before our SetCursorPos.
+            // Consume it so the unscaled position never reaches Cursor.Position.
+            return 1;
+         }
+
+         if (hasCtrlAltShift)
+         {
+            var dx = ptX - this.lastCursorPos.X;
+            var dy = ptY - this.lastCursorPos.Y;
+            if ((dx != 0) || (dy != 0))
+            {
+               var scale = Lens.Instance.PrecisionSpeed / 100.0;
+               this.accumX += dx * scale;
+               this.accumY += dy * scale;
+               var moveX = (int)this.accumX;
+               var moveY = (int)this.accumY;
+               this.accumX -= moveX;
+               this.accumY -= moveY;
+               var newX = this.lastCursorPos.X + moveX;
+               var newY = this.lastCursorPos.Y + moveY;
+               this.lastCursorPos = new Point(newX, newY);
+               this.isSyntheticMove = true;
+               SetCursorPos(newX, newY);
+               return 1;
+            }
+         }
+         else
+         {
+            this.lastCursorPos = new Point(ptX, ptY);
+            this.accumX = 0;
+            this.accumY = 0;
+         }
+
+         return null;
+      }
+
+      private void HandleScrollZoom(IntPtr lParam)
+      {
+         // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the wheel delta (signed short).
+         var mouseData = Marshal.ReadInt32(lParam, 8);
+         var wheelDelta = (short)(mouseData >> 16);
+         if ((GetAsyncKeyState((int)Keys.S) & KEY_PRESSED) != 0)
+            // Wheel up = more precise (lower speed %) -- mirrors wheel up = zoom in.
+         {
+            this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
+         }
+         else
+         {
+            this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
+         }
+      }
+
       private void IncreaseGridSize()
       {
          Lens.Instance.GridSize++;
@@ -1064,78 +1152,22 @@ namespace StrangeLens
 
       private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
       {
-         const int WmMousemove = 0x0200;
-         const int WmMousewheel = 0x020A;
-
          if (nCode >= 0)
          {
             var msg = wParam.ToInt32();
             var hasCtrlAltShift = (ModifierKeys & CtrlAltShift) == CtrlAltShift;
 
-            if (msg == WmMousemove)
+            if (msg == WM_MOUSEMOVE)
             {
-               // MSLLHOOKSTRUCT: POINT is at offset 0 (two int32s).
-               var ptX = Marshal.ReadInt32(lParam, 0);
-               var ptY = Marshal.ReadInt32(lParam, 4);
-
-               if (this.isSyntheticMove)
+               var consumed = this.HandlePrecisionMove(lParam, hasCtrlAltShift, nCode, wParam);
+               if (consumed.HasValue)
                {
-                  // Always clear -- we cannot stay in this state indefinitely.
-                  this.isSyntheticMove = false;
-                  if ((ptX == this.lastCursorPos.X) && (ptY == this.lastCursorPos.Y))
-                     // Coordinates match our SetCursorPos target: this is the synthetic.
-                  {
-                     return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
-                  }
-
-                  // Coordinates don't match: stale real event queued before our SetCursorPos.
-                  // Consume it so the unscaled position never reaches Cursor.Position.
-                  return 1;
-               }
-
-               if (hasCtrlAltShift)
-               {
-                  var dx = ptX - this.lastCursorPos.X;
-                  var dy = ptY - this.lastCursorPos.Y;
-                  if ((dx != 0) || (dy != 0))
-                  {
-                     var scale = Lens.Instance.PrecisionSpeed / 100.0;
-                     this.accumX += dx * scale;
-                     this.accumY += dy * scale;
-                     var moveX = (int)this.accumX;
-                     var moveY = (int)this.accumY;
-                     this.accumX -= moveX;
-                     this.accumY -= moveY;
-                     var newX = this.lastCursorPos.X + moveX;
-                     var newY = this.lastCursorPos.Y + moveY;
-                     this.lastCursorPos = new Point(newX, newY);
-                     this.isSyntheticMove = true;
-                     SetCursorPos(newX, newY);
-                     return 1;
-                  }
-               }
-               else
-               {
-                  this.lastCursorPos = new Point(ptX, ptY);
-                  this.accumX = 0;
-                  this.accumY = 0;
+                  return consumed.Value;
                }
             }
-            else if ((msg == WmMousewheel) && hasCtrlAltShift)
+            else if ((msg == WM_MOUSEWHEEL) && hasCtrlAltShift)
             {
-               // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the signed wheel delta.
-               var mouseData = Marshal.ReadInt32(lParam, 8);
-               var wheelDelta = (short)(mouseData >> 16);
-               if ((GetAsyncKeyState((int)Keys.S) & 0x8000) != 0)
-                  // Wheel up = more precise (lower speed %) -- mirrors wheel up = zoom in.
-               {
-                  this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
-               }
-               else
-               {
-                  this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
-               }
-
+               this.HandleScrollZoom(lParam);
                return 1;
             }
          }
@@ -1159,10 +1191,10 @@ namespace StrangeLens
             var w = lens.Width;
             var h = lens.Height;
 
-            // Select axis based on screen orientation.
+            // Select the axis based on screen orientation.
             // Portrait screens (H > W) use U-D placement to avoid constant left/right flipping
             // when the combined panel width exceeds half the display width.
-            // Gaps are derived from the capture region at minimum zoom so the panel never
+            // Gaps are derived from the capture region at minimum zoom, so the panel never
             // overlaps the captured area regardless of the current zoom level.
             var screen = Screen.FromPoint(cursorPos);
             var portrait = screen.Bounds.Height > screen.Bounds.Width;
@@ -1175,90 +1207,15 @@ namespace StrangeLens
                this.lastScreenName = screen.DeviceName;
             }
 
-            int lensLeft, lensTop;
-            bool infoLeft;
-
-            if (!portrait)
-            {
-               // -- L-R mode (landscape) ---------------------------------------------------
-               // Two independent thresholds on opposite edges give a large dead zone in the
-               // center so neither flip fires until the panel genuinely clips an edge.
-               var gapX = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-               var rightClips = cursorPos.X + gapX + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
-               var leftClips = cursorPos.X - gapX - w - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
-
-               if (screenChanged)
-               {
-                  this.infoOnLeft = rightClips;
-               }
-               else if (!this.infoOnLeft && rightClips && !leftClips)
-               {
-                  this.infoOnLeft = true;
-               }
-               else if (this.infoOnLeft && leftClips && !rightClips)
-               {
-                  this.infoOnLeft = false;
-               }
-
-               lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
-               lensTop = Math.Max(
-                  screen.Bounds.Top + InfoForm.PanelMargin,
-                  Math.Min(cursorPos.Y - (h / 2), screen.Bounds.Bottom - maxH - InfoForm.PanelMargin));
-               infoLeft = this.infoOnLeft;
-            }
-            else
-            {
-               // -- U-D mode (portrait) ----------------------------------------------------
-               // Lens is centered horizontally on the cursor; Info hangs off left or right.
-               // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
-               // cursor can move near the left/right boundary without clipping the panel.
-               var gapY = (int)(Math.Ceiling(h / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-               var topClips = cursorPos.Y - gapY - h < screen.Bounds.Top + InfoForm.PanelMargin;
-               var bottomClips = cursorPos.Y + gapY + maxH > screen.Bounds.Bottom - InfoForm.PanelMargin;
-
-               if (screenChanged)
-               {
-                  this.udLensAbove = !topClips;
-               }
-               else if (this.udLensAbove && topClips && !bottomClips)
-               {
-                  this.udLensAbove = false;
-               }
-               else if (!this.udLensAbove && bottomClips && !topClips)
-               {
-                  this.udLensAbove = true;
-               }
-
-               lensLeft = Math.Clamp(
-                  cursorPos.X - (w / 2),
-                  screen.Bounds.Left + InfoForm.PanelMargin,
-                  screen.Bounds.Right - w - InfoForm.PanelMargin);
-               lensTop = this.udLensAbove
-                  ? Math.Clamp(
-                     cursorPos.Y - gapY - h,
-                     screen.Bounds.Top + InfoForm.PanelMargin,
-                     screen.Bounds.Bottom - maxH - InfoForm.PanelMargin)
-                  : Math.Min(cursorPos.Y + gapY, screen.Bounds.Bottom - maxH - InfoForm.PanelMargin);
-
-               // Info left/right of Lens, with the same two-threshold hysteresis.
-               var rightClipsUD = lensLeft + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
-               var leftClipsUD = lensLeft - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
-
-               if (screenChanged)
-               {
-                  this.udInfoLeft = rightClipsUD;
-               }
-               else if (!this.udInfoLeft && rightClipsUD && !leftClipsUD)
-               {
-                  this.udInfoLeft = true;
-               }
-               else if (this.udInfoLeft && leftClipsUD && !rightClipsUD)
-               {
-                  this.udInfoLeft = false;
-               }
-
-               infoLeft = this.udInfoLeft;
-            }
+            var (lensLeft, lensTop, infoLeft) = this.ComputeLayout(
+               cursorPos,
+               screen,
+               w,
+               h,
+               infoW,
+               maxH,
+               screenChanged,
+               portrait);
 
             var totalW = w + ShadowMarginL + ShadowMarginR;
             var totalH = h + ShadowMarginT + ShadowMarginB;
@@ -1313,8 +1270,7 @@ namespace StrangeLens
             this.CommitLayeredWindow(winPos, totalW, totalH);
             // Re-assert topmost every frame so popup menus, taskbar thumbnails, and tooltips
             // (which are also topmost but created after us) don't permanently cover the lens.
-            const uint SWP_NOMOVE_NOSIZE_NOACTIVATE = 0x0013; // SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE
-            SetWindowPos(this.Handle, new IntPtr(-1), 0, 0, 0, 0, SWP_NOMOVE_NOSIZE_NOACTIVATE);
+            SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
             this.infoForm.UpdateAndPosition(
                cursorPos,
                sampledColor,
@@ -1331,50 +1287,6 @@ namespace StrangeLens
          {
             this.isRendering = false;
          }
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFO
-      {
-         public BITMAPINFOHEADER bmiHeader;
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFOHEADER
-      {
-         public uint biSize;
-
-         public int biWidth;
-
-         public int biHeight;
-
-         public ushort biPlanes;
-
-         public ushort biBitCount;
-
-         public uint biCompression; // BI_RGB = 0
-
-         public uint biSizeImage;
-
-         public int biXPelsPerMeter;
-
-         public int biYPelsPerMeter;
-
-         public uint biClrUsed;
-
-         public uint biClrImportant;
-      }
-
-      [StructLayout(LayoutKind.Sequential, Pack = 1)]
-      private struct BLENDFUNCTION
-      {
-         public byte BlendOp;
-
-         public byte BlendFlags;
-
-         public byte SourceConstantAlpha;
-
-         public byte AlphaFormat;
       }
    }
 }
