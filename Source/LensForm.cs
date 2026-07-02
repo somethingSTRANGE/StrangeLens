@@ -8,7 +8,6 @@
 namespace StrangeLens
 {
    using System;
-   using System.ComponentModel;
    using System.Diagnostics;
    using System.Drawing;
    using System.Drawing.Drawing2D;
@@ -119,8 +118,6 @@ namespace StrangeLens
 
       private byte[]? shadowAlpha;
 
-      private Point targetLocation;
-
       /// <summary>U-D mode (portrait): true when Info is positioned left of Lens.</summary>
       private bool udInfoLeft;
 
@@ -137,7 +134,6 @@ namespace StrangeLens
          this.TopMost = true;
          this.StartPosition = FormStartPosition.Manual;
 
-         this.targetLocation = Cursor.Position;
          this.ApplyWidth();
          this.ApplyHeight();
 
@@ -150,13 +146,6 @@ namespace StrangeLens
 
          this.infoControl = new InfoControl();
          this.infoForm = new InfoForm(this.infoControl);
-      }
-
-      [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-      public Point TargetLocation
-      {
-         get => this.targetLocation;
-         set => this.targetLocation = value;
       }
 
       protected override CreateParams CreateParams
@@ -199,7 +188,7 @@ namespace StrangeLens
          this.infoControl.NotifyCopied("Web");
       }
 
-      protected override void OnClosing(CancelEventArgs e)
+      protected override void OnFormClosing(FormClosingEventArgs e)
       {
          this.timer.Stop();
          if (this.mouseHook != IntPtr.Zero)
@@ -217,7 +206,7 @@ namespace StrangeLens
          this.checkerTile?.Dispose();
          this.scrGrp?.Dispose();
          this.scrBmp?.Dispose();
-         base.OnClosing(e);
+         base.OnFormClosing(e);
       }
 
       protected override void OnKeyDown(KeyEventArgs e)
@@ -261,12 +250,6 @@ namespace StrangeLens
             case Keys.OemSemicolon: this.ChangeHeight(-Lens.Defaults.SizeIncrement); break;
             case Keys.OemQuotes: this.ChangeHeight(Lens.Defaults.SizeIncrement); break;
          }
-      }
-
-      protected override void OnMouseMove(MouseEventArgs e)
-      {
-         base.OnMouseMove(e);
-         this.TargetLocation = e.Location;
       }
 
       protected override void OnMouseWheel(MouseEventArgs e)
@@ -314,6 +297,7 @@ namespace StrangeLens
       protected override void OnShown(EventArgs e)
       {
          base.OnShown(e);
+         // SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE) deadlocks with DWM on WS_EX_LAYERED windows.
 
          // Rough initial position -- first RenderFrame will correct it via UpdateLayeredWindow.
          var pos = Cursor.Position;
@@ -321,8 +305,6 @@ namespace StrangeLens
          this.Left = pos.X + 20;
          this.Top = pos.Y - (this.Height / 2);
 
-         // WDA_EXCLUDEFROMCAPTURE disabled -- SetWindowDisplayAffinity deadlocks with DWM
-         // on WS_EX_LAYERED windows. Revisit once basic rendering is stable.
          this.timer.Enabled = true;
 
          // Low-level mouse hook for Ctrl+Alt+Shift+scroll zoom -- works even when the lens lacks focus.
@@ -343,7 +325,7 @@ namespace StrangeLens
             var pen = CreatePen(0 /*PS_SOLID*/, 1, ToColorRef(color));
             var oldPen = SelectObject(hdc, pen);
             // Outer 2px in the focus/unfocus color, inner 1px in black.
-            // LineTo excludes its endpoint, so (0,0)->(w,0) covers columns 0..w-1 exactly.
+            // LineTo excludes its endpoint, so (0, 0)->(w, 0) covers columns 0...w-1 exactly.
             for (var i = 0; i < 2; i++)
             {
                MoveToEx(hdc, 0, i, IntPtr.Zero);
@@ -632,8 +614,8 @@ namespace StrangeLens
          var winSize = new Size(w, h);
          var srcPos = Point.Empty;
          // AlphaFormat=1 (AC_SRC_ALPHA): use per-pixel alpha from the DIBSection.
-         // finalBits contains pre-multiplied BGRA -- content pixels have alpha=255,
-         // shadow pixels have alpha<255, transparent margin pixels have alpha=0.
+         // finalBits: pre-multiplied BGRA -- content pixels have alpha=255,
+         // shadow pixels have alpha < 255, transparent margin pixels have alpha = 0.
          var blend = new BLENDFUNCTION
             {
                BlendOp = 0,
@@ -740,7 +722,7 @@ namespace StrangeLens
          this.scrCaptureOrigin = new Point(cursorPos.X - (captureW / 2), cursorPos.Y - (captureH / 2));
          var captureRect = new Rectangle(this.scrCaptureOrigin, new Size(captureW, captureH));
 
-         // Pre-fill with checkerboard. Anything not overwritten below is out of monitor bounds.
+         // Pre-fill with a checkerboard. Anything not overwritten below is out of monitor bounds.
          this.scrGrp!.FillRectangle(this.checkerBrush!, 0, 0, captureW, captureH);
 
          // Copy only the portions that fall within actual monitor bounds.
@@ -831,10 +813,8 @@ namespace StrangeLens
          g.Clear(Color.Transparent);
          int cx = w / 2, cy = h / 2;
          var step = lens.GridSize * lens.Magnification;
-         using var pen = new Pen(Color.White, 1f)
-            {
-               DashStyle = gridStyle.DashStyle(),
-            };
+         using var pen = new Pen(Color.White, 1f);
+         pen.DashStyle = gridStyle.DashStyle();
          for (var dy = step; (cy - dy >= 0) || (cy + dy < h); dy += step)
          {
             if (cy - dy >= 0)
@@ -1044,7 +1024,7 @@ namespace StrangeLens
             }
             else if ((msg == WM_MOUSEWHEEL) && hasCtrlAltShift)
             {
-               // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the signed wheel delta.
+               // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the wheel delta (signed short).
                var mouseData = Marshal.ReadInt32(lParam, 8);
                var wheelDelta = (short)(mouseData >> 16);
                if ((GetAsyncKeyState((int)Keys.S) & KEY_PRESSED) != 0)
@@ -1080,10 +1060,10 @@ namespace StrangeLens
             var w = lens.Width;
             var h = lens.Height;
 
-            // Select axis based on screen orientation.
+            // Select the axis based on screen orientation.
             // Portrait screens (H > W) use U-D placement to avoid constant left/right flipping
             // when the combined panel width exceeds half the display width.
-            // Gaps are derived from the capture region at minimum zoom so the panel never
+            // Gaps are derived from the capture region at minimum zoom, so the panel never
             // overlaps the captured area regardless of the current zoom level.
             var screen = Screen.FromPoint(cursorPos);
             var portrait = screen.Bounds.Height > screen.Bounds.Width;

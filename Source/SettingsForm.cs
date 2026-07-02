@@ -854,10 +854,7 @@ namespace StrangeLens
          LensForm lensForm;
          try
          {
-            lensForm = new LensForm
-               {
-                  TargetLocation = Cursor.Position,
-               };
+            lensForm = new LensForm();
          }
          catch (Exception ex)
          {

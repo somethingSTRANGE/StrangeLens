@@ -8,7 +8,6 @@
 namespace StrangeLens
 {
    using System;
-   using System.ComponentModel;
    using System.Drawing;
    using System.Drawing.Drawing2D;
    using System.Drawing.Text;
@@ -287,7 +286,7 @@ namespace StrangeLens
          DrawOutline(g, rect);
       }
 
-      protected override void OnClosing(CancelEventArgs e)
+      protected override void OnFormClosing(FormClosingEventArgs e)
       {
          this.labelFont?.Dispose();
          this.valueFont?.Dispose();
@@ -295,7 +294,7 @@ namespace StrangeLens
          this.FreeLayeredResources();
          this.FreeFinalResources();
          this.shadowAlpha = null;
-         base.OnClosing(e);
+         base.OnFormClosing(e);
       }
 
       /// <summary>Fully non-interactive: mouse input falls through to whatever is underneath, and
@@ -322,10 +321,8 @@ namespace StrangeLens
          g.SmoothingMode = SmoothingMode.None;
          g.PixelOffsetMode = PixelOffsetMode.Half;
 
-         using var outlinePen = new Pen(Color.DarkSlateGray)
-            {
-               Alignment = PenAlignment.Inset,
-            };
+         using var outlinePen = new Pen(Color.DarkSlateGray);
+         outlinePen.Alignment = PenAlignment.Inset;
 
          g.DrawLine(outlinePen, rect.Left, rect.Top + 1, rect.Right, rect.Top + 1);
          g.DrawLine(outlinePen, rect.Right, rect.Top, rect.Right, rect.Bottom);
