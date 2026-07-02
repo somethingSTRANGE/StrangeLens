@@ -961,73 +961,91 @@ namespace StrangeLens
 
             if (msg == WM_MOUSEMOVE)
             {
-               // MSLLHOOKSTRUCT: POINT is at offset 0 (two int32s).
-               var ptX = Marshal.ReadInt32(lParam, 0);
-               var ptY = Marshal.ReadInt32(lParam, 4);
-
-               if (this.isSyntheticMove)
+               var consumed = this.HandlePrecisionMove(lParam, hasCtrlAltShift, nCode, wParam);
+               if (consumed.HasValue)
                {
-                  // Always clear -- we cannot stay in this state indefinitely.
-                  this.isSyntheticMove = false;
-                  if ((ptX == this.lastCursorPos.X) && (ptY == this.lastCursorPos.Y))
-                     // Coordinates match our SetCursorPos target: this is the synthetic.
-                  {
-                     return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
-                  }
-
-                  // Coordinates don't match: stale real event queued before our SetCursorPos.
-                  // Consume it so the unscaled position never reaches Cursor.Position.
-                  return 1;
-               }
-
-               if (hasCtrlAltShift)
-               {
-                  var dx = ptX - this.lastCursorPos.X;
-                  var dy = ptY - this.lastCursorPos.Y;
-                  if ((dx != 0) || (dy != 0))
-                  {
-                     var scale = Lens.Instance.PrecisionSpeed / 100.0;
-                     this.accumX += dx * scale;
-                     this.accumY += dy * scale;
-                     var moveX = (int)this.accumX;
-                     var moveY = (int)this.accumY;
-                     this.accumX -= moveX;
-                     this.accumY -= moveY;
-                     var newX = this.lastCursorPos.X + moveX;
-                     var newY = this.lastCursorPos.Y + moveY;
-                     this.lastCursorPos = new Point(newX, newY);
-                     this.isSyntheticMove = true;
-                     SetCursorPos(newX, newY);
-                     return 1;
-                  }
-               }
-               else
-               {
-                  this.lastCursorPos = new Point(ptX, ptY);
-                  this.accumX = 0;
-                  this.accumY = 0;
+                  return consumed.Value;
                }
             }
             else if ((msg == WM_MOUSEWHEEL) && hasCtrlAltShift)
             {
-               // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the wheel delta (signed short).
-               var mouseData = Marshal.ReadInt32(lParam, 8);
-               var wheelDelta = (short)(mouseData >> 16);
-               if ((GetAsyncKeyState((int)Keys.S) & KEY_PRESSED) != 0)
-                  // Wheel up = more precise (lower speed %) -- mirrors wheel up = zoom in.
-               {
-                  this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
-               }
-               else
-               {
-                  this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
-               }
-
+               this.HandleScrollZoom(lParam);
                return 1;
             }
          }
 
          return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
+      }
+
+      /// <summary>Handles WM_MOUSEMOVE inside the low-level hook. Returns a hook return value when
+      ///    the event should be consumed or forwarded immediately; returns null to fall through to
+      ///    CallNextHookEx.</summary>
+      private IntPtr? HandlePrecisionMove(IntPtr lParam, bool hasCtrlAltShift, int nCode, IntPtr wParam)
+      {
+         // MSLLHOOKSTRUCT: POINT is at offset 0 (two int32s).
+         var ptX = Marshal.ReadInt32(lParam, 0);
+         var ptY = Marshal.ReadInt32(lParam, 4);
+
+         if (this.isSyntheticMove)
+         {
+            // Always clear -- we cannot stay in this state indefinitely.
+            this.isSyntheticMove = false;
+            if ((ptX == this.lastCursorPos.X) && (ptY == this.lastCursorPos.Y))
+               // Coordinates match our SetCursorPos target: this is the synthetic.
+            {
+               return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
+            }
+
+            // Coordinates don't match: stale real event queued before our SetCursorPos.
+            // Consume it so the unscaled position never reaches Cursor.Position.
+            return 1;
+         }
+
+         if (hasCtrlAltShift)
+         {
+            var dx = ptX - this.lastCursorPos.X;
+            var dy = ptY - this.lastCursorPos.Y;
+            if ((dx != 0) || (dy != 0))
+            {
+               var scale = Lens.Instance.PrecisionSpeed / 100.0;
+               this.accumX += dx * scale;
+               this.accumY += dy * scale;
+               var moveX = (int)this.accumX;
+               var moveY = (int)this.accumY;
+               this.accumX -= moveX;
+               this.accumY -= moveY;
+               var newX = this.lastCursorPos.X + moveX;
+               var newY = this.lastCursorPos.Y + moveY;
+               this.lastCursorPos = new Point(newX, newY);
+               this.isSyntheticMove = true;
+               SetCursorPos(newX, newY);
+               return 1;
+            }
+         }
+         else
+         {
+            this.lastCursorPos = new Point(ptX, ptY);
+            this.accumX = 0;
+            this.accumY = 0;
+         }
+
+         return null;
+      }
+
+      private void HandleScrollZoom(IntPtr lParam)
+      {
+         // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the wheel delta (signed short).
+         var mouseData = Marshal.ReadInt32(lParam, 8);
+         var wheelDelta = (short)(mouseData >> 16);
+         if ((GetAsyncKeyState((int)Keys.S) & KEY_PRESSED) != 0)
+            // Wheel up = more precise (lower speed %) -- mirrors wheel up = zoom in.
+         {
+            this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
+         }
+         else
+         {
+            this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
+         }
       }
 
       private void RenderFrame()
