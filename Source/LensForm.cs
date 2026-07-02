@@ -16,6 +16,8 @@ namespace StrangeLens
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
 
+   using static NativeMethods;
+
    public partial class LensForm : Form
    {
       // -- Field groups -------------------------------------------------------------------
@@ -49,8 +51,6 @@ namespace StrangeLens
       private const int ShadowOffsetY = 6; // shadow shifts this many px downward
 
       private const float ShadowSigma = 4.5f; // Gaussian standard deviation (px)
-
-      private const uint ULW_ALPHA = 0x00000002;
 
       private readonly InfoControl infoControl;
 
@@ -152,8 +152,6 @@ namespace StrangeLens
          this.infoForm = new InfoForm(this.infoControl);
       }
 
-      private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-
       [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
       public Point TargetLocation
       {
@@ -166,7 +164,7 @@ namespace StrangeLens
          get
          {
             var cp = base.CreateParams;
-            cp.ExStyle |= 0x00080000; // WS_EX_LAYERED
+            cp.ExStyle |= WS_EX_LAYERED;
             return cp;
          }
       }
@@ -329,36 +327,12 @@ namespace StrangeLens
 
          // Low-level mouse hook for Ctrl+Alt+Shift+scroll zoom -- works even when the lens lacks focus.
          this.mouseHookProc = this.MouseHookCallback;
-         this.mouseHook = SetWindowsHookEx(14 /*WH_MOUSE_LL*/, this.mouseHookProc, GetModuleHandle(null), 0);
+         this.mouseHook = SetWindowsHookEx(WH_MOUSE_LL, this.mouseHookProc, GetModuleHandle(null), 0);
          if (this.mouseHook == IntPtr.Zero)
          {
             Debug.WriteLine($"SetWindowsHookEx failed: error {Marshal.GetLastWin32Error()}");
          }
       }
-
-      [DllImport("user32.dll")]
-      private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateDIBSection(
-         IntPtr hdc,
-         ref BITMAPINFO pbmi,
-         uint usage,
-         out IntPtr ppvBits,
-         IntPtr hSection,
-         uint offset);
-
-      [DllImport("Gdi32.dll")]
-      private static extern IntPtr CreatePen(int fnPenStyle, int nWidth, uint crColor);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteDC(IntPtr hdc);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteObject(IntPtr hobj);
 
       private static void DrawBorder(Graphics g, int w, int h, bool focused)
       {
@@ -462,60 +436,10 @@ namespace StrangeLens
          return dst;
       }
 
-      [DllImport("User32.dll")]
-      private static extern short GetAsyncKeyState(int vKey);
-
-      [DllImport("kernel32.dll")]
-      private static extern IntPtr GetModuleHandle(string? lpModuleName);
-
-      [DllImport("Gdi32.dll")]
-      private static extern bool LineTo(IntPtr hdc, int x, int y);
-
-      [DllImport("Gdi32.dll")]
-      private static extern bool MoveToEx(IntPtr hdc, int x, int y, IntPtr lpPoint);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true)]
-      private static extern IntPtr SelectObject(IntPtr hdc, IntPtr h);
-
-      [DllImport("User32.dll")]
-      private static extern bool SetCursorPos(int x, int y);
-
-      [DllImport("user32.dll", SetLastError = true)]
-      private static extern bool SetWindowPos(
-         IntPtr hWnd,
-         IntPtr hWndInsertAfter,
-         int x,
-         int y,
-         int cx,
-         int cy,
-         uint uFlags);
-
-      [DllImport("user32.dll")]
-      private static extern IntPtr SetWindowsHookEx(
-         int idHook,
-         LowLevelMouseProc lpfn,
-         IntPtr hMod,
-         uint dwThreadId);
-
       private static uint ToColorRef(Color c)
       {
          return (uint)(c.R | (c.G << 8) | (c.B << 16));
       }
-
-      [DllImport("user32.dll")]
-      private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-      [DllImport("User32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool UpdateLayeredWindow(
-         IntPtr hwnd,
-         IntPtr hdcDst,
-         ref Point pptDst,
-         ref Size psize,
-         IntPtr hdcSrc,
-         ref Point pptSrc,
-         uint crKey,
-         ref BLENDFUNCTION pblend,
-         uint dwFlags);
 
       /// <summary>Applies per-pixel difference blend to crosshair lines directly in the
       ///    DIBSection. Result = |penColor - dst| per channel, so the line always contrasts with
@@ -1064,15 +988,12 @@ namespace StrangeLens
 
       private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
       {
-         const int WmMousemove = 0x0200;
-         const int WmMousewheel = 0x020A;
-
          if (nCode >= 0)
          {
             var msg = wParam.ToInt32();
             var hasCtrlAltShift = (ModifierKeys & CtrlAltShift) == CtrlAltShift;
 
-            if (msg == WmMousemove)
+            if (msg == WM_MOUSEMOVE)
             {
                // MSLLHOOKSTRUCT: POINT is at offset 0 (two int32s).
                var ptX = Marshal.ReadInt32(lParam, 0);
@@ -1121,12 +1042,12 @@ namespace StrangeLens
                   this.accumY = 0;
                }
             }
-            else if ((msg == WmMousewheel) && hasCtrlAltShift)
+            else if ((msg == WM_MOUSEWHEEL) && hasCtrlAltShift)
             {
                // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the signed wheel delta.
                var mouseData = Marshal.ReadInt32(lParam, 8);
                var wheelDelta = (short)(mouseData >> 16);
-               if ((GetAsyncKeyState((int)Keys.S) & 0x8000) != 0)
+               if ((GetAsyncKeyState((int)Keys.S) & KEY_PRESSED) != 0)
                   // Wheel up = more precise (lower speed %) -- mirrors wheel up = zoom in.
                {
                   this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
@@ -1313,8 +1234,7 @@ namespace StrangeLens
             this.CommitLayeredWindow(winPos, totalW, totalH);
             // Re-assert topmost every frame so popup menus, taskbar thumbnails, and tooltips
             // (which are also topmost but created after us) don't permanently cover the lens.
-            const uint SWP_NOMOVE_NOSIZE_NOACTIVATE = 0x0013; // SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE
-            SetWindowPos(this.Handle, new IntPtr(-1), 0, 0, 0, 0, SWP_NOMOVE_NOSIZE_NOACTIVATE);
+            SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
             this.infoForm.UpdateAndPosition(
                cursorPos,
                sampledColor,
@@ -1331,50 +1251,6 @@ namespace StrangeLens
          {
             this.isRendering = false;
          }
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFO
-      {
-         public BITMAPINFOHEADER bmiHeader;
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFOHEADER
-      {
-         public uint biSize;
-
-         public int biWidth;
-
-         public int biHeight;
-
-         public ushort biPlanes;
-
-         public ushort biBitCount;
-
-         public uint biCompression; // BI_RGB = 0
-
-         public uint biSizeImage;
-
-         public int biXPelsPerMeter;
-
-         public int biYPelsPerMeter;
-
-         public uint biClrUsed;
-
-         public uint biClrImportant;
-      }
-
-      [StructLayout(LayoutKind.Sequential, Pack = 1)]
-      private struct BLENDFUNCTION
-      {
-         public byte BlendOp;
-
-         public byte BlendFlags;
-
-         public byte SourceConstantAlpha;
-
-         public byte AlphaFormat;
       }
    }
 }

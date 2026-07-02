@@ -15,11 +15,11 @@ namespace StrangeLens
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
 
+   using static NativeMethods;
+
    public sealed partial class SettingsForm : Form
    {
       private const int ComboBoxW = 132;
-
-      private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
       private const int FormW = 335;
 
@@ -37,7 +37,7 @@ namespace StrangeLens
 
       private const int LabelIndent = 12;
 
-      private const uint ModCtrlAltShift = 0x0007; // MOD_ALT | MOD_CONTROL | MOD_SHIFT
+      private const uint ModCtrlAltShift = MOD_ALT | MOD_CONTROL | MOD_SHIFT;
 
       private const int PadX = 16;
 
@@ -171,8 +171,7 @@ namespace StrangeLens
          get
          {
             var cp = base.CreateParams;
-            cp.ExStyle |=
-               0x02000000; // WS_EX_COMPOSITED -- buffers the whole window before presenting, prevents white flash
+            cp.ExStyle |= WS_EX_COMPOSITED;
             return cp;
          }
       }
@@ -233,19 +232,16 @@ namespace StrangeLens
       [SuppressMessage("ReSharper", "CognitiveComplexity")]
       protected override void WndProc(ref Message m)
       {
-         const int WmHotkey = 0x0312;
-         const int WmNcActivate = 0x0086;
-
          // Re-apply dark title bar on every focus change -- WM_NCACTIVATE fires when Windows
          // redraws the non-client area, and something (SetColorMode/WinForms internals) can
          // reset the DWM attribute before we see the message.
-         if ((m.Msg == WmNcActivate) && IsDarkMode())
+         if ((m.Msg == WM_NCACTIVATE) && IsDarkMode())
          {
             var dark = 1;
             DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
          }
 
-         if (m.Msg == WmHotkey)
+         if (m.Msg == WM_HOTKEY)
          {
             switch (m.WParam.ToInt32())
             {
@@ -276,19 +272,10 @@ namespace StrangeLens
          return cb;
       }
 
-      [DllImport("dwmapi.dll")]
-      private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
-
       private static bool IsDarkMode()
       {
          return Lens.IsOsDarkMode();
       }
-
-      [DllImport("user32.dll", SetLastError = true)]
-      private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-
-      [DllImport("user32.dll")]
-      private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
       private int BuildInfoSection(Lens ds, int y)
       {

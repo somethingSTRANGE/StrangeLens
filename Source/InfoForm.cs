@@ -15,6 +15,8 @@ namespace StrangeLens
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
 
+   using static NativeMethods;
+
    /// <summary>Layered, non-activatable, click-through overlay that displays color and cursor
    ///    info beside the lens window. Rendered via <c>UpdateLayeredWindow</c> with the same
    ///    Gaussian drop shadow used by <see cref="LensForm"/>.</summary>
@@ -87,8 +89,6 @@ namespace StrangeLens
       private const float ShadowSigma = 4.5f;
 
       private const int SwatchSize = 24;
-
-      private const uint ULW_ALPHA = 0x00000002;
 
       private const int ValueX = LabelX + LabelWidth + ColumnGap;
 
@@ -180,9 +180,9 @@ namespace StrangeLens
          get
          {
             var cp = base.CreateParams;
-            cp.ExStyle |= 0x00000008; // WS_EX_TOPMOST -- always above non-topmost windows
-            cp.ExStyle |= 0x00080000; // WS_EX_LAYERED -- required for UpdateLayeredWindow
-            cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE -- never activated by the OS
+            cp.ExStyle |= WS_EX_TOPMOST;
+            cp.ExStyle |= WS_EX_LAYERED;
+            cp.ExStyle |= WS_EX_NOACTIVATE;
             return cp;
          }
       }
@@ -215,10 +215,6 @@ namespace StrangeLens
          {
             if (this.panelShown)
             {
-               const uint SWP_NOSIZE = 0x0001;
-               const uint SWP_NOMOVE = 0x0002;
-               const uint SWP_NOACTIVATE = 0x0010;
-               const uint SWP_HIDEWINDOW = 0x0080;
                SetWindowPos(
                   this.Handle,
                   IntPtr.Zero,
@@ -271,18 +267,13 @@ namespace StrangeLens
             //      SWP_SHOWWINDOW fires. The window appears with content, never blank. Calling
             //      Show() would make the window visible before the layered content is committed,
             //      producing a one-frame blank or positional offset between the two panels.
-            var hwndTopmost = new IntPtr(-1);
-            const uint SWP_NOSIZE = 0x0001;
-            const uint SWP_NOMOVE = 0x0002;
-            const uint SWP_NOACTIVATE = 0x0010;
-            const uint SWP_SHOWWINDOW = 0x0040;
             var flags = SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE;
             if (!this.panelShown)
             {
                flags |= SWP_SHOWWINDOW;
             }
 
-            SetWindowPos(this.Handle, hwndTopmost, 0, 0, 0, 0, flags);
+            SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, 0, 0, flags);
             this.panelShown = true;
          }
       }
@@ -311,10 +302,6 @@ namespace StrangeLens
       ///    the window cannot be activated by click.</summary>
       protected override void WndProc(ref Message m)
       {
-         const int WM_MOUSEACTIVATE = 0x0021;
-         const int WM_NCHITTEST = 0x0084;
-         const int MA_NOACTIVATE = 3;
-         const int HTTRANSPARENT = -1;
          switch (m.Msg)
          {
             case WM_MOUSEACTIVATE:
@@ -327,24 +314,6 @@ namespace StrangeLens
 
          base.WndProc(ref m);
       }
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern IntPtr CreateDIBSection(
-         IntPtr hdc,
-         ref BITMAPINFO pbmi,
-         uint usage,
-         out IntPtr ppvBits,
-         IntPtr hSection,
-         uint offset);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteDC(IntPtr hdc);
-
-      [DllImport("Gdi32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool DeleteObject(IntPtr hobj);
 
       private static void DrawOutline(Graphics g, RectangleF rect)
       {
@@ -478,31 +447,6 @@ namespace StrangeLens
          using var g = Graphics.FromImage(bmp);
          return g.MeasureString("0", font, PointF.Empty, StringFormat.GenericTypographic).Width;
       }
-
-      [DllImport("Gdi32.dll", ExactSpelling = true)]
-      private static extern IntPtr SelectObject(IntPtr hdc, IntPtr h);
-
-      [DllImport("user32.dll", SetLastError = true)]
-      private static extern bool SetWindowPos(
-         IntPtr hWnd,
-         IntPtr hWndInsertAfter,
-         int x,
-         int y,
-         int cx,
-         int cy,
-         uint uFlags);
-
-      [DllImport("User32.dll", ExactSpelling = true, SetLastError = true)]
-      private static extern bool UpdateLayeredWindow(
-         IntPtr hwnd,
-         IntPtr hdcDst,
-         ref Point pptDst,
-         ref Size psize,
-         IntPtr hdcSrc,
-         ref Point pptSrc,
-         uint crKey,
-         ref BLENDFUNCTION pblend,
-         uint dwFlags);
 
       private void CommitLayeredWindow(Point winPos, int w, int h)
       {
@@ -988,36 +932,6 @@ namespace StrangeLens
             this.iconMagnification.Draw(g, Color.White, IconX, y);
             DrawRow("Zoom", d.ZoomFactor, y);
          }
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFO
-      {
-         public BITMAPINFOHEADER bmiHeader;
-      }
-
-      [StructLayout(LayoutKind.Sequential)]
-      private struct BITMAPINFOHEADER
-      {
-         public uint biSize;
-
-         public int biWidth, biHeight;
-
-         public ushort biPlanes, biBitCount;
-
-         public uint biCompression;
-
-         public uint biSizeImage;
-
-         public int biXPelsPerMeter, biYPelsPerMeter;
-
-         public uint biClrUsed, biClrImportant;
-      }
-
-      [StructLayout(LayoutKind.Sequential, Pack = 1)]
-      private struct BLENDFUNCTION
-      {
-         public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat;
       }
    }
 }
