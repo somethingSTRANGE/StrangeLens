@@ -347,6 +347,7 @@ namespace StrangeLens
          }
       }
 
+      [System.Diagnostics.CodeAnalysis.SuppressMessage("ReSharper", "CognitiveComplexity")]
       private static float[] GaussianBlur1D(float[] src, int w, int h, float sigma, bool horizontal)
       {
          var radius = (int)Math.Ceiling(sigma * 3);
@@ -486,8 +487,7 @@ namespace StrangeLens
                }
 
                // Skip pixels that the crosshair will overwrite; they must read the original background.
-               if ((y == cy) || (x == cx) || ((y == cy + mag) && (x >= cx) && (x <= cx + mag))
-                   || ((x == cx + mag) && (y >= cy) && (y <= cy + mag)))
+               if (IsOnCrosshairBoundary(x, y, cx, cy, mag))
                {
                   continue;
                }
@@ -500,6 +500,11 @@ namespace StrangeLens
             this.gridBmp.UnlockBits(bmpData);
          }
       }
+
+      private static bool IsOnCrosshairBoundary(int x, int y, int cx, int cy, int mag)
+         => (y == cy) || (x == cx)
+            || ((y == cy + mag) && (x >= cx) && (x <= cx + mag))
+            || ((x == cx + mag) && (y >= cy) && (y <= cy + mag));
 
       private void ApplyDiffPixel(int offset, byte opacity = 0xFF)
       {
