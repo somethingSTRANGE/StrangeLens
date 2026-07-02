@@ -1080,90 +1080,7 @@ namespace StrangeLens
                this.lastScreenName = screen.DeviceName;
             }
 
-            int lensLeft, lensTop;
-            bool infoLeft;
-
-            if (!portrait)
-            {
-               // -- L-R mode (landscape) ---------------------------------------------------
-               // Two independent thresholds on opposite edges give a large dead zone in the
-               // center so neither flip fires until the panel genuinely clips an edge.
-               var gapX = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-               var rightClips = cursorPos.X + gapX + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
-               var leftClips = cursorPos.X - gapX - w - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
-
-               if (screenChanged)
-               {
-                  this.infoOnLeft = rightClips;
-               }
-               else if (!this.infoOnLeft && rightClips && !leftClips)
-               {
-                  this.infoOnLeft = true;
-               }
-               else if (this.infoOnLeft && leftClips && !rightClips)
-               {
-                  this.infoOnLeft = false;
-               }
-
-               lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
-               lensTop = Math.Max(
-                  screen.Bounds.Top + InfoForm.PanelMargin,
-                  Math.Min(cursorPos.Y - (h / 2), screen.Bounds.Bottom - maxH - InfoForm.PanelMargin));
-               infoLeft = this.infoOnLeft;
-            }
-            else
-            {
-               // -- U-D mode (portrait) ----------------------------------------------------
-               // Lens is centered horizontally on the cursor; Info hangs off left or right.
-               // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
-               // cursor can move near the left/right boundary without clipping the panel.
-               var gapY = (int)(Math.Ceiling(h / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-               var topClips = cursorPos.Y - gapY - h < screen.Bounds.Top + InfoForm.PanelMargin;
-               var bottomClips = cursorPos.Y + gapY + maxH > screen.Bounds.Bottom - InfoForm.PanelMargin;
-
-               if (screenChanged)
-               {
-                  this.udLensAbove = !topClips;
-               }
-               else if (this.udLensAbove && topClips && !bottomClips)
-               {
-                  this.udLensAbove = false;
-               }
-               else if (!this.udLensAbove && bottomClips && !topClips)
-               {
-                  this.udLensAbove = true;
-               }
-
-               lensLeft = Math.Clamp(
-                  cursorPos.X - (w / 2),
-                  screen.Bounds.Left + InfoForm.PanelMargin,
-                  screen.Bounds.Right - w - InfoForm.PanelMargin);
-               lensTop = this.udLensAbove
-                  ? Math.Clamp(
-                     cursorPos.Y - gapY - h,
-                     screen.Bounds.Top + InfoForm.PanelMargin,
-                     screen.Bounds.Bottom - maxH - InfoForm.PanelMargin)
-                  : Math.Min(cursorPos.Y + gapY, screen.Bounds.Bottom - maxH - InfoForm.PanelMargin);
-
-               // Info left/right of Lens, with the same two-threshold hysteresis.
-               var rightClipsUD = lensLeft + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
-               var leftClipsUD = lensLeft - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
-
-               if (screenChanged)
-               {
-                  this.udInfoLeft = rightClipsUD;
-               }
-               else if (!this.udInfoLeft && rightClipsUD && !leftClipsUD)
-               {
-                  this.udInfoLeft = true;
-               }
-               else if (this.udInfoLeft && leftClipsUD && !rightClipsUD)
-               {
-                  this.udInfoLeft = false;
-               }
-
-               infoLeft = this.udInfoLeft;
-            }
+            var (lensLeft, lensTop, infoLeft) = this.ComputeLayout(cursorPos, screen, w, h, infoW, maxH, screenChanged, portrait);
 
             var totalW = w + ShadowMarginL + ShadowMarginR;
             var totalH = h + ShadowMarginT + ShadowMarginB;
@@ -1235,6 +1152,99 @@ namespace StrangeLens
          {
             this.isRendering = false;
          }
+      }
+
+      /// <summary>Computes the lens window position and info-panel side for one frame. Updates
+      ///    hysteresis state fields so repeated calls converge without flickering.</summary>
+      private (int lensLeft, int lensTop, bool infoLeft) ComputeLayout(
+         Point cursorPos, Screen screen, int w, int h, int infoW, int maxH, bool screenChanged, bool portrait)
+      {
+         int lensLeft, lensTop;
+         bool infoLeft;
+
+         if (!portrait)
+         {
+            // -- L-R mode (landscape) -------------------------------------------------------
+            // Two independent thresholds on opposite edges give a large dead zone in the
+            // center so neither flip fires until the panel genuinely clips an edge.
+            var gapX = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
+            var rightClips = cursorPos.X + gapX + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
+            var leftClips = cursorPos.X - gapX - w - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
+
+            if (screenChanged)
+            {
+               this.infoOnLeft = rightClips;
+            }
+            else if (!this.infoOnLeft && rightClips && !leftClips)
+            {
+               this.infoOnLeft = true;
+            }
+            else if (this.infoOnLeft && leftClips && !rightClips)
+            {
+               this.infoOnLeft = false;
+            }
+
+            lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
+            lensTop = Math.Max(
+               screen.Bounds.Top + InfoForm.PanelMargin,
+               Math.Min(cursorPos.Y - (h / 2), screen.Bounds.Bottom - maxH - InfoForm.PanelMargin));
+            infoLeft = this.infoOnLeft;
+         }
+         else
+         {
+            // -- U-D mode (portrait) --------------------------------------------------------
+            // Lens is centered horizontally on the cursor; Info hangs off left or right.
+            // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
+            // cursor can move near the left/right boundary without clipping the panel.
+            var gapY = (int)(Math.Ceiling(h / (float)Lens.Defaults.MinMagnification) / 2) + 10;
+            var topClips = cursorPos.Y - gapY - h < screen.Bounds.Top + InfoForm.PanelMargin;
+            var bottomClips = cursorPos.Y + gapY + maxH > screen.Bounds.Bottom - InfoForm.PanelMargin;
+
+            if (screenChanged)
+            {
+               this.udLensAbove = !topClips;
+            }
+            else if (this.udLensAbove && topClips && !bottomClips)
+            {
+               this.udLensAbove = false;
+            }
+            else if (!this.udLensAbove && bottomClips && !topClips)
+            {
+               this.udLensAbove = true;
+            }
+
+            lensLeft = Math.Clamp(
+               cursorPos.X - (w / 2),
+               screen.Bounds.Left + InfoForm.PanelMargin,
+               screen.Bounds.Right - w - InfoForm.PanelMargin);
+            lensTop = this.udLensAbove
+               ? Math.Clamp(
+                  cursorPos.Y - gapY - h,
+                  screen.Bounds.Top + InfoForm.PanelMargin,
+                  screen.Bounds.Bottom - maxH - InfoForm.PanelMargin)
+               : Math.Min(cursorPos.Y + gapY, screen.Bounds.Bottom - maxH - InfoForm.PanelMargin);
+
+            // Info left/right of Lens, with the same two-threshold hysteresis.
+            var rightClipsUD = lensLeft + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
+            var leftClipsUD = lensLeft - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
+
+            if (screenChanged)
+            {
+               this.udInfoLeft = rightClipsUD;
+            }
+            else if (!this.udInfoLeft && rightClipsUD && !leftClipsUD)
+            {
+               this.udInfoLeft = true;
+            }
+            else if (this.udInfoLeft && leftClipsUD && !rightClipsUD)
+            {
+               this.udInfoLeft = false;
+            }
+
+            infoLeft = this.udInfoLeft;
+         }
+
+         return (lensLeft, lensTop, infoLeft);
       }
    }
 }
