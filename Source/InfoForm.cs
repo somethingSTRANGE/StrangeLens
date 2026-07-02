@@ -363,6 +363,7 @@ namespace StrangeLens
          }
       }
 
+      [System.Diagnostics.CodeAnalysis.SuppressMessage("ReSharper", "CognitiveComplexity")]
       private static float[] GaussianBlur1D(float[] src, int w, int h, float sigma, bool horizontal)
       {
          var radius = (int)Math.Ceiling(sigma * 3);
