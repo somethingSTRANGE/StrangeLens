@@ -107,7 +107,7 @@ namespace StrangeLens
 
       private int cachedShadowContentW = -1, cachedShadowContentH = -1;
 
-      private float charWidth;
+      private readonly float charWidth;
 
       private int contentH; // dynamic; recomputed from enabled settings each frame
 
@@ -121,7 +121,7 @@ namespace StrangeLens
 
       private int finalW, finalH;
 
-      private FontInfo labelFont;
+      private readonly FontInfo labelFont;
 
       private IntPtr layeredBitmap = IntPtr.Zero;
 
@@ -277,7 +277,7 @@ namespace StrangeLens
          }
       }
 
-      internal static void DrawDebugBounds(Graphics g, float x, float y, float w, float h)
+      private static void DrawDebugBounds(Graphics g, float x, float y, float w, float h)
       {
          var left = MathF.Floor(x);
          var top = MathF.Floor(y);
@@ -288,7 +288,7 @@ namespace StrangeLens
 
       protected override void OnFormClosing(FormClosingEventArgs e)
       {
-         this.labelFont?.Dispose();
+         this.labelFont.Dispose();
          this.valueFont?.Dispose();
          this.valueFont = null;
          this.FreeLayeredResources();
