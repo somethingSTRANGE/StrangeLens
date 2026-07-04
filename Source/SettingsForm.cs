@@ -29,6 +29,8 @@ namespace StrangeLens
 
       private const int HotkeyHsl = 4;
 
+      private const int HotkeyMeasure = 7;
+
       private const int HotkeyRgb = 3;
 
       private const int HotkeyToggle = 1;
@@ -199,6 +201,7 @@ namespace StrangeLens
          UnregisterHotKey(this.Handle, HotkeyHsl);
          UnregisterHotKey(this.Handle, HotkeyWeb);
          UnregisterHotKey(this.Handle, Hotkey12Bit);
+         UnregisterHotKey(this.Handle, HotkeyMeasure);
       }
 
       protected override void OnHandleCreated(EventArgs e)
@@ -227,6 +230,7 @@ namespace StrangeLens
          TryRegister(HotkeyHsl, Keys.S);
          TryRegister(HotkeyWeb, Keys.W);
          TryRegister(Hotkey12Bit, Keys.D1);
+         TryRegister(HotkeyMeasure, Keys.Q);
       }
 
       [SuppressMessage("ReSharper", "CognitiveComplexity")]
@@ -251,6 +255,7 @@ namespace StrangeLens
                case HotkeyHsl: this.activeLens?.CopyToClipboardColorHSL(); break;
                case HotkeyWeb: this.activeLens?.CopyToClipboardColorWeb(); break;
                case Hotkey12Bit: this.activeLens?.CopyToClipboardColor12Bit(); break;
+               case HotkeyMeasure: this.activeLens?.ToggleMeasure(); break;
             }
          }
 

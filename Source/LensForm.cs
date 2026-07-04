@@ -56,6 +56,8 @@ namespace StrangeLens
 
       private readonly InfoForm infoForm;
 
+      private readonly MeasureForm measureForm;
+
       private readonly Timer timer;
 
       private double accumX;
@@ -105,6 +107,14 @@ namespace StrangeLens
 
       private int layeredW, layeredH;
 
+      private bool measureActive;
+
+      private Point measureAnchor;
+
+      private float measureAnimDir = 1f;
+
+      private float measureAnimPhase;
+
       private IntPtr mouseHook = IntPtr.Zero;
 
       /// <summary>Keeps the delegate alive so the GC doesn't collect it while the native hook
@@ -147,6 +157,7 @@ namespace StrangeLens
 
          this.infoControl = new InfoControl();
          this.infoForm = new InfoForm(this.infoControl);
+         this.measureForm = new MeasureForm();
       }
 
       protected override CreateParams CreateParams
@@ -189,6 +200,30 @@ namespace StrangeLens
          this.infoControl.NotifyCopied("Web");
       }
 
+      internal void ToggleMeasure()
+      {
+         if (!this.Visible)
+         {
+            return;
+         }
+
+         if (this.measureActive)
+         {
+            this.measureActive = false;
+            this.measureForm.Dismiss();
+            this.infoControl.SetMeasure(false);
+         }
+         else
+         {
+            this.measureActive = true;
+            this.measureAnchor = (ModifierKeys & CtrlAltShift) == CtrlAltShift
+               ? this.lastCursorPos
+               : Cursor.Position;
+            this.measureAnimPhase = 0f;
+            this.measureAnimDir = 1f;
+         }
+      }
+
       protected override void OnFormClosing(FormClosingEventArgs e)
       {
          this.timer.Stop();
@@ -199,6 +234,14 @@ namespace StrangeLens
          }
 
          this.infoForm.Close();
+         if (this.measureActive)
+         {
+            this.measureActive = false;
+            this.measureForm.Dismiss();
+            this.infoControl.SetMeasure(false);
+         }
+
+         this.measureForm.Close();
          this.FreeLayeredResources();
          this.FreeFinalResources();
          this.shadowAlpha = null;
@@ -1187,6 +1230,24 @@ namespace StrangeLens
          {
             var precisionActive = (ModifierKeys & CtrlAltShift) == CtrlAltShift;
             var cursorPos = precisionActive ? this.lastCursorPos : Cursor.Position;
+
+            if (this.measureActive)
+            {
+               this.measureAnimPhase = Math.Clamp(
+                  this.measureAnimPhase + (this.measureAnimDir * 0.1f),
+                  0f,
+                  1f);
+               if ((this.measureAnimPhase >= 1f) || (this.measureAnimPhase <= 0f))
+               {
+                  this.measureAnimDir = -this.measureAnimDir;
+               }
+
+               var mw = Math.Abs(cursorPos.X - this.measureAnchor.X);
+               var mh = Math.Abs(cursorPos.Y - this.measureAnchor.Y);
+               this.measureForm.Update(this.measureAnchor, cursorPos, this.measureAnimPhase);
+               this.infoControl.SetMeasure(true, mw, mh);
+            }
+
             var lens = Lens.Instance;
             var w = lens.Width;
             var h = lens.Height;
