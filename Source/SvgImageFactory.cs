@@ -45,6 +45,8 @@ namespace StrangeLens
 
       private static readonly Dictionary<(int, int), SvgImage> cachedInfoMousePosition = new();
 
+      private static readonly Dictionary<(int, int), SvgImage> cachedInfoRuler = new();
+
       public static SvgImage AboutDonateBuyMeACoffee(int size)
       {
          return Get(cachedAboutDonateBuyMeACoffee, Data.AboutDonateBuyMeACoffeeIcon, size, size);
@@ -103,6 +105,11 @@ namespace StrangeLens
       public static SvgImage InfoMousePosition(int size)
       {
          return Get(cachedInfoMousePosition, Data.InfoMouseCursorIcon, size, size);
+      }
+
+      public static SvgImage InfoRuler(int size)
+      {
+         return Get(cachedInfoRuler, Data.InfoRulerIcon, size, size);
       }
 
       private static void AddQuadBezier(

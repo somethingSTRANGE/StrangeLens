@@ -71,6 +71,9 @@ namespace StrangeLens
       /// <summary>Does not activate the window.</summary>
       internal const uint SWP_NOACTIVATE = 0x0010;
 
+      /// <summary>Retains the current Z-order (ignores the hWndInsertAfter parameter).</summary>
+      internal const uint SWP_NOZORDER = 0x0004;
+
       /// <summary>Displays the window.</summary>
       internal const uint SWP_SHOWWINDOW = 0x0040;
 
@@ -268,5 +271,8 @@ namespace StrangeLens
 
       [DllImport("kernel32.dll")]
       internal static extern IntPtr GetModuleHandle(string? lpModuleName);
+
+      [DllImport("kernel32.dll")]
+      internal static extern void RtlZeroMemory(IntPtr dest, IntPtr size);
    }
 }

@@ -29,6 +29,10 @@ namespace StrangeLens
 
       public string LensSize { get; private set; } = string.Empty;
 
+      public bool MeasureActive { get; private set; }
+
+      public string MeasureValue { get; private set; } = string.Empty;
+
       public string MousePosition { get; private set; } = string.Empty;
 
       public string ValueColor12Bit { get; private set; } = string.Empty;
@@ -53,6 +57,12 @@ namespace StrangeLens
       {
          this.copiedLabel = label;
          this.copiedAt = DateTime.UtcNow;
+      }
+
+      public void SetMeasure(bool active, int w = 0, int h = 0)
+      {
+         this.MeasureActive = active;
+         this.MeasureValue = active ? $"{w} × {h}" : string.Empty;
       }
 
       public void UpdateInfo(Point mousePosition, Color color, bool precisionActive, int precisionSpeed)

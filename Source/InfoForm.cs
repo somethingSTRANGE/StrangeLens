@@ -104,6 +104,8 @@ namespace StrangeLens
 
       private readonly SvgImage iconMousePosition;
 
+      private readonly SvgImage iconRuler;
+
       private readonly InfoControl infoData;
 
       private readonly FontInfo labelFont;
@@ -159,6 +161,7 @@ namespace StrangeLens
          this.iconLensSize = SvgImageFactory.InfoLensSize(IconSize);
          this.iconMagnification = SvgImageFactory.InfoMagnification(IconSize);
          this.iconMousePosition = SvgImageFactory.InfoMousePosition(IconSize);
+         this.iconRuler = SvgImageFactory.InfoRuler(IconSize);
       }
 
       internal int ContentH => this.contentH;
@@ -550,6 +553,7 @@ namespace StrangeLens
          h = AddSectionH(h, ref needGap, lens.InfoShowHex, lens.InfoShowRgb, lens.InfoShowHsl);
          h = AddSectionH(h, ref needGap, lens.InfoShow12Bit, lens.InfoShowWeb);
          h = AddSectionH(h, ref needGap, lens.InfoShowMouse, lens.InfoShowSize, lens.InfoShowZoom);
+         h = AddSectionH(h, ref needGap, this.infoData.MeasureActive);
 
          // The final enabled row appended a trailing RowGap; remove it.
          if (h > PanelPadding)
@@ -884,7 +888,7 @@ namespace StrangeLens
          if (lens.InfoShowSize)
          {
             this.iconLensSize.Draw(g, Color.White, IconX, y);
-            DrawRow("Size", d.LensSize, y);
+            DrawRow("Lens", d.LensSize, y);
             y += rowOffset;
          }
 
@@ -893,6 +897,19 @@ namespace StrangeLens
          {
             this.iconMagnification.Draw(g, Color.White, IconX, y);
             DrawRow("Zoom", d.ZoomFactor, y);
+            y += rowOffset;
+         }
+
+         // -- measure section (active only while measuring) -------------------
+         if (d.MeasureActive)
+         {
+            if (this.HasVisibleContent)
+            {
+               y += SectionGap;
+            }
+
+            this.iconRuler.Draw(g, Color.White, IconX, y);
+            DrawRow("Ruler", d.MeasureValue, y);
          }
       }
    }
