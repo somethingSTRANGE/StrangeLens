@@ -9,6 +9,7 @@ namespace StrangeLens
 {
    using System;
    using System.Collections.Generic;
+   using System.Diagnostics.CodeAnalysis;
    using System.Drawing;
    using System.Drawing.Text;
    using System.IO;
@@ -17,9 +18,13 @@ namespace StrangeLens
 
    internal static class FontHelper
    {
-      // fontCollection must outlive any Font created from it (AddMemoryFont docs).
       // fontFamilies is a snapshot enumerated while a Graphics context is live —
       // GDI+ may not flush AddMemoryFont additions to its internal registry without one.
+      [SuppressMessage(
+         "ReSharper",
+         "PrivateFieldCanBeConvertedToLocalVariable",
+         Justification =
+            "PrivateFontCollection must outlive every Font created from it (AddMemoryFont docs).")]
       private static readonly PrivateFontCollection fontCollection;
 
       private static readonly IReadOnlyDictionary<string, FontFamily> fontFamilies;
@@ -32,8 +37,8 @@ namespace StrangeLens
          AddEmbeddedFont(fontCollection, "JetBrainsMono-Regular.ttf");
 
          // All fonts must be added before the Graphics context is created; GDI+ only
-         // flushes AddMemoryFont additions to its enumerable registry when a drawing
-         // context exists at query time, not at add time.
+         // flushes AddMemoryFont additions to its enumerable registry when queried with
+         // an active drawing context, not when fonts are added.
          using var g = Graphics.FromHwnd(IntPtr.Zero);
          var map = new Dictionary<string, FontFamily>(StringComparer.OrdinalIgnoreCase);
          foreach (var family in fontCollection.Families)

@@ -1123,11 +1123,13 @@ namespace StrangeLens
 
          if (this.isSyntheticMove)
          {
-            // Always clear -- we cannot stay in this state indefinitely.
+            // Always clear -- safety valve against the flag getting stuck (e.g. OS clamps
+            // a SetCursorPos to the screen edge and the synthetic arrives at a different
+            // coordinate than lastCursorPos).
             this.isSyntheticMove = false;
             if ((ptX == this.lastCursorPos.X) && (ptY == this.lastCursorPos.Y))
-               // Coordinates match our SetCursorPos target: this is the synthetic.
             {
+               // Coordinates match our SetCursorPos target: this is the synthetic.
                return CallNextHookEx(this.mouseHook, nCode, wParam, lParam);
             }
 
@@ -1152,8 +1154,17 @@ namespace StrangeLens
                var newX = this.lastCursorPos.X + moveX;
                var newY = this.lastCursorPos.Y + moveY;
                this.lastCursorPos = new Point(newX, newY);
-               this.isSyntheticMove = true;
-               SetCursorPos(newX, newY);
+               if ((moveX != 0) || (moveY != 0))
+               {
+                  // Only call SetCursorPos when the cursor actually moves to a new position.
+                  // A same-position call generates no WM_MOUSEMOVE synthetic, which would leave
+                  // isSyntheticMove stuck true and cause the next real event to be wrongly
+                  // consumed as stale -- leaving lastCursorPos stale and causing a jump on the
+                  // next precision entry.
+                  this.isSyntheticMove = true;
+                  SetCursorPos(newX, newY);
+               }
+
                return 1;
             }
          }
