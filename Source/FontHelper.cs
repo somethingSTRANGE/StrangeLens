@@ -8,6 +8,7 @@
 namespace StrangeLens
 {
    using System;
+   using System.Collections.Generic;
    using System.Drawing;
    using System.Drawing.Text;
    using System.IO;
@@ -16,7 +17,32 @@ namespace StrangeLens
 
    internal static class FontHelper
    {
-      private static readonly PrivateFontCollection fonts = LoadFonts();
+      // fontCollection must outlive any Font created from it (AddMemoryFont docs).
+      // fontFamilies is a snapshot enumerated while a Graphics context is live —
+      // GDI+ may not flush AddMemoryFont additions to its internal registry without one.
+      private static readonly PrivateFontCollection fontCollection;
+
+      private static readonly IReadOnlyDictionary<string, FontFamily> fontFamilies;
+
+      static FontHelper()
+      {
+         fontCollection = new PrivateFontCollection();
+         AddEmbeddedFont(fontCollection, "Inter-Regular.ttf");
+         AddEmbeddedFont(fontCollection, "Inter-Bold.ttf");
+         AddEmbeddedFont(fontCollection, "JetBrainsMono-Regular.ttf");
+
+         // All fonts must be added before the Graphics context is created; GDI+ only
+         // flushes AddMemoryFont additions to its enumerable registry when a drawing
+         // context exists at query time, not at add time.
+         using var g = Graphics.FromHwnd(IntPtr.Zero);
+         var map = new Dictionary<string, FontFamily>(StringComparer.OrdinalIgnoreCase);
+         foreach (var family in fontCollection.Families)
+         {
+            map[family.Name] = family;
+         }
+
+         fontFamilies = map;
+      }
 
       public static FontInfo CreateBoldFontInfo()
       {
@@ -59,29 +85,13 @@ namespace StrangeLens
 
       private static FontFamily GetFamily(string name)
       {
-         foreach (var family in fonts.Families)
+         if (fontFamilies.TryGetValue(name, out var family))
          {
-            if (string.Equals(family.Name, name, StringComparison.OrdinalIgnoreCase))
-            {
-               return family;
-            }
+            return family;
          }
 
-         throw new InvalidOperationException($"Embedded font family not found: {name}");
-      }
-
-      private static PrivateFontCollection LoadFonts()
-      {
-         // A Graphics object must exist before PrivateFontCollection.Families is queried;
-         // without one, GDI+ may not flush AddMemoryFont additions to its font registry,
-         // making Families return an incomplete set.
-         using var warmup = Graphics.FromHwnd(IntPtr.Zero);
-
-         var collection = new PrivateFontCollection();
-         AddEmbeddedFont(collection, "Inter-Regular.ttf");
-         AddEmbeddedFont(collection, "Inter-Bold.ttf");
-         AddEmbeddedFont(collection, "JetBrainsMono-Regular.ttf");
-         return collection;
+         throw new InvalidOperationException(
+            $"Embedded font family not found: {name}. Available: {string.Join(", ", fontFamilies.Keys)}");
       }
    }
 }
