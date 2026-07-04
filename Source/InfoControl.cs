@@ -15,6 +15,25 @@ namespace StrangeLens
    ///    info panel. Rendering is handled by <see cref="InfoForm"/>.</summary>
    internal class InfoControl
    {
+      // Format patterns — used by the formatters below; most also referenced by InfoForm.ComputeContentW.
+      internal const string PatternHex = "#{0:X2}{1:X2}{2:X2}";
+
+      internal const string PatternHexShort = "#{0:X}{1:X}{2:X}";
+
+      internal const string PatternHsl = "{0}, {1}%, {2}%";
+
+      internal const string PatternLensSize = "{0}×{1}";
+
+      internal const string PatternMeasure = "{0} × {1}";
+
+      internal const string PatternMousePrecision = "{0}, {1} — {2}%";
+
+      internal const string PatternRgb = "{0}, {1}, {2}";
+
+      internal const string PatternZoom = "x{0}";
+
+      private const string PatternMouse = "{0}, {1}";
+
       private DateTime copiedAt = DateTime.MinValue;
 
       private string copiedLabel = string.Empty;
@@ -62,7 +81,7 @@ namespace StrangeLens
       public void SetMeasure(bool active, int w = 0, int h = 0)
       {
          this.MeasureActive = active;
-         this.MeasureValue = active ? $"{w} × {h}" : string.Empty;
+         this.MeasureValue = active ? string.Format(PatternMeasure, w, h) : string.Empty;
       }
 
       public void UpdateInfo(Point mousePosition, Color color, bool precisionActive, int precisionSpeed)
@@ -73,10 +92,10 @@ namespace StrangeLens
          this.ValueColorRGB = ColorAsRGB(color);
          this.ValueColorHSL = ColorAsHSL(color);
          this.MousePosition = precisionActive
-            ? $"{mousePosition.X}, {mousePosition.Y} — {precisionSpeed}%"
-            : $"{mousePosition.X}, {mousePosition.Y}";
-         this.LensSize = $"{Lens.Instance.Width}×{Lens.Instance.Height}";
-         this.ZoomFactor = $"x{Lens.Instance.Magnification}";
+            ? string.Format(PatternMousePrecision, mousePosition.X, mousePosition.Y, precisionSpeed)
+            : string.Format(PatternMouse, mousePosition.X, mousePosition.Y);
+         this.LensSize = string.Format(PatternLensSize, Lens.Instance.Width, Lens.Instance.Height);
+         this.ZoomFactor = string.Format(PatternZoom, Lens.Instance.Magnification);
          this.ColorSwatch = color;
       }
 
@@ -95,25 +114,26 @@ namespace StrangeLens
       {
          if (shortForm && (color.R % 17 == 0) && (color.G % 17 == 0) && (color.B % 17 == 0))
          {
-            return $"#{color.R / 17:X}{color.G / 17:X}{color.B / 17:X}";
+            return string.Format(PatternHexShort, color.R / 17, color.G / 17, color.B / 17);
          }
 
-         return $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+         return string.Format(PatternHex, color.R, color.G, color.B);
       }
 
       [SuppressMessage("ReSharper", "InconsistentNaming")]
       private static string ColorAsHSL(Color color)
       {
-         var hue = Math.Round(color.GetHue(), 1);
-         var saturation = Math.Round(color.GetSaturation() * 100, 1);
-         var lightness = Math.Round(color.GetBrightness() * 100, 1);
-         return $"{hue}, {saturation}%, {lightness}%";
+         return string.Format(
+            PatternHsl,
+            Math.Round(color.GetHue(), 1),
+            Math.Round(color.GetSaturation() * 100, 1),
+            Math.Round(color.GetBrightness() * 100, 1));
       }
 
       [SuppressMessage("ReSharper", "InconsistentNaming")]
       private static string ColorAsRGB(Color color)
       {
-         return $"{color.R}, {color.G}, {color.B}";
+         return string.Format(PatternRgb, color.R, color.G, color.B);
       }
 
       private static Color ColorAsWeb(Color color)

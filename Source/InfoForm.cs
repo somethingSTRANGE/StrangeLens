@@ -12,6 +12,7 @@ namespace StrangeLens
    using System.Drawing;
    using System.Drawing.Drawing2D;
    using System.Drawing.Text;
+   using System.Linq;
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
 
@@ -44,20 +45,6 @@ namespace StrangeLens
       private const int LabelWidth = 40;
 
       private const int LabelX = PanelPadding + IconSize + ColumnGap;
-
-      private const int MaxCharsColor4 = 4; // #RGB (12-bit, Web)
-
-      private const int MaxCharsHex = 7; // #FFFFFF
-
-      private const int MaxCharsHsl = 19; // 359.9, 99.9%, 99.9%
-
-      private const int MaxCharsMouse = 18; // 99999, 99999 — 70%
-
-      private const int MaxCharsRgb = 13; // 255, 255, 255
-
-      private const int MaxCharsSize = 7; // 400×400
-
-      private const int MaxCharsZoom = 3; // x16
 
       private const int PanelPadding = 6;
 
@@ -571,44 +558,45 @@ namespace StrangeLens
       {
          var lens = Lens.Instance;
 
-         // Widest visible color-row value in characters. HSL is always the ceiling at 19.
-         var colorChars = 0;
-         if (lens.InfoShowHsl)
-         {
-            colorChars = MaxCharsHsl;
-         }
-         else if (lens.InfoShowRgb)
-         {
-            colorChars = MaxCharsRgb;
-         }
-         else if (lens.InfoShowHex)
-         {
-            colorChars = MaxCharsHex;
-         }
-         else if (lens.InfoShow12Bit || lens.InfoShowWeb)
-         {
-            colorChars = MaxCharsColor4;
-         }
+         var sampleHsl = string.Format(InfoControl.PatternHsl, 359.9, 99.9, 99.9);
+         var sampleRgb = string.Format(InfoControl.PatternRgb, 255, 255, 255);
+         var sampleHex = string.Format(InfoControl.PatternHex, 0xFF, 0xFF, 0xFF);
+         var sampleColor4 = string.Format(InfoControl.PatternHexShort, 0xF, 0xF, 0xF);
+
+         var colorChars = new[]
+            {
+               lens.InfoShowHsl ? sampleHsl.Length : 0,
+               lens.InfoShowRgb ? sampleRgb.Length : 0,
+               lens.InfoShowHex ? sampleHex.Length : 0,
+               lens.InfoShow12Bit || lens.InfoShowWeb ? sampleColor4.Length : 0,
+            }.Max();
 
          // Color rows need value text + gap + swatch column.
          var colorValueW = colorChars > 0
             ? (int)Math.Ceiling(colorChars * this.charWidth) + (ColumnGap * 2) + SwatchSize
             : 0;
 
-         // Non-color rows: take the widest visible one (Mouse > Size > Zoom).
-         var nonColorChars = 0;
-         if (lens.InfoShowMouse)
-         {
-            nonColorChars = MaxCharsMouse;
-         }
-         else if (lens.InfoShowSize)
-         {
-            nonColorChars = MaxCharsSize;
-         }
-         else if (lens.InfoShowZoom)
-         {
-            nonColorChars = MaxCharsZoom;
-         }
+         // Measurement is transient (not a persisted setting), so always reserve its width so
+         // the panel never needs resizing when the user activates measure mode mid-session.
+         var sampleMouse = string.Format(
+            InfoControl.PatternMousePrecision,
+            99999,
+            99999,
+            Lens.PrecisionSpeedOptions[^1]);
+         var sampleLensSize = string.Format(
+            InfoControl.PatternLensSize,
+            Lens.Defaults.MaxWidth,
+            Lens.Defaults.MaxHeight);
+         var sampleZoom = string.Format(InfoControl.PatternZoom, Lens.Defaults.MaxMagnification);
+         var sampleMeasure = string.Format(InfoControl.PatternMeasure, 99999, 99999);
+
+         var nonColorChars = new[]
+            {
+               lens.InfoShowMouse ? sampleMouse.Length : 0,
+               lens.InfoShowSize ? sampleLensSize.Length : 0,
+               lens.InfoShowZoom ? sampleZoom.Length : 0,
+               sampleMeasure.Length,
+            }.Max();
 
          var nonColorValueW = (int)Math.Ceiling(nonColorChars * this.charWidth);
 
