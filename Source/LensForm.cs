@@ -644,6 +644,8 @@ namespace StrangeLens
          var p = Cursor.Position;
          p.X += x;
          p.Y += y;
+         this.lastCursorPos = p;
+         this.isSyntheticMove = true;
          Cursor.Position = p;
       }
 
