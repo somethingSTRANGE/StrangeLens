@@ -77,11 +77,7 @@ namespace StrangeLens
 
       private int clickCount;
 
-      private Color colorCtrlBg;
-
-      private Color colorCtrlBorder;
-
-      private Color colorFocusBorder;
+      private Color comboBoxBackground;
 
       private ComboBox comboBoxLensGridOpacity = null!;
 
@@ -98,6 +94,8 @@ namespace StrangeLens
       private ComboBox comboBoxLensWidth = null!;
 
       private ComboBox comboBoxPrecisionSpeed = null!;
+
+      private ThemePalette palette = null!;
 
       private bool shouldExitApplication;
 
@@ -336,19 +334,19 @@ namespace StrangeLens
       private void BuildLayout()
       {
          var ds = Lens.Instance;
-         var palette = ds.ActivePalette;
+         var activePalette = ds.ActivePalette;
 
-         this.BackColor = palette.Background;
-         this.colorCtrlBg = palette.Control;
-         this.colorCtrlBorder = palette.Border;
-         this.colorFocusBorder = palette.AccentNormal;
+         this.palette = activePalette;
+         this.BackColor = activePalette.Background;
 
-         Toggle.Colors.Focus = palette.Border;
-         Toggle.Colors.Thumb = palette.TextSubtle;
-         Toggle.Colors.ThumbHover = palette.TextStrong;
-         Toggle.Colors.TrackBase = palette.Inset;
-         Toggle.Colors.TrackActive = palette.AccentNormal;
-         Toggle.Colors.TrackHover = palette.AccentStrong;
+         this.comboBoxBackground = this.palette.Control.Darken(50);
+
+         Toggle.Colors.Focus = activePalette.Border;
+         Toggle.Colors.Thumb = activePalette.TextSubtle;
+         Toggle.Colors.ThumbHover = activePalette.TextStrong;
+         Toggle.Colors.TrackBase = activePalette.Inset;
+         Toggle.Colors.TrackActive = activePalette.AccentNormal;
+         Toggle.Colors.TrackHover = activePalette.AccentStrong;
 
          var y = PadY / 2;
          y = this.BuildLensSection(ds, y);
@@ -538,15 +536,20 @@ namespace StrangeLens
          var host = ctrl;
          if (ctrl is ComboBox combo)
          {
+            combo.Font = this.textFont.Font;
+            combo.ForeColor = this.palette.TextNormal;
+            combo.DrawMode = DrawMode.OwnerDrawFixed;
+            combo.ItemHeight = this.textFont.Font.Height + 2;
+            combo.DrawItem += this.OnComboDrawItem;
             var focusPanel = new Panel
                {
-                  Size = new Size(combo.Width + 2, combo.Height + 2),
-                  BackColor = this.colorCtrlBorder,
+                  Size = new Size(combo.Width + 4, combo.Height + 4),
+                  BackColor = this.BackColor,
                };
-            combo.Location = new Point(1, 1);
-            combo.BackColor = this.colorCtrlBg;
-            combo.Enter += (_, _) => focusPanel.BackColor = this.colorFocusBorder;
-            combo.Leave += (_, _) => focusPanel.BackColor = this.colorCtrlBorder;
+            combo.Location = new Point(2, 2);
+            combo.BackColor = this.comboBoxBackground;
+            combo.Enter += (_, _) => focusPanel.BackColor = this.palette.Border;
+            combo.Leave += (_, _) => focusPanel.BackColor = this.BackColor;
             focusPanel.Controls.Add(combo);
             host = focusPanel;
          }
@@ -637,6 +640,32 @@ namespace StrangeLens
          this.clickTimer.Stop();
          this.clickTimer.Interval = SystemInformation.DoubleClickTime;
          this.clickTimer.Start();
+      }
+
+      private void OnComboDrawItem(object? sender, DrawItemEventArgs e)
+      {
+         if (sender is not ComboBox cb || (e.Index < 0))
+         {
+            return;
+         }
+
+         var isEnabled = cb.Enabled;
+         var inEditArea = (e.State & DrawItemState.ComboBoxEdit) != 0;
+         var isSelected = isEnabled && !inEditArea && ((e.State & DrawItemState.Selected) != 0);
+
+         var bg = isSelected ? this.palette.AccentSubtle : this.comboBoxBackground;
+         var fg = !isEnabled ? this.palette.TextSubtle :
+            isSelected ? this.palette.TextStrong : this.palette.TextNormal;
+
+         using var bgBrush = new SolidBrush(bg);
+         e.Graphics.FillRectangle(bgBrush, e.Bounds);
+         TextRenderer.DrawText(
+            e.Graphics,
+            cb.Items[e.Index]?.ToString() ?? string.Empty,
+            this.textFont.Font,
+            e.Bounds,
+            fg,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
       }
 
       private void OnGridOpacityChanged(object? sender, EventArgs e)
