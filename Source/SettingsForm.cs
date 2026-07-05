@@ -15,6 +15,8 @@ namespace StrangeLens
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
 
+   using Microsoft.Win32;
+
    using static NativeMethods;
 
    public sealed partial class SettingsForm : Form
@@ -112,39 +114,26 @@ namespace StrangeLens
 
          this.BuildLayout();
 
-         var menuItemOpen = new ToolStripMenuItem
+         var miStartWithWindows = new ToolStripMenuItem("Start with Windows")
             {
-               Text = "Toggle Lens",
-               ShortcutKeyDisplayString = "Ctrl+Alt+Shift+Z",
-               ShowShortcutKeys = true,
+               CheckOnClick = true,
+               Checked = StartWithWindowsEnabled(),
             };
-         var menuItemSep1 = new ToolStripSeparator();
-         var menuItemSettings = new ToolStripMenuItem
-            {
-               Text = "&Settings...",
-            };
-         var menuItemAbout = new ToolStripMenuItem
-            {
-               Text = "&About...",
-            };
-         var menuItemSep2 = new ToolStripSeparator();
-         var menuItemExit = new ToolStripMenuItem
-            {
-               Text = "E&xit",
-            };
-
-         menuItemExit.Click += this.menuItemExit_Click;
-         menuItemSettings.Click += this.menuItemSettings_Click;
-         menuItemAbout.Click += this.menuItemAbout_Click;
-         menuItemOpen.Click += this.menuItemOpen_Click;
+         miStartWithWindows.Click += (_, _) => SetStartWithWindows(miStartWithWindows.Checked);
 
          this.contextMenu.Items.AddRange(
-            menuItemOpen,
-            menuItemSep1,
-            menuItemSettings,
-            menuItemAbout,
-            menuItemSep2,
-            menuItemExit);
+            new ToolStripMenuItem("Toggle Lens", null, this.menuItemOpen_Click)
+               {
+                  ShortcutKeyDisplayString = "Ctrl+Alt+Shift+Z",
+                  ShowShortcutKeys = true,
+               },
+            new ToolStripSeparator(),
+            new ToolStripMenuItem("&Settings...", null, this.menuItemSettings_Click),
+            miStartWithWindows,
+            new ToolStripSeparator(),
+            new ToolStripMenuItem("&About...", null, this.menuItemAbout_Click),
+            new ToolStripSeparator(),
+            new ToolStripMenuItem("E&xit", null, this.menuItemExit_Click));
 
          this.notifyIcon.Icon = this.Icon;
          this.notifyIcon.ContextMenuStrip = this.contextMenu;
@@ -280,51 +269,58 @@ namespace StrangeLens
          return Lens.IsOsDarkMode();
       }
 
+      private static void SetStartWithWindows(bool enable)
+      {
+         using var key = Registry.CurrentUser.OpenSubKey(
+            @"Software\Microsoft\Windows\CurrentVersion\Run",
+            writable: true);
+         if (enable)
+         {
+            key?.SetValue("StrangeLens", Application.ExecutablePath);
+         }
+         else
+         {
+            key?.DeleteValue("StrangeLens", throwOnMissingValue: false);
+         }
+      }
+
+      private static bool StartWithWindowsEnabled()
+      {
+         using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
+         return key?.GetValue("StrangeLens") != null;
+      }
+
       private int BuildInfoSection(Lens ds, int y)
       {
-         var palette = ds.ActivePalette;
-         var colorAccentNormal = palette.AccentNormal;
-         var colorBorder = palette.Border;
-         var colorBackground = palette.Background;
-         var colorTextNormal = palette.TextNormal;
+         var ap = ds.ActivePalette;
 
-         y = this.SectionHeader("INFO", y, colorAccentNormal, colorBorder);
+         y = this.SectionHeader("INFO", y, ap.AccentNormal, ap.Border);
 
-         this.checkBoxInfoShowHex = this.InfoToggle(ds, nameof(ds.InfoShowHex), colorBackground);
-         y = this.LayoutRow("Show hex color value", this.checkBoxInfoShowHex, 0, y, colorTextNormal);
+         this.checkBoxInfoShowHex = this.InfoToggle(ds, nameof(ds.InfoShowHex), ap.Background);
+         y = this.LayoutRow("Show hex color value", this.checkBoxInfoShowHex, 0, y, ap.TextNormal);
 
-         this.checkBoxInfoShowRgb = this.InfoToggle(ds, nameof(ds.InfoShowRgb), colorBackground);
-         y = this.LayoutRow("Show RGB color value", this.checkBoxInfoShowRgb, 0, y, colorTextNormal);
+         this.checkBoxInfoShowRgb = this.InfoToggle(ds, nameof(ds.InfoShowRgb), ap.Background);
+         y = this.LayoutRow("Show RGB color value", this.checkBoxInfoShowRgb, 0, y, ap.TextNormal);
 
-         this.checkBoxInfoShowHsl = this.InfoToggle(ds, nameof(ds.InfoShowHsl), colorBackground);
-         y = this.LayoutRow("Show HSL color value", this.checkBoxInfoShowHsl, 0, y, colorTextNormal);
+         this.checkBoxInfoShowHsl = this.InfoToggle(ds, nameof(ds.InfoShowHsl), ap.Background);
+         y = this.LayoutRow("Show HSL color value", this.checkBoxInfoShowHsl, 0, y, ap.TextNormal);
 
          y += SubGroupGap;
-         this.checkBoxInfoShow12Bit = this.InfoToggle(ds, nameof(ds.InfoShow12Bit), colorBackground);
-         y = this.LayoutRow(
-            "Show 12-bit color conversion",
-            this.checkBoxInfoShow12Bit,
-            0,
-            y,
-            colorTextNormal);
+         this.checkBoxInfoShow12Bit = this.InfoToggle(ds, nameof(ds.InfoShow12Bit), ap.Background);
+         y = this.LayoutRow("Show 12-bit color conversion", this.checkBoxInfoShow12Bit, 0, y, ap.TextNormal);
 
-         this.checkBoxInfoShowWeb = this.InfoToggle(ds, nameof(ds.InfoShowWeb), colorBackground);
-         y = this.LayoutRow(
-            "Show web safe color conversion",
-            this.checkBoxInfoShowWeb,
-            0,
-            y,
-            colorTextNormal);
+         this.checkBoxInfoShowWeb = this.InfoToggle(ds, nameof(ds.InfoShowWeb), ap.Background);
+         y = this.LayoutRow("Show web safe color conversion", this.checkBoxInfoShowWeb, 0, y, ap.TextNormal);
 
          y += SubGroupGap;
-         this.checkBoxInfoShowMouse = this.InfoToggle(ds, nameof(ds.InfoShowMouse), colorBackground);
-         y = this.LayoutRow("Show mouse position", this.checkBoxInfoShowMouse, 0, y, colorTextNormal);
+         this.checkBoxInfoShowMouse = this.InfoToggle(ds, nameof(ds.InfoShowMouse), ap.Background);
+         y = this.LayoutRow("Show mouse position", this.checkBoxInfoShowMouse, 0, y, ap.TextNormal);
 
-         this.checkBoxInfoShowSize = this.InfoToggle(ds, nameof(ds.InfoShowSize), colorBackground);
-         y = this.LayoutRow("Show lens size", this.checkBoxInfoShowSize, 0, y, colorTextNormal);
+         this.checkBoxInfoShowSize = this.InfoToggle(ds, nameof(ds.InfoShowSize), ap.Background);
+         y = this.LayoutRow("Show lens size", this.checkBoxInfoShowSize, 0, y, ap.TextNormal);
 
-         this.checkBoxInfoShowZoom = this.InfoToggle(ds, nameof(ds.InfoShowZoom), colorBackground);
-         y = this.LayoutRow("Show zoom level", this.checkBoxInfoShowZoom, 0, y, colorTextNormal);
+         this.checkBoxInfoShowZoom = this.InfoToggle(ds, nameof(ds.InfoShowZoom), ap.Background);
+         y = this.LayoutRow("Show zoom level", this.checkBoxInfoShowZoom, 0, y, ap.TextNormal);
 
          return y;
       }
@@ -359,13 +355,9 @@ namespace StrangeLens
 
       private int BuildLensSection(Lens ds, int y)
       {
-         var palette = ds.ActivePalette;
-         var colorAccentNormal = palette.AccentNormal;
-         var colorBorder = palette.Border;
-         var colorTextSubtle = palette.TextSubtle;
-         var colorTextNormal = palette.TextNormal;
+         var ap = ds.ActivePalette;
 
-         y = this.SectionHeader("LENS", y, colorAccentNormal, colorBorder);
+         y = this.SectionHeader("LENS", y, ap.AccentNormal, ap.Border);
 
          this.comboBoxLensWidth = new ComboBox
             {
@@ -380,7 +372,7 @@ namespace StrangeLens
          this.comboBoxLensWidth.SelectedIndex =
             (ds.Width - Lens.Defaults.MinWidth) / Lens.Defaults.SizeIncrement;
          this.comboBoxLensWidth.SelectedIndexChanged += this.OnWidthChanged;
-         y = this.LayoutRow("Panel width", this.comboBoxLensWidth, 0, y, colorTextNormal);
+         y = this.LayoutRow("Panel width", this.comboBoxLensWidth, 0, y, ap.TextNormal);
 
          this.comboBoxLensHeight = new ComboBox
             {
@@ -395,7 +387,7 @@ namespace StrangeLens
          this.comboBoxLensHeight.SelectedIndex =
             (ds.Height - Lens.Defaults.MinHeight) / Lens.Defaults.SizeIncrement;
          this.comboBoxLensHeight.SelectedIndexChanged += this.OnHeightChanged;
-         y = this.LayoutRow("Panel height", this.comboBoxLensHeight, 0, y, colorTextNormal);
+         y = this.LayoutRow("Panel height", this.comboBoxLensHeight, 0, y, ap.TextNormal);
 
          this.comboBoxPrecisionSpeed = new ComboBox
             {
@@ -410,10 +402,10 @@ namespace StrangeLens
          this.comboBoxPrecisionSpeed.SelectedIndex =
             Array.IndexOf(Lens.PrecisionSpeedOptions, ds.PrecisionSpeed);
          this.comboBoxPrecisionSpeed.SelectedIndexChanged += this.OnPrecisionSpeedChanged;
-         y = this.LayoutRow("Mouse Precision Speed", this.comboBoxPrecisionSpeed, 0, y, colorTextNormal);
+         y = this.LayoutRow("Mouse Precision Speed", this.comboBoxPrecisionSpeed, 0, y, ap.TextNormal);
 
          y += SubGroupGap;
-         y = this.SubHeader("Grid", y, colorTextSubtle);
+         y = this.SubHeader("Grid", y, ap.TextSubtle);
 
          this.comboBoxLensGridStyle = new ComboBox
             {
@@ -429,7 +421,7 @@ namespace StrangeLens
             "Dash, Dot, Dot");
          this.comboBoxLensGridStyle.SelectedIndex = (int)ds.GridStyle;
          this.comboBoxLensGridStyle.SelectedIndexChanged += this.OnGridStyleChanged;
-         y = this.LayoutRow("Style", this.comboBoxLensGridStyle, LabelIndent, y, colorTextNormal);
+         y = this.LayoutRow("Style", this.comboBoxLensGridStyle, LabelIndent, y, ap.TextNormal);
 
          this.comboBoxLensGridSize = ByteRangeComboBox(
             Lens.Defaults.MinGridSize,
@@ -437,7 +429,7 @@ namespace StrangeLens
             i => i == 1 ? "1 pixel" : $"{i} pixels");
          this.comboBoxLensGridSize.SelectedIndex = ds.GridSize - Lens.Defaults.MinGridSize;
          this.comboBoxLensGridSize.SelectedIndexChanged += this.OnGridSizeChanged;
-         y = this.LayoutRow("Size", this.comboBoxLensGridSize, LabelIndent, y, colorTextNormal);
+         y = this.LayoutRow("Size", this.comboBoxLensGridSize, LabelIndent, y, ap.TextNormal);
 
          this.comboBoxLensGridOpacity = new ComboBox
             {
@@ -451,12 +443,12 @@ namespace StrangeLens
 
          this.comboBoxLensGridOpacity.SelectedIndex = Array.IndexOf(Lens.GridOpacityOptions, ds.GridOpacity);
          this.comboBoxLensGridOpacity.SelectedIndexChanged += this.OnGridOpacityChanged;
-         y = this.LayoutRow("Opacity", this.comboBoxLensGridOpacity, LabelIndent, y, colorTextNormal);
+         y = this.LayoutRow("Opacity", this.comboBoxLensGridOpacity, LabelIndent, y, ap.TextNormal);
 
          this.UpdateGridDependentControls();
 
          y += SubGroupGap;
-         y = this.SubHeader("Magnification", y, colorTextSubtle);
+         y = this.SubHeader("Magnification", y, ap.TextSubtle);
 
          this.comboBoxLensMagnification = ByteRangeComboBox(
             Lens.Defaults.MinMagnification,
@@ -464,7 +456,7 @@ namespace StrangeLens
             i => $"×{i}");
          this.comboBoxLensMagnification.SelectedIndex = ds.Magnification - Lens.Defaults.MinMagnification;
          this.comboBoxLensMagnification.SelectedIndexChanged += this.OnMagnificationChanged;
-         y = this.LayoutRow("Power level", this.comboBoxLensMagnification, LabelIndent, y, colorTextNormal);
+         y = this.LayoutRow("Power level", this.comboBoxLensMagnification, LabelIndent, y, ap.TextNormal);
 
          this.comboBoxLensScalingMode = new ComboBox
             {
@@ -479,7 +471,7 @@ namespace StrangeLens
             "High quality bicubic");
          this.comboBoxLensScalingMode.SelectedIndex = (int)ds.Scaling;
          this.comboBoxLensScalingMode.SelectedIndexChanged += this.OnScalingModeChanged;
-         y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, colorTextNormal);
+         y = this.LayoutRow("Scaling", this.comboBoxLensScalingMode, LabelIndent, y, ap.TextNormal);
 
          return y;
       }
