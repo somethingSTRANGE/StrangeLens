@@ -18,8 +18,8 @@ namespace StrangeLens
 
    internal static class FontHelper
    {
-      // fontFamilies is a snapshot enumerated while a Graphics context is live —
-      // GDI+ may not flush AddMemoryFont additions to its internal registry without one.
+      // fontFamilies is a snapshot enumerated while a bitmap-backed GDI+ context is live —
+      // GDI+ only makes AddMemoryFont additions visible to Families while a context is active.
       [SuppressMessage(
          "ReSharper",
          "PrivateFieldCanBeConvertedToLocalVariable",
@@ -32,14 +32,19 @@ namespace StrangeLens
       static FontHelper()
       {
          fontCollection = new PrivateFontCollection();
+
+         // Hold a bitmap-backed GDI+ context open for the entire loading sequence.
+         // Graphics.FromHwnd(IntPtr.Zero) can return a degenerate DC during early startup;
+         // a 1×1 Bitmap gives a stable, always-valid context. GDI+ only makes AddMemoryFont
+         // additions visible to Families enumeration while a context is active, so the
+         // context must be alive from before the first addition through the final enumeration.
+         using var bmp = new Bitmap(1, 1);
+         using var g = Graphics.FromImage(bmp);
+
          AddEmbeddedFont(fontCollection, "Inter-Regular.ttf");
          AddEmbeddedFont(fontCollection, "Inter-Bold.ttf");
          AddEmbeddedFont(fontCollection, "JetBrainsMono-Regular.ttf");
 
-         // All fonts must be added before the Graphics context is created; GDI+ only
-         // flushes AddMemoryFont additions to its enumerable registry when queried with
-         // an active drawing context, not when fonts are added.
-         using var g = Graphics.FromHwnd(IntPtr.Zero);
          var map = new Dictionary<string, FontFamily>(StringComparer.OrdinalIgnoreCase);
          foreach (var family in fontCollection.Families)
          {
