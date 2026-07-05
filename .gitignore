@@ -50,3 +50,4 @@ _ReSharper*/
 
 # Claude Code
 /.claude/
+/publish/
