@@ -21,9 +21,9 @@ namespace StrangeLens
 
       public static Color Darken(this Color color, int percent)
       {
-         // percent should be 0-100
+         percent = Math.Clamp(percent, 0, 100);
 
-         double hue = color.GetHue();  
+         double hue = color.GetHue();
          double saturation = color.GetSaturation();
          double lightness = color.GetBrightness();
 
