@@ -2,6 +2,10 @@
 
 Planned work for Lens. Completed items are removed; see git history for what shipped.
 
+## System Tray
+
+- **Start with Windows:** Toggle in the tray context menu with a checkmark reflecting current state. Writes/removes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` to enable/disable.
+
 ## Settings
 
 - Make the global toggle hotkey user-configurable in the Settings panel (currently hardcoded to Ctrl+Alt+Shift+Z).
