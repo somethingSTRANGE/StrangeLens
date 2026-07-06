@@ -23,19 +23,6 @@ namespace StrangeLens
    ///    Gaussian drop shadow used by <see cref="LensForm"/>.</summary>
    internal class InfoForm : Form
    {
-      // Shadow parameters (ShadowBlur/Sigma/OffsetX/OffsetY/MaxAlpha and the derived
-      //   ShadowMargin*) must match LensForm -- both panels share the same drop shadow.
-      // layeredMemDC/layeredBitmap/layeredBits: the content DC, sized ContentW x ContentH.
-      // finalMemDC/finalBitmap/finalBits/finalW/finalH: the shadow+content DC submitted to
-      //   UpdateLayeredWindow, sized totalW x totalH.
-      // iconColorPalette/iconColorValues/iconLensSize/iconMagnification/iconMousePosition:
-      //   built once at IconSize, reused every frame.
-      // EnsureLayeredResources/FreeLayeredResources/EnsureFinalResources/FreeFinalResources
-      //   mirror the equivalent GDI resource-management methods in LensForm.
-
-      /// <summary>Horizontal gap (px) between the lens content edge and this panel.</summary>
-      internal const int PanelMargin = 20;
-
       private const int ColumnGap = 4;
 
       private const int IconSize = 16;
@@ -45,6 +32,21 @@ namespace StrangeLens
       private const int LabelWidth = 40;
 
       private const int LabelX = PanelPadding + IconSize + ColumnGap;
+      // Shadow base consts (ShadowBlur/Sigma/OffsetY/MaxAlpha) must match LensForm -- both panels
+      //   share the same drop shadow. Derived margins (shadowMarginL/R/T/B) are instance fields
+      //   computed per-frame from these base values × dpiScale.
+      // logicalContentW/H: panel dimensions in 96-DPI logical pixels used for drawing.
+      // contentW/H: physical-pixel versions submitted to UpdateLayeredWindow (= logical × dpiScale).
+      // layeredMemDC/layeredBitmap/layeredBits: content DC, sized contentW x contentH.
+      // finalMemDC/finalBitmap/finalBits/finalW/finalH: shadow+content DC submitted to
+      //   UpdateLayeredWindow, sized totalW x totalH.
+      // iconColorPalette/iconColorValues/iconLensSize/iconMagnification/iconMousePosition:
+      //   built once at IconSize; ScaleTransform in RenderContent scales them each frame.
+      // EnsureLayeredResources/FreeLayeredResources/EnsureFinalResources/FreeFinalResources
+      //   mirror the equivalent GDI resource-management methods in LensForm.
+
+      /// <summary>Horizontal gap (px) between the lens content edge and this panel.</summary>
+      private const int PanelMargin = 20;
 
       private const int PanelPadding = 6;
 
@@ -57,19 +59,10 @@ namespace StrangeLens
       ///    for that extra RowGap.</summary>
       private const int SectionGap = (ColumnGap * 2) - RowGap;
 
+      // Drop shadow base parameters (96-DPI design values; scaled per-frame in UpdateAndPosition).
       private const int ShadowBlur = 16;
 
-      private const int ShadowMarginB = ShadowBlur + ShadowOffsetY; // 22
-
-      private const int ShadowMarginL = ShadowBlur;
-
-      private const int ShadowMarginR = ShadowBlur;
-
-      private const int ShadowMarginT = ShadowBlur - ShadowOffsetY; // 10
-
       private const byte ShadowMaxAlpha = 160;
-
-      private const int ShadowOffsetX = 0;
 
       private const int ShadowOffsetY = 6;
 
@@ -105,6 +98,8 @@ namespace StrangeLens
 
       private int contentW; // dynamic; recomputed from enabled settings each frame
 
+      private float dpiScale = 1f;
+
       private IntPtr finalBitmap = IntPtr.Zero;
 
       private IntPtr finalBits = IntPtr.Zero;
@@ -119,9 +114,15 @@ namespace StrangeLens
 
       private IntPtr layeredMemDC = IntPtr.Zero;
 
+      private int logicalContentH, logicalContentW;
+
       private bool panelShown;
 
       private byte[]? shadowAlpha;
+
+      private int shadowMarginB, shadowMarginL, shadowMarginR, shadowMarginT;
+
+      private float shadowSigmaScaled;
 
       private FontInfo? valueFont;
 
@@ -135,12 +136,18 @@ namespace StrangeLens
          this.labelFont = FontHelper.CreateRegularFontInfo();
          this.valueFont = FontHelper.CreateValueFontInfo();
          this.charWidth = MeasureCharWidth(this.valueFont.Font);
-         this.contentH = this.ComputeContentH();
-         this.contentW = this.ComputeContentW();
+         this.logicalContentH = this.ComputeContentH();
+         this.logicalContentW = this.ComputeContentW();
+         this.contentH = this.logicalContentH;
+         this.contentW = this.logicalContentW;
+         this.shadowMarginL = this.shadowMarginR = ShadowBlur;
+         this.shadowMarginT = ShadowBlur - ShadowOffsetY;
+         this.shadowMarginB = ShadowBlur + ShadowOffsetY;
+         this.shadowSigmaScaled = ShadowSigma;
          // Window size includes shadow margins on all sides.
          this.ClientSize = new Size(
-            this.contentW + ShadowMarginL + ShadowMarginR,
-            this.contentH + ShadowMarginT + ShadowMarginB);
+            this.contentW + this.shadowMarginL + this.shadowMarginR,
+            this.contentH + this.shadowMarginT + this.shadowMarginB);
          // Start off-screen; shown lazily by UpdateAndPosition after first position set.
          this.Location = new Point(-32000, -32000);
          this.iconColorPalette = SvgImageFactory.InfoColorPalette(IconSize);
@@ -197,9 +204,21 @@ namespace StrangeLens
          Rectangle contentBounds,
          bool infoLeft,
          bool precisionActive,
-         int precisionSpeed)
+         int precisionSpeed,
+         float newDpiScale)
       {
          this.infoData.UpdateInfo(cursorPos, color, precisionActive, precisionSpeed);
+
+         // Update DPI-dependent fields whenever the display DPI changes, even when hidden.
+         if (Math.Abs(newDpiScale - this.dpiScale) > 0.001f)
+         {
+            this.dpiScale = newDpiScale;
+            this.shadowMarginL = this.shadowMarginR = (int)Math.Round(ShadowBlur * this.dpiScale);
+            this.shadowMarginT = (int)Math.Round((ShadowBlur - ShadowOffsetY) * this.dpiScale);
+            this.shadowMarginB = (int)Math.Round((ShadowBlur + ShadowOffsetY) * this.dpiScale);
+            this.shadowSigmaScaled = ShadowSigma * this.dpiScale;
+            this.cachedShadowContentW = -1; // sigma changed; force shadow rebuild
+         }
 
          if (!this.HasVisibleContent)
          {
@@ -220,23 +239,28 @@ namespace StrangeLens
          }
 
          // Recompute content size from current settings; free layered bitmap if either dimension changed.
-         var newContentH = this.ComputeContentH();
-         var newContentW = this.ComputeContentW();
+         var newLogicalH = this.ComputeContentH();
+         var newLogicalW = this.ComputeContentW();
+         var newContentH = (int)Math.Round(newLogicalH * this.dpiScale);
+         var newContentW = (int)Math.Round(newLogicalW * this.dpiScale);
          if ((newContentH != this.contentH) || (newContentW != this.contentW))
          {
+            this.logicalContentH = newLogicalH;
+            this.logicalContentW = newLogicalW;
             this.contentH = newContentH;
             this.contentW = newContentW;
             this.FreeLayeredResources();
          }
 
+         var scaledPanelMargin = (int)Math.Round(PanelMargin * this.dpiScale);
          var infoContentLeft = infoLeft
-            ? contentBounds.Left - PanelMargin - this.ContentW
-            : contentBounds.Right + PanelMargin;
+            ? contentBounds.Left - scaledPanelMargin - this.ContentW
+            : contentBounds.Right + scaledPanelMargin;
          var infoContentTop = contentBounds.Top;
 
-         var totalW = this.ContentW + ShadowMarginL + ShadowMarginR;
-         var totalH = this.contentH + ShadowMarginT + ShadowMarginB;
-         var winPos = new Point(infoContentLeft - ShadowMarginL, infoContentTop - ShadowMarginT);
+         var totalW = this.ContentW + this.shadowMarginL + this.shadowMarginR;
+         var totalH = this.contentH + this.shadowMarginT + this.shadowMarginB;
+         var winPos = new Point(infoContentLeft - this.shadowMarginL, infoContentTop - this.shadowMarginT);
 
          this.EnsureLayeredResources(this.ContentW, this.contentH);
          this.EnsureFinalResources(totalW, totalH);
@@ -367,18 +391,20 @@ namespace StrangeLens
          g.PixelOffsetMode = pixelOffsetMode;
       }
 
-      private static void DrawSwatch(Color color, Graphics graphics, Rectangle rect)
+      private static void DrawSwatch(Color color, Graphics g, RectangleF rect, float dpiScale)
       {
-         using (var swatchBrush = new SolidBrush(Color.Black))
-         {
-            graphics.FillRectangle(swatchBrush, rect);
-         }
-
-         using (var swatchBrush = new SolidBrush(color))
-         {
-            rect = new Rectangle(rect.X + 1, rect.Y + 1, rect.Width - 2, rect.Height - 2);
-            graphics.FillRectangle(swatchBrush, rect);
-         }
+         using var blackBrush = new SolidBrush(Color.Black);
+         g.FillRectangle(blackBrush, rect);
+         // Border = lineWidth physical pixels; convert to logical, so ScaleTransform yields an exact
+         // whole-pixel border regardless of DPI (e.g., 2/1.5 = 1.333 logical → 2.0 physical at 150%).
+         var border = Math.Max(1, (int)Math.Round(dpiScale)) / dpiScale;
+         var inner = new RectangleF(
+            rect.X + border,
+            rect.Y + border,
+            rect.Width - (2 * border),
+            rect.Height - (2 * border));
+         using var colorBrush = new SolidBrush(color);
+         g.FillRectangle(colorBrush, inner);
       }
 
       [SuppressMessage("ReSharper", "CognitiveComplexity")]
@@ -514,7 +540,7 @@ namespace StrangeLens
             }
          }
 
-         // Stamp content at (ShadowMarginL, ShadowMarginT), forcing alpha=255.
+         // Stamp content at (shadowMarginL, shadowMarginT), forcing alpha=255.
          var cStride = this.ContentW * 4;
          var fStride = tw * 4;
          for (var y = 0; y < this.contentH; y++)
@@ -524,7 +550,7 @@ namespace StrangeLens
             var dst = (src & 0x00FFFFFF) | unchecked((int)0xFF000000u);
             Marshal.WriteInt32(
                this.finalBits,
-               ((y + ShadowMarginT) * fStride) + ((x + ShadowMarginL) * 4),
+               ((y + this.shadowMarginT) * fStride) + ((x + this.shadowMarginL) * 4),
                dst);
          }
       }
@@ -673,11 +699,12 @@ namespace StrangeLens
          this.cachedShadowContentW = this.ContentW;
          this.cachedShadowContentH = this.contentH;
 
-         var tw = this.ContentW + ShadowMarginL + ShadowMarginR;
-         var th = this.contentH + ShadowMarginT + ShadowMarginB;
+         var tw = this.ContentW + this.shadowMarginL + this.shadowMarginR;
+         var th = this.contentH + this.shadowMarginT + this.shadowMarginB;
 
-         var sx = ShadowMarginL + ShadowOffsetX;
-         var sy = ShadowMarginT + ShadowOffsetY;
+         // sx=sy=shadowMarginL: ShadowOffsetX=0, and shadowMarginT+scaledOffsetY=ShadowBlur=shadowMarginL.
+         var sx = this.shadowMarginL;
+         var sy = this.shadowMarginL;
          var src = new float[tw * th];
          for (var y = sy; y < sy + this.contentH; y++)
          for (var x = sx; x < sx + this.ContentW; x++)
@@ -685,8 +712,8 @@ namespace StrangeLens
             src[(y * tw) + x] = 1f;
          }
 
-         var temp = GaussianBlur1D(src, tw, th, ShadowSigma, horizontal: true);
-         var result = GaussianBlur1D(temp, tw, th, ShadowSigma, horizontal: false);
+         var temp = GaussianBlur1D(src, tw, th, this.shadowSigmaScaled, horizontal: true);
+         var result = GaussianBlur1D(temp, tw, th, this.shadowSigmaScaled, horizontal: false);
 
          this.shadowAlpha = new byte[tw * th];
          for (var i = 0; i < result.Length; i++)
@@ -740,9 +767,13 @@ namespace StrangeLens
          g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
          g.SmoothingMode = SmoothingMode.None;
          g.PixelOffsetMode = PixelOffsetMode.Half;
+         g.ScaleTransform(this.dpiScale, this.dpiScale);
 
-         // Background: diagonal gradient, black -> #333333.
-         var bgRect = new Rectangle(0, 0, this.ContentW, this.contentH);
+         // Derive background dimensions from physical contentW/H to avoid a 1px gap on the right or
+         // bottom when round(logical * dpiScale) != logical * dpiScale (noninteger scale factors).
+         var bgW = this.contentW / this.dpiScale;
+         var bgH = this.contentH / this.dpiScale;
+         var bgRect = new RectangleF(0, 0, bgW, bgH);
          using (var bg = new LinearGradientBrush(bgRect, Color.Black, Color.FromArgb(51, 51, 51), 45f))
          {
             g.FillRectangle(bg, bgRect);
@@ -789,7 +820,9 @@ namespace StrangeLens
          }
 
          float y = PanelPadding; // tracked Y; advances as sections are drawn
-         var swatchRect = new Rectangle(this.ContentW - PanelPadding - SwatchSize, (int)y, SwatchSize, 0);
+         // Anchor swatch X to bgW (= contentW / dpiScale) so rounding never leaves a gap between
+         // the swatch right edge and the panel right edge.
+         var swatchRect = new RectangleF(bgW - PanelPadding - SwatchSize, y, SwatchSize, 0);
 
          // -- color-values section --------------------------------------------
          var cvAny = lens.InfoShowHex || lens.InfoShowRgb || lens.InfoShowHsl;
@@ -822,7 +855,7 @@ namespace StrangeLens
             swatchRect.Height -= RowGap;
             if (swatchRect.Height > 0)
             {
-               DrawSwatch(d.ColorSwatch, g, swatchRect);
+               DrawSwatch(d.ColorSwatch, g, swatchRect, this.dpiScale);
             }
          }
 
@@ -842,8 +875,8 @@ namespace StrangeLens
             {
                DrawRow("12-Bit", d.ValueColor12Bit, y);
 
-               swatchRect.Y = (int)y;
-               DrawSwatch(d.Color12Bit, g, swatchRect);
+               swatchRect.Y = y;
+               DrawSwatch(d.Color12Bit, g, swatchRect, this.dpiScale);
 
                y += rowOffset;
             }
@@ -852,8 +885,8 @@ namespace StrangeLens
             {
                DrawRow("Web", d.ValueColorWeb, y);
 
-               swatchRect.Y = (int)y;
-               DrawSwatch(d.ColorWeb, g, swatchRect);
+               swatchRect.Y = y;
+               DrawSwatch(d.ColorWeb, g, swatchRect, this.dpiScale);
 
                y += rowOffset;
             }
