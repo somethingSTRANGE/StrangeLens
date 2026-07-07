@@ -33,24 +33,14 @@ namespace StrangeLens
 
       private const Keys CtrlAltShift = Keys.Control | Keys.Alt | Keys.Shift;
 
-      // Drop shadow parameters.
-      private const int ShadowBlur = 16; // window margin on each side (px)
+      // Drop shadow base parameters (96-DPI design values; scaled per-frame in RenderFrame).
+      private const int ShadowBlur = 16;
 
-      private const int ShadowMarginB = ShadowBlur + ShadowOffsetY; // 22
+      private const byte ShadowMaxAlpha = 160;
 
-      private const int ShadowMarginL = ShadowBlur;
+      private const int ShadowOffsetY = 6;
 
-      private const int ShadowMarginR = ShadowBlur;
-
-      private const int ShadowMarginT = ShadowBlur - ShadowOffsetY; // 10
-
-      private const byte ShadowMaxAlpha = 160; // peak shadow opacity (0-255)
-
-      private const int ShadowOffsetX = 0;
-
-      private const int ShadowOffsetY = 6; // shadow shifts this many px downward
-
-      private const float ShadowSigma = 4.5f; // Gaussian standard deviation (px)
+      private const float ShadowSigma = 4.5f;
 
       private readonly InfoControl infoControl;
 
@@ -66,7 +56,7 @@ namespace StrangeLens
 
       private GridStyleOption cachedGridStyle;
 
-      private int cachedGridW, cachedGridH, cachedGridMag, cachedGridSize;
+      private int cachedGridW, cachedGridH, cachedGridMag, cachedGridSize, cachedGridLineWidth;
 
       private int cachedShadowContentW = -1, cachedShadowContentH = -1;
 
@@ -107,6 +97,8 @@ namespace StrangeLens
 
       private int layeredW, layeredH;
 
+      private int lineWidth = 1;
+
       private bool measureActive;
 
       private Point measureAnchor;
@@ -121,6 +113,8 @@ namespace StrangeLens
       ///    holds a raw pointer to it.</summary>
       private LowLevelMouseProc? mouseHookProc;
 
+      private int scaledPanelMargin;
+
       private Bitmap? scrBmp;
 
       private Point scrCaptureOrigin;
@@ -128,6 +122,11 @@ namespace StrangeLens
       private Graphics? scrGrp;
 
       private byte[]? shadowAlpha;
+
+      // Shadow geometry, crosshair line width, and info-panel margin for the current DPI — recomputed each frame.
+      private int shadowMarginL, shadowMarginR, shadowMarginT, shadowMarginB;
+
+      private float shadowSigmaScaled;
 
       /// <summary>U-D mode (portrait): true when Info is positioned left of Lens.</summary>
       private bool udInfoLeft;
@@ -346,7 +345,7 @@ namespace StrangeLens
          }
       }
 
-      private static void DrawBorder(Graphics g, int w, int h, bool focused)
+      private static void DrawBorder(Graphics g, int w, int h, bool focused, int lineWidth)
       {
          var color = focused ? SystemColors.Highlight : SystemColors.ControlDarkDark;
          var hdc = g.GetHdc();
@@ -354,9 +353,10 @@ namespace StrangeLens
          {
             var pen = CreatePen(0 /*PS_SOLID*/, 1, ToColorRef(color));
             var oldPen = SelectObject(hdc, pen);
-            // Outer 2px in the focus/unfocus color, inner 1px in black.
+            // Outer 2*lineWidth px in the focus/unfocus color, inner 1px in black.
             // LineTo excludes its endpoint, so (0, 0)->(w, 0) covers columns 0...w-1 exactly.
-            for (var i = 0; i < 2; i++)
+            var outerW = 2 * lineWidth;
+            for (var i = 0; i < outerW; i++)
             {
                MoveToEx(hdc, 0, i, IntPtr.Zero);
                LineTo(hdc, w, i); // top
@@ -371,17 +371,22 @@ namespace StrangeLens
             SelectObject(hdc, oldPen);
             DeleteObject(pen);
 
-            // Inner black stroke at offset 2.
+            // Inner black band of lineWidth px, starting at offset outerW.
+            var b = outerW;
             var blackPen = CreatePen(0 /*PS_SOLID*/, 1, 0x00000000 /*black*/);
             SelectObject(hdc, blackPen);
-            MoveToEx(hdc, 2, 2, IntPtr.Zero);
-            LineTo(hdc, w - 2, 2); // top
-            MoveToEx(hdc, 2, h - 3, IntPtr.Zero);
-            LineTo(hdc, w - 2, h - 3); // bottom
-            MoveToEx(hdc, 2, 2, IntPtr.Zero);
-            LineTo(hdc, 2, h - 2); // left
-            MoveToEx(hdc, w - 3, 2, IntPtr.Zero);
-            LineTo(hdc, w - 3, h - 2); // right
+            for (var j = 0; j < lineWidth; j++)
+            {
+               MoveToEx(hdc, b, b + j, IntPtr.Zero);
+               LineTo(hdc, w - b, b + j); // top
+               MoveToEx(hdc, b, h - b - 1 - j, IntPtr.Zero);
+               LineTo(hdc, w - b, h - b - 1 - j); // bottom
+               MoveToEx(hdc, b + j, b, IntPtr.Zero);
+               LineTo(hdc, b + j, h - b); // left
+               MoveToEx(hdc, w - b - 1 - j, b, IntPtr.Zero);
+               LineTo(hdc, w - b - 1 - j, h - b); // right
+            }
+
             SelectObject(hdc, oldPen);
             DeleteObject(blackPen);
          }
@@ -481,10 +486,15 @@ namespace StrangeLens
          return dst;
       }
 
-      private static bool IsOnCrosshairBoundary(int x, int y, int cx, int cy, int mag)
+      private static bool IsOnCrosshairBoundary(int x, int y, int cx, int cy, int mag, int lineWidth)
       {
-         return (y == cy) || (x == cx) || ((y == cy + mag) && (x >= cx) && (x <= cx + mag))
-                || ((x == cx + mag) && (y >= cy) && (y <= cy + mag));
+         return ((y >= cy) && (y < cy + lineWidth)) || ((x >= cx) && (x < cx + lineWidth))
+                                                    || ((y >= cy + mag) && (y < cy + mag + lineWidth)
+                                                                        && (x >= cx)
+                                                                        && (x <= (cx + mag + lineWidth) - 1))
+                                                    || ((x >= cx + mag) && (x < cx + mag + lineWidth)
+                                                                        && (y >= cy)
+                                                                        && (y <= (cy + mag + lineWidth) - 1));
       }
 
       private static uint ToColorRef(Color c)
@@ -494,7 +504,8 @@ namespace StrangeLens
 
       /// <summary>Applies per-pixel difference blend to crosshair lines directly in the
       ///    DIBSection. Result = |penColor - dst| per channel, so the line always contrasts with
-      ///    the content.</summary>
+      ///    the content. lineWidth scales with DPI so the crosshair stays visible at high DPI.</summary>
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private void ApplyDifferenceCrosshair(int w, int h)
       {
          if (this.layeredBits == IntPtr.Zero)
@@ -504,35 +515,42 @@ namespace StrangeLens
 
          var lens = Lens.Instance;
          int cx = w / 2, cy = h / 2, mag = lens.Magnification;
+         var lw = this.lineWidth;
          var stride = w * 4;
 
-         // Horizontal center line — owns row cy for all x.
+         // Horizontal band — rows cy...cy+lw-1, all columns.
+         for (var row = cy; row < cy + lw; row++)
          for (var x = 0; x < w; x++)
          {
-            this.ApplyDiffPixel((cy * stride) + (x * 4));
+            this.ApplyDiffPixel((row * stride) + (x * 4));
          }
 
-         // Vertical center line — skip y=cy (owned by horizontal).
+         // Vertical band — cols cx..cx+lw-1, skipping rows owned by horizontal band.
          for (var y = 0; y < h; y++)
          {
-            if (y == cy)
+            if ((y >= cy) && (y < cy + lw))
             {
                continue;
             }
 
-            this.ApplyDiffPixel((y * stride) + (cx * 4));
+            for (var col = cx; col < cx + lw; col++)
+            {
+               this.ApplyDiffPixel((y * stride) + (col * 4));
+            }
          }
 
-         // Bottom of sampled-pixel box — skip corners owned by other segments.
-         for (var x = cx + 1; x < cx + mag; x++)
+         // Bottom of sampled-pixel box — lw rows, skip columns owned by vertical band.
+         for (var row = cy + mag; row < cy + mag + lw; row++)
+         for (var x = cx + lw; x < cx + mag; x++)
          {
-            this.ApplyDiffPixel(((cy + mag) * stride) + (x * 4));
+            this.ApplyDiffPixel((row * stride) + (x * 4));
          }
 
-         // Right side of box — skip y=cy (owned by horizontal); y=cy+mag closes the corner.
-         for (var y = cy + 1; y <= cy + mag; y++)
+         // Right side of box — lw columns, skip rows owned by horizontal band; close corner.
+         for (var y = cy + lw; y <= (cy + mag + lw) - 1; y++)
+         for (var col = cx + mag; col < cx + mag + lw; col++)
          {
-            this.ApplyDiffPixel((y * stride) + ((cx + mag) * 4));
+            this.ApplyDiffPixel((y * stride) + (col * 4));
          }
       }
 
@@ -564,7 +582,7 @@ namespace StrangeLens
             {
                var gridPixel = Marshal.ReadInt32(bmpData.Scan0, (y * bmpData.Stride) + (x * 4));
                // Skip transparent pixels and pixels the crosshair will overwrite.
-               if (((byte)(gridPixel >> 24) == 0) || IsOnCrosshairBoundary(x, y, cx, cy, mag))
+               if (((byte)(gridPixel >> 24) == 0) || IsOnCrosshairBoundary(x, y, cx, cy, mag, this.lineWidth))
                {
                   continue;
                }
@@ -735,7 +753,7 @@ namespace StrangeLens
             }
          }
 
-         // Copy content pixels at (ShadowMarginL, ShadowMarginT), forcing alpha=255.
+         // Copy content pixels at (shadowMarginL, shadowMarginT), forcing alpha=255.
          // Content is fully opaque -- GDI writes alpha=0, so we override it here.
          var contentStride = cw * 4;
          var finalStride = tw * 4;
@@ -747,7 +765,7 @@ namespace StrangeLens
                var dst = (src & 0x00FFFFFF) | unchecked((int)0xFF000000u);
                Marshal.WriteInt32(
                   this.finalBits,
-                  ((y + ShadowMarginT) * finalStride) + ((x + ShadowMarginL) * 4),
+                  ((y + this.shadowMarginT) * finalStride) + ((x + this.shadowMarginL) * 4),
                   dst);
             }
          }
@@ -767,8 +785,8 @@ namespace StrangeLens
          // Two independent thresholds on opposite edges give a large dead zone in the
          // center, so neither flip fires until the panel genuinely clips an edge.
          var gapX = (int)(Math.Ceiling(w / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-         var rightClips = cursorPos.X + gapX + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
-         var leftClips = cursorPos.X - gapX - w - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
+         var rightClips = cursorPos.X + gapX + w + infoW + this.scaledPanelMargin > screen.Bounds.Right;
+         var leftClips = cursorPos.X - gapX - w - infoW - this.scaledPanelMargin < screen.Bounds.Left;
 
          if (screenChanged)
          {
@@ -785,8 +803,8 @@ namespace StrangeLens
 
          var lensLeft = this.infoOnLeft ? cursorPos.X - gapX - w : cursorPos.X + gapX;
          var lensTop = Math.Max(
-            screen.Bounds.Top + InfoForm.PanelMargin,
-            Math.Min(cursorPos.Y - (h / 2), screen.Bounds.Bottom - maxH - InfoForm.PanelMargin));
+            screen.Bounds.Top + this.scaledPanelMargin,
+            Math.Min(cursorPos.Y - (h / 2), screen.Bounds.Bottom - maxH - this.scaledPanelMargin));
          return (lensLeft, lensTop, this.infoOnLeft);
       }
 
@@ -822,8 +840,8 @@ namespace StrangeLens
          // Horizontal free-travel zone: lensLeft is clamped to screen edges so the
          // cursor can move near the left/right boundary without clipping the panel.
          var gapY = (int)(Math.Ceiling(h / (float)Lens.Defaults.MinMagnification) / 2) + 10;
-         var topClips = cursorPos.Y - gapY - h < screen.Bounds.Top + InfoForm.PanelMargin;
-         var bottomClips = cursorPos.Y + gapY + maxH > screen.Bounds.Bottom - InfoForm.PanelMargin;
+         var topClips = cursorPos.Y - gapY - h < screen.Bounds.Top + this.scaledPanelMargin;
+         var bottomClips = cursorPos.Y + gapY + maxH > screen.Bounds.Bottom - this.scaledPanelMargin;
 
          if (screenChanged)
          {
@@ -840,18 +858,18 @@ namespace StrangeLens
 
          var lensLeft = Math.Clamp(
             cursorPos.X - (w / 2),
-            screen.Bounds.Left + InfoForm.PanelMargin,
-            screen.Bounds.Right - w - InfoForm.PanelMargin);
+            screen.Bounds.Left + this.scaledPanelMargin,
+            screen.Bounds.Right - w - this.scaledPanelMargin);
          var lensTop = this.udLensAbove
             ? Math.Clamp(
                cursorPos.Y - gapY - h,
-               screen.Bounds.Top + InfoForm.PanelMargin,
-               screen.Bounds.Bottom - maxH - InfoForm.PanelMargin)
-            : Math.Min(cursorPos.Y + gapY, screen.Bounds.Bottom - maxH - InfoForm.PanelMargin);
+               screen.Bounds.Top + this.scaledPanelMargin,
+               screen.Bounds.Bottom - maxH - this.scaledPanelMargin)
+            : Math.Min(cursorPos.Y + gapY, screen.Bounds.Bottom - maxH - this.scaledPanelMargin);
 
          // Info left/right of Lens, with the same two-threshold hysteresis.
-         var rightClipsUD = lensLeft + w + infoW + InfoForm.PanelMargin > screen.Bounds.Right;
-         var leftClipsUD = lensLeft - infoW - InfoForm.PanelMargin < screen.Bounds.Left;
+         var rightClipsUD = lensLeft + w + infoW + this.scaledPanelMargin > screen.Bounds.Right;
+         var leftClipsUD = lensLeft - infoW - this.scaledPanelMargin < screen.Bounds.Left;
 
          if (screenChanged)
          {
@@ -869,11 +887,11 @@ namespace StrangeLens
          return (lensLeft, lensTop, this.udInfoLeft);
       }
 
-      private void CopyScreen(Point cursorPos)
+      private void CopyScreen(Point cursorPos, int w, int h)
       {
          var lens = Lens.Instance;
-         var captureW = (int)Math.Ceiling(lens.Width / (float)lens.Magnification) + 2;
-         var captureH = (int)Math.Ceiling(lens.Height / (float)lens.Magnification) + 2;
+         var captureW = (int)Math.Ceiling(w / (float)lens.Magnification) + 2;
+         var captureH = (int)Math.Ceiling(h / (float)lens.Magnification) + 2;
 
          if ((this.scrBmp == null) || (this.scrBmp.Width != captureW) || (this.scrBmp.Height != captureH))
          {
@@ -971,7 +989,7 @@ namespace StrangeLens
          var gridStyle = lens.GridStyle;
          if ((this.gridBmp != null) && (this.cachedGridW == w) && (this.cachedGridH == h)
              && (this.cachedGridMag == lens.Magnification) && (this.cachedGridSize == lens.GridSize)
-             && (this.cachedGridStyle == gridStyle))
+             && (this.cachedGridStyle == gridStyle) && (this.cachedGridLineWidth == this.lineWidth))
          {
             return;
          }
@@ -983,6 +1001,7 @@ namespace StrangeLens
          this.cachedGridMag = lens.Magnification;
          this.cachedGridSize = lens.GridSize;
          this.cachedGridStyle = gridStyle;
+         this.cachedGridLineWidth = this.lineWidth;
 
          if (gridStyle == GridStyleOption.None)
          {
@@ -994,7 +1013,7 @@ namespace StrangeLens
          g.Clear(Color.Transparent);
          int cx = w / 2, cy = h / 2;
          var step = lens.GridSize * lens.Magnification;
-         using var pen = new Pen(Color.White, 1f);
+         using var pen = new Pen(Color.White, this.lineWidth);
          pen.DashStyle = gridStyle.DashStyle();
          DrawHorizontalLines(g, pen, cy, step, w, h);
          DrawVerticalLines(g, pen, cx, step, w, h);
@@ -1056,12 +1075,13 @@ namespace StrangeLens
          this.cachedShadowContentW = contentW;
          this.cachedShadowContentH = contentH;
 
-         var tw = contentW + ShadowMarginL + ShadowMarginR;
-         var th = contentH + ShadowMarginT + ShadowMarginB;
+         var tw = contentW + this.shadowMarginL + this.shadowMarginR;
+         var th = contentH + this.shadowMarginT + this.shadowMarginB;
 
          // Shadow source: the content rectangle offset by (ShadowOffsetX, ShadowOffsetY).
-         var sx = ShadowMarginL + ShadowOffsetX;
-         var sy = ShadowMarginT + ShadowOffsetY;
+         // ShadowOffsetX=0, so sx==shadowMarginL; shadowMarginT+scaledOffsetY also equals shadowMarginL.
+         var sx = this.shadowMarginL;
+         var sy = this.shadowMarginL;
          var src = new float[tw * th];
          for (var y = sy; y < sy + contentH; y++)
          for (var x = sx; x < sx + contentW; x++)
@@ -1070,8 +1090,8 @@ namespace StrangeLens
          }
 
          // Separable Gaussian blur (two passes, zero-padded boundary).
-         var temp = GaussianBlur1D(src, tw, th, ShadowSigma, horizontal: true);
-         var result = GaussianBlur1D(temp, tw, th, ShadowSigma, horizontal: false);
+         var temp = GaussianBlur1D(src, tw, th, this.shadowSigmaScaled, horizontal: true);
+         var result = GaussianBlur1D(temp, tw, th, this.shadowSigmaScaled, horizontal: false);
 
          this.shadowAlpha = new byte[tw * th];
          for (var i = 0; i < result.Length; i++)
@@ -1117,6 +1137,7 @@ namespace StrangeLens
       /// <summary>Handles WM_MOUSEMOVE inside the low-level hook. Returns a hook return value when
       ///    the event should be consumed or forwarded immediately; returns null to fall through to
       ///    CallNextHookEx.</summary>
+      [SuppressMessage("ReSharper", "CognitiveComplexity")]
       private IntPtr? HandlePrecisionMove(IntPtr lParam, bool hasCtrlAltShift, int nCode, IntPtr wParam)
       {
          // MSLLHOOKSTRUCT: POINT is at offset 0 (two int32s).
@@ -1125,9 +1146,9 @@ namespace StrangeLens
 
          if (this.isSyntheticMove)
          {
-            // Always clear -- safety valve against the flag getting stuck (e.g. OS clamps
+            // Always clear -- safety valve against the flag getting stuck (e.g., OS clamps
             // a SetCursorPos to the screen edge and the synthetic arrives at a different
-            // coordinate than lastCursorPos).
+            // coordinate than the lastCursorPos).
             this.isSyntheticMove = false;
             if ((ptX == this.lastCursorPos.X) && (ptY == this.lastCursorPos.Y))
             {
@@ -1161,8 +1182,8 @@ namespace StrangeLens
                   // Only call SetCursorPos when the cursor actually moves to a new position.
                   // A same-position call generates no WM_MOUSEMOVE synthetic, which would leave
                   // isSyntheticMove stuck true and cause the next real event to be wrongly
-                  // consumed as stale -- leaving lastCursorPos stale and causing a jump on the
-                  // next precision entry.
+                  // consumed as stale -- leaving the lastCursorPos stale and causing a jump on
+                  // the next precision entry.
                   this.isSyntheticMove = true;
                   SetCursorPos(newX, newY);
                }
@@ -1262,8 +1283,15 @@ namespace StrangeLens
             }
 
             var lens = Lens.Instance;
-            var w = lens.Width;
-            var h = lens.Height;
+            var dpiScale = this.DeviceDpi / 96f;
+            var w = (int)Math.Round(lens.Width * dpiScale);
+            var h = (int)Math.Round(lens.Height * dpiScale);
+            this.lineWidth = Math.Max(1, (int)Math.Round(dpiScale));
+            this.shadowMarginL = this.shadowMarginR = (int)Math.Round(ShadowBlur * dpiScale);
+            this.shadowMarginT = (int)Math.Round((ShadowBlur - ShadowOffsetY) * dpiScale);
+            this.shadowMarginB = (int)Math.Round((ShadowBlur + ShadowOffsetY) * dpiScale);
+            this.shadowSigmaScaled = ShadowSigma * dpiScale;
+            this.scaledPanelMargin = (int)Math.Round(this.scaledPanelMargin * dpiScale);
 
             // Select the axis based on screen orientation.
             // Portrait screens (H > W) use U-D placement to avoid constant left/right flipping
@@ -1272,7 +1300,7 @@ namespace StrangeLens
             // overlaps the captured area regardless of the current zoom level.
             var screen = Screen.FromPoint(cursorPos);
             var portrait = screen.Bounds.Height > screen.Bounds.Width;
-            var infoW = this.infoForm.HasVisibleContent ? this.infoForm.ContentW + InfoForm.PanelMargin : 0;
+            var infoW = this.infoForm.HasVisibleContent ? this.infoForm.ContentW + this.scaledPanelMargin : 0;
             var infoH = this.infoForm.HasVisibleContent ? this.infoForm.ContentH : 0;
             var maxH = Math.Max(h, infoH);
             var screenChanged = screen.DeviceName != this.lastScreenName;
@@ -1291,10 +1319,10 @@ namespace StrangeLens
                screenChanged,
                portrait);
 
-            var totalW = w + ShadowMarginL + ShadowMarginR;
-            var totalH = h + ShadowMarginT + ShadowMarginB;
+            var totalW = w + this.shadowMarginL + this.shadowMarginR;
+            var totalH = h + this.shadowMarginT + this.shadowMarginB;
             // Window top-left is inset by the shadow margins so content appears at lensLeft/lensTop.
-            var winPos = new Point(lensLeft - ShadowMarginL, lensTop - ShadowMarginT);
+            var winPos = new Point(lensLeft - this.shadowMarginL, lensTop - this.shadowMarginT);
 
             this.EnsureLayeredResources(w, h);
             this.EnsureFinalResources(totalW, totalH);
@@ -1323,7 +1351,7 @@ namespace StrangeLens
                   _ => (InterpolationMode.NearestNeighbor, PixelOffsetMode.Half),
                };
 
-            this.CopyScreen(cursorPos);
+            this.CopyScreen(cursorPos, w, h);
             // Sample the pixel at the cursor -- scrBmp is centered on cursorPos so the
             // center pixel maps exactly to the crosshair origin (the spec's sampled pixel).
             var sampledColor = this.scrBmp!.GetPixel(this.scrBmp.Width / 2, this.scrBmp.Height / 2);
@@ -1337,7 +1365,7 @@ namespace StrangeLens
             this.ApplyDifferenceGrid(w, h);
             this.ApplyDifferenceCrosshair(w, h);
 
-            DrawBorder(g, w, h, this.Focused);
+            DrawBorder(g, w, h, this.Focused, this.lineWidth);
 
             g.Flush();
             this.CompositeFinalFrame(w, h, totalW, totalH);
@@ -1351,7 +1379,8 @@ namespace StrangeLens
                new Rectangle(lensLeft, lensTop, w, h),
                infoLeft,
                precisionActive,
-               Lens.Instance.PrecisionSpeed);
+               Lens.Instance.PrecisionSpeed,
+               dpiScale);
          }
          catch (Exception ex)
          {

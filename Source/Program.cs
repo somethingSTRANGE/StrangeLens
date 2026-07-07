@@ -34,6 +34,7 @@ namespace StrangeLens
          {
             if (createdNew)
             {
+               Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
                Application.EnableVisualStyles();
                Application.SetCompatibleTextRenderingDefault(false);
                Lens.Instance.Load();
