@@ -1,4 +1,4 @@
-﻿// -------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
 // <copyright file="AboutForm.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
@@ -24,6 +24,8 @@ namespace StrangeLens
 
       private const int ControlRowHeight = 17;
 
+      private const int FormH = 563; // exact layout height at 100 % DPI; scale with Math.Round(FormH * s)
+
       private const int FormW = 360;
 
       private const int IconGap = 16;
@@ -46,52 +48,45 @@ namespace StrangeLens
 
       private const int VerticalControlGap = 3;
 
-      private readonly Bitmap appIconBitmap;
-
-      private readonly FontInfo fontBold;
-
-      private readonly FontInfo fontRegular;
-
-      private readonly FontInfo fontSmall;
-
-      private readonly SvgImage iconDonateBuyMeACoffee;
-
-      private readonly SvgImage iconDonateGitHub;
-
-      private readonly SvgImage iconDonateKoFi;
-
-      private readonly SvgImage iconDonatePayPal;
-
-      private readonly SvgImage iconResourcesIssues;
-
-      private readonly SvgImage iconResourcesSource;
-
-      private readonly SvgImage imageLogo;
+      // Owned by the caller — AboutForm never disposes of this.
+      private readonly Icon appIconSource;
 
       private readonly ThemePalette palette;
 
       private readonly ToolTip toolTip = new();
 
+      // Recreated in BuildLayout whenever DPI changes.
+      private Bitmap? appIconBitmap;
+
+      private FontInfo? fontBold;
+
+      private FontInfo? fontRegular;
+
+      private FontInfo? fontSmall;
+
+      private SvgImage? iconDonateBuyMeACoffee;
+
+      private SvgImage? iconDonateGitHub;
+
+      private SvgImage? iconDonateKoFi;
+
+      private SvgImage? iconDonatePayPal;
+
+      private SvgImage? iconResourcesIssues;
+
+      private SvgImage? iconResourcesSource;
+
+      private SvgImage? imageLogo;
+
+      // Scale factor for the current display (DeviceDpi / 96). Updated in BuildLayout.
+      private float layoutScale = 1f;
+
       private int yLocation;
 
       internal AboutForm(Icon appIcon)
       {
-         this.fontBold = FontHelper.CreateBoldFontInfo();
-         this.fontRegular = FontHelper.CreateRegularFontInfo();
-         this.fontSmall = FontHelper.CreateSmallFontInfo();
-
+         this.appIconSource = appIcon;
          this.palette = Lens.Instance.ActivePalette;
-
-         this.iconDonateGitHub = SvgImageFactory.AboutDonateGitHub(BtnSize);
-         this.iconDonatePayPal = SvgImageFactory.AboutDonatePayPal(BtnSize);
-         this.iconDonateKoFi = SvgImageFactory.AboutDonateKoFi(BtnSize);
-         this.iconDonateBuyMeACoffee = SvgImageFactory.AboutDonateBuyMeACoffee(BtnSize);
-         this.iconResourcesSource = SvgImageFactory.AboutResourceSource(BtnSize);
-         this.iconResourcesIssues = SvgImageFactory.AboutResourceIssues(BtnSize);
-         this.imageLogo = SvgImageFactory.AboutLogo(200, 36);
-
-         using var icon48 = new Icon(appIcon, AppIconSize, AppIconSize);
-         this.appIconBitmap = icon48.ToBitmap();
 
          this.Text = $"About {this.ProductName}";
          this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -101,7 +96,10 @@ namespace StrangeLens
          this.StartPosition = FormStartPosition.CenterParent;
          this.BackColor = this.palette.Background;
 
-         this.BuildLayout();
+         // Disable WinForms auto-scaling. WinForms scales control positions by the DPI ratio,
+         // but our pixel-unit fonts don't scale with it, producing mismatched layouts. We handle
+         // all DPI scaling manually in BuildLayout, called from OnHandleCreated.
+         this.AutoScaleMode = AutoScaleMode.None;
       }
 
       protected override CreateParams CreateParams
@@ -119,10 +117,10 @@ namespace StrangeLens
       {
          if (disposing)
          {
-            this.fontRegular.Dispose();
-            this.fontSmall.Dispose();
-            this.fontBold.Dispose();
-            this.appIconBitmap.Dispose();
+            this.fontRegular?.Dispose();
+            this.fontSmall?.Dispose();
+            this.fontBold?.Dispose();
+            this.appIconBitmap?.Dispose();
             this.toolTip.Dispose();
          }
 
@@ -137,10 +135,36 @@ namespace StrangeLens
             var dark = 1;
             DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
          }
+
+         // DeviceDpi is accurate at this point for PerMonitorV2-aware processes.
+         this.BuildLayout(this.DeviceDpi / 96f);
       }
 
       protected override void WndProc(ref Message m)
       {
+         if (m.Msg == WM_DPICHANGED)
+         {
+            base.WndProc(ref m); // updates DeviceDpi field; may or may not resize FixedDialog
+
+            // Read the authoritative new DPI directly from the message (HIWORD of wParam).
+            // DeviceDpi property may still lag — it calls GetDpiForWindow live, which can
+            // return the old value if the window hasn't fully settled on the new monitor yet.
+            var newDpi = (int)(m.WParam >>> 16);
+            var newScale = newDpi / 96f;
+
+            // Resize to the fixed layout dimensions immediately, so there's no stale-size flash
+            // between this message and the deferred BuildLayout. base.WndProc skips SetBoundsCore
+            // for FixedDialog when AutoScaleMode is None, so we must drive the resize ourselves.
+            this.ClientSize = new Size((int)Math.Round(FormW * newScale), (int)Math.Round(FormH * newScale));
+
+            // Defer the control rebuild so this WndProc fully unwinds first — clearing controls
+            // while WinForms has queued repaints for them causes drawing into disposed objects.
+            // Capture newScale in the closure so BuildLayout uses the correct value regardless
+            // of when BeginInvoke fires relative to further DeviceDpi updates.
+            this.BeginInvoke(() => this.BuildLayout(newScale));
+            return;
+         }
+
          // Re-apply dark title bar on every focus change -- WM_NCACTIVATE fires when Windows
          // redraws the non-client area, and something (SetColorMode/WinForms internals) can
          // reset the DWM attribute before we see the message.
@@ -156,156 +180,328 @@ namespace StrangeLens
       private void AddControl(Control control)
       {
          this.Controls.Add(control);
-         this.yLocation += control.Height + VerticalControlGap;
+         this.yLocation += control.Height + (int)Math.Round(VerticalControlGap * this.layoutScale);
       }
 
-      private void AddSpace(int size = 8)
+      private void AddSpace(int size)
       {
          this.yLocation += size;
       }
 
-      private void BuildLayout()
+      private void BuildLayout(float scale)
       {
-         var assembly = Assembly.GetExecutingAssembly();
+         this.layoutScale = scale;
+         var s = scale;
 
-         var informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-         var plusIdx = informationalVersion?.IndexOf('+') ?? -1;
-         var rawHash = plusIdx >= 0 ? informationalVersion![(plusIdx + 1)..] : null;
+         // -- Fonts ---------------------------------------------------------------------------------
+         this.fontBold?.Dispose();
+         this.fontBold = FontHelper.CreateBoldFontInfo(s);
+         this.fontRegular?.Dispose();
+         this.fontRegular = FontHelper.CreateRegularFontInfo(s);
+         this.fontSmall?.Dispose();
+         this.fontSmall = FontHelper.CreateSmallFontInfo(s);
 
-         var asmBuildDate = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(a => a.Key == "BuildDate")?.Value;
+         // -- Icons ---------------------------------------------------------------------------------
+         var btnSize = (int)Math.Round(BtnSize * s);
+         this.iconDonateGitHub = SvgImageFactory.AboutDonateGitHub(btnSize);
+         this.iconDonatePayPal = SvgImageFactory.AboutDonatePayPal(btnSize);
+         this.iconDonateKoFi = SvgImageFactory.AboutDonateKoFi(btnSize);
+         this.iconDonateBuyMeACoffee = SvgImageFactory.AboutDonateBuyMeACoffee(btnSize);
+         this.iconResourcesSource = SvgImageFactory.AboutResourceSource(btnSize);
+         this.iconResourcesIssues = SvgImageFactory.AboutResourceIssues(btnSize);
+         this.imageLogo = SvgImageFactory.AboutLogo((int)Math.Round(200 * s), (int)Math.Round(36 * s));
 
-         var buildVersion = plusIdx > 0 ? informationalVersion![..plusIdx] : informationalVersion ?? "0.0.0";
-         var buildDate = string.IsNullOrEmpty(asmBuildDate) || (asmBuildDate == "dev")
-            ? DateTime.Today.ToString("yyyy-MM-dd")
-            : asmBuildDate;
-         var commitHash = rawHash?.Length >= 7 ? rawHash[..7] : "HASH";
-         var versionCopy = $"{this.ProductName} {buildVersion}\nBuilt on {buildDate} from commit {commitHash
-         }";
-         var copyright = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "";
+         this.appIconBitmap?.Dispose();
+         using var icon = new Icon(
+            this.appIconSource,
+            (int)Math.Round(AppIconSize * s),
+            (int)Math.Round(AppIconSize * s));
+         this.appIconBitmap = icon.ToBitmap();
 
-         var attributions = new[]
+         // -- Clear previous controls ---------------------------------------------------------------
+         this.toolTip.RemoveAll();
+         var old = this.Controls.Cast<Control>().ToArray();
+         this.Controls.Clear();
+         this.yLocation = 0;
+         this.SuspendLayout();
+         try
+         {
+            foreach (var c in old)
             {
-               "Wordmark: Slackey (fonts.google.com), Apache 2.0",
-               "Icons: Font Awesome Free (fontawesome.com), CC BY 4.0",
-               "Font: JetBrains Mono (jetbrains.com/lp/mono), SIL OFL 1.1",
-               "Font: Inter (rsms.me/inter), SIL OFL 1.1",
-            };
+               c.Dispose();
+            }
 
-         (SvgImage Icon, string Label, string Url)[] donationLinks =
-            [
-               (this.iconDonateGitHub, "GitHub Sponsors", "https://github.com/sponsors/somethingSTRANGE"),
-               (this.iconDonateBuyMeACoffee, "Buy Me a Coffee", "https://buymeacoffee.com/strange"),
-               (this.iconDonateKoFi, "Ko-fi", "https://ko-fi.com/somethingstrange"),
-               (this.iconDonatePayPal, "PayPal", "https://www.paypal.com/donate/?business=JFYPDTH5TA872"),
-            ];
+            // -- Version / metadata strings ------------------------------------------------------------
+            var assembly = Assembly.GetExecutingAssembly();
 
-         (SvgImage Icon, string Label, string Url)[] resourceLinks =
-            [
-               (this.iconResourcesSource, "Source Code", "https://github.com/somethingSTRANGE/Lens"),
-               (this.iconResourcesIssues, "Report Issues", "https://github.com/somethingSTRANGE/Lens/issues"),
-            ];
+            var informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+               ?.InformationalVersion;
+            var plusIdx = informationalVersion?.IndexOf('+') ?? -1;
+            var rawHash = plusIdx >= 0 ? informationalVersion![(plusIdx + 1)..] : null;
 
-         // -- Icon -------------------------------------------------------------------------------
-         this.Controls.Add(
-            new PictureBox
+            var asmBuildDate = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+               .FirstOrDefault(a => a.Key == "BuildDate")?.Value;
+
+            var buildVersion =
+               plusIdx > 0 ? informationalVersion![..plusIdx] : informationalVersion ?? "0.0.0";
+            var buildDate = string.IsNullOrEmpty(asmBuildDate) || (asmBuildDate == "dev")
+               ? DateTime.Today.ToString("yyyy-MM-dd")
+               : asmBuildDate;
+            var commitHash = rawHash?.Length >= 7 ? rawHash[..7] : "HASH";
+            var versionCopy = $"{this.ProductName} {buildVersion}\nBuilt on {buildDate} from commit {
+               commitHash}";
+            var copyright = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "";
+
+            var attributions = new[]
                {
-                  Image = this.appIconBitmap,
-                  SizeMode = PictureBoxSizeMode.Zoom,
-                  Size = new Size(AppIconSize, AppIconSize),
-                  Location = new Point(PadX, PadY),
-                  BackColor = this.palette.Background,
-               });
+                  "Wordmark: Slackey (fonts.google.com), Apache 2.0",
+                  "Icons: Font Awesome Free (fontawesome.com), CC BY 4.0",
+                  "Font: JetBrains Mono (jetbrains.com/lp/mono), SIL OFL 1.1",
+                  "Font: Inter (rsms.me/inter), SIL OFL 1.1",
+               };
 
-         // -- Header -----------------------------------------------------------------------------
-         this.AddSpace(PadY);
-         this.AddControl(
-            this.SvgImage(this.imageLogo, this.palette.TextStrong, this.palette.AccentSubtle, 0.5f));
+            (SvgImage Icon, string Label, string Url)[] donationLinks =
+               [
+                  (this.iconDonateGitHub!, "GitHub Sponsors", "https://github.com/sponsors/somethingSTRANGE"),
+                  (this.iconDonateBuyMeACoffee!, "Buy Me a Coffee", "https://buymeacoffee.com/strange"),
+                  (this.iconDonateKoFi!, "Ko-fi", "https://ko-fi.com/somethingstrange"),
+                  (this.iconDonatePayPal!, "PayPal", "https://www.paypal.com/donate/?business=JFYPDTH5TA872"),
+               ];
 
-         // -- Version & metadata -----------------------------------------------------------------
-         this.AddSpace();
-         this.AddControl(this.LabelBuildVersion($"Version {buildVersion}"));
-         this.AddControl(this.LabelBuildDate($"{buildDate}"));
+            (SvgImage Icon, string Label, string Url)[] resourceLinks =
+               [
+                  (this.iconResourcesSource!, "Source Code", "https://github.com/somethingSTRANGE/Lens"),
+                  (this.iconResourcesIssues!, "Report Issues",
+                     "https://github.com/somethingSTRANGE/Lens/issues"),
+               ];
 
-         // -- Product Links ----------------------------------------------------------------------
-         this.AddSpace(PadY + PadY);
-         this.AddControl(this.LabelHeader("Resources"));
-         foreach (var link in resourceLinks)
-         {
-            this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
+            var scaledPadX = (int)Math.Round(PadX * s);
+            var scaledPadY = (int)Math.Round(PadY * s);
+            var scaledAppIconSize = (int)Math.Round(AppIconSize * s);
+
+            // -- App icon ------------------------------------------------------------------------------
+            this.Controls.Add(
+               new PictureBox
+                  {
+                     Image = this.appIconBitmap,
+                     SizeMode = PictureBoxSizeMode.Zoom,
+                     Size = new Size(scaledAppIconSize, scaledAppIconSize),
+                     Location = new Point(scaledPadX, scaledPadY),
+                     BackColor = this.palette.Background,
+                  });
+
+            // -- Logo ----------------------------------------------------------------------------------
+            this.AddSpace(scaledPadY);
+            this.AddControl(
+               this.SvgImage(this.imageLogo!, this.palette.TextStrong, this.palette.AccentSubtle, 0.5f));
+
+            // -- Version & metadata --------------------------------------------------------------------
+            this.AddSpace((int)Math.Round(8 * s));
+            this.AddControl(this.LabelBuildVersion($"Version {buildVersion}"));
+            this.AddControl(this.LabelBuildDate($"{buildDate}"));
+
+            // -- Resources -----------------------------------------------------------------------------
+            this.AddSpace((int)Math.Round((PadY + PadY) * s));
+            this.AddControl(this.LabelHeader("Resources"));
+            foreach (var link in resourceLinks)
+            {
+               this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
+            }
+
+            // -- Donation links ------------------------------------------------------------------------
+            this.AddSpace(scaledPadY);
+            this.AddControl(this.LabelHeader("Give support and donate"));
+            foreach (var link in donationLinks)
+            {
+               this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
+            }
+
+            // -- Copyright -----------------------------------------------------------------------------
+            this.AddSpace((int)Math.Round((PadY + PadY) * s));
+            this.AddControl(this.Separator());
+            this.AddSpace(scaledPadY);
+            this.AddControl(this.LabelCopyright($"{copyright} — MIT License"));
+
+            // -- Attribution ---------------------------------------------------------------------------
+            this.AddSpace((int)Math.Round(8 * s));
+            foreach (var attribution in attributions)
+            {
+               this.AddControl(this.LabelAttribution(attribution));
+            }
+
+            // -- Buttons -------------------------------------------------------------------------------
+            this.AddSpace((int)Math.Round(PadY * 2 * s));
+            this.AddControl(this.ButtonsPanel(versionCopy));
+
+            this.ClientSize = new Size((int)Math.Round(FormW * s), (int)Math.Round(FormH * s));
          }
-
-         // -- Donation Links ---------------------------------------------------------------------
-         this.AddSpace(PadY);
-         this.AddControl(this.LabelHeader("Give support and donate"));
-         foreach (var link in donationLinks)
+         finally
          {
-            this.AddControl(this.LinkButton(link.Icon, link.Label, link.Url));
+            this.ResumeLayout(performLayout: true);
          }
-
-         // -- Copyright --------------------------------------------------------------------------
-         this.AddSpace(PadY + PadY);
-         this.AddControl(this.Separator());
-         this.AddSpace(PadY);
-         this.AddControl(this.LabelCopyright($"{copyright} — MIT License"));
-
-         // -- Attribution ------------------------------------------------------------------------
-         this.AddSpace();
-         foreach (var attribution in attributions)
-         {
-            this.AddControl(this.LabelAttribution(attribution));
-         }
-
-         // -- Actions ----------------------------------------------------------------------------
-         this.AddSpace(PadY * 2);
-         this.AddControl(this.ButtonsPanel(versionCopy));
-
-         this.ClientSize = new Size(FormW, this.yLocation + PadY);
       }
 
       private Panel ButtonsPanel(string versionLine)
       {
-         const int ButtonHeight = 26;
-         const int CloseWidth = 80;
          const string CopyAndCloseText = "Copy and Close";
+         const TextFormatFlags BtnFlags =
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+         var s = this.layoutScale;
+         var buttonH = (int)Math.Round(26 * s);
+         var closeW = (int)Math.Round(80 * s);
+         var sepW = (int)Math.Round(SepW * s);
+         var padX = (int)Math.Round(PadX * s);
+         var penWidth = Math.Max(1, (int)Math.Round(s));
 
-         var copyAndCloseWidth = TextRenderer.MeasureText(CopyAndCloseText, this.fontRegular.Font).Width + 24;
+         // Capture font into a local so Paint closures bypass WinForms Font-property scaling.
+         var capturedFont = this.fontRegular!.Font;
+         var copyAndCloseWidth = TextRenderer.MeasureText(CopyAndCloseText, capturedFont).Width
+                                 + (int)Math.Round(24 * s);
 
          var panel = new Panel
             {
-               Location = new Point(PadX, this.yLocation),
-               Size = new Size(SepW, ButtonHeight),
+               Location = new Point(padX, this.yLocation),
+               Size = new Size(sepW, buttonH),
                BackColor = Color.Transparent,
             };
 
+         // -- Close button -----------------------------------------------------------------
+         var closeBg = this.palette.Control;
+         var closeBgHover = this.palette.Border;
+         var closeTextColor = this.palette.TextNormal;
+         var closeBorderColor = this.palette.Border;
+
+         var closeHovered = false;
+         var closeFocused = false;
+
          var closeBtn = new Button
             {
-               Font = this.fontRegular.Font,
-               Text = "Close",
-               BackColor = this.palette.Control,
-               ForeColor = this.palette.TextNormal,
-               Location = new Point(panel.Width - CloseWidth, 0),
-               Size = new Size(CloseWidth, ButtonHeight),
+               Text = string.Empty,
+               Location = new Point(panel.Width - closeW, 0),
+               Size = new Size(closeW, buttonH),
                FlatStyle = FlatStyle.Flat,
+               Cursor = Cursors.Hand,
             };
-         closeBtn.FlatAppearance.BorderColor = this.palette.Border;
-         closeBtn.FlatAppearance.MouseOverBackColor = this.palette.Border;
+         closeBtn.FlatAppearance.BorderSize = 0;
+
+         closeBtn.Paint += (_, e) =>
+            {
+               var g = e.Graphics;
+               g.Clear(closeHovered ? closeBgHover : closeBg);
+               using var pen = new Pen(closeBorderColor, penWidth);
+               g.DrawRectangle(pen, 0, 0, closeBtn.Width - 1, closeBtn.Height - 1);
+               var measured = TextRenderer.MeasureText(g, "Close", capturedFont, Size.Empty, BtnFlags);
+               TextRenderer.DrawText(
+                  g,
+                  "Close",
+                  capturedFont,
+                  new Point((closeBtn.Width - measured.Width) / 2, (closeBtn.Height - measured.Height) / 2),
+                  closeTextColor,
+                  BtnFlags);
+               if (closeFocused)
+               {
+                  ControlPaint.DrawFocusRectangle(g, Rectangle.Inflate(closeBtn.ClientRectangle, -2, -2));
+               }
+            };
+         closeBtn.MouseEnter += (_, _) =>
+            {
+               closeHovered = true;
+               closeBtn.Invalidate();
+            };
+         closeBtn.MouseLeave += (_, _) =>
+            {
+               closeHovered = false;
+               closeBtn.Invalidate();
+            };
+         closeBtn.GotFocus += (_, _) =>
+            {
+               closeFocused = true;
+               closeBtn.Invalidate();
+            };
+         closeBtn.LostFocus += (_, _) =>
+            {
+               closeFocused = false;
+               closeBtn.Invalidate();
+            };
          closeBtn.Click += (_, _) => this.Close();
+
+         // -- Copy and Close button --------------------------------------------------------
+         var copyBgNormal = this.palette.AccentSubtle;
+         var copyBgHover = this.palette.AccentNormal;
+         var copyBgPress = this.palette.AccentStrong;
+         var copyTextColor = this.palette.TextStrong;
+
+         var copyHovered = false;
+         var copyPressed = false;
+         var copyFocused = false;
 
          var copyAndCloseBtn = new Button
             {
-               Font = this.fontRegular.Font,
-               Text = CopyAndCloseText,
-               BackColor = this.palette.AccentSubtle,
-               ForeColor = this.palette.TextStrong,
-               Location = new Point(closeBtn.Left - PadX - copyAndCloseWidth, 0),
-               Size = new Size(copyAndCloseWidth, ButtonHeight),
+               Text = string.Empty,
+               Location = new Point(closeBtn.Left - padX - copyAndCloseWidth, 0),
+               Size = new Size(copyAndCloseWidth, buttonH),
                FlatStyle = FlatStyle.Flat,
+               Cursor = Cursors.Hand,
             };
          copyAndCloseBtn.FlatAppearance.BorderSize = 0;
-         copyAndCloseBtn.FlatAppearance.MouseOverBackColor = this.palette.AccentNormal;
-         copyAndCloseBtn.FlatAppearance.MouseDownBackColor = this.palette.AccentStrong;
+
+         copyAndCloseBtn.Paint += (_, e) =>
+            {
+               var g = e.Graphics;
+               g.Clear(copyPressed ? copyBgPress : copyHovered ? copyBgHover : copyBgNormal);
+               var measured = TextRenderer.MeasureText(
+                  g,
+                  CopyAndCloseText,
+                  capturedFont,
+                  Size.Empty,
+                  BtnFlags);
+               TextRenderer.DrawText(
+                  g,
+                  CopyAndCloseText,
+                  capturedFont,
+                  new Point(
+                     (copyAndCloseBtn.Width - measured.Width) / 2,
+                     (copyAndCloseBtn.Height - measured.Height) / 2),
+                  copyTextColor,
+                  BtnFlags);
+               if (copyFocused)
+               {
+                  ControlPaint.DrawFocusRectangle(
+                     g,
+                     Rectangle.Inflate(copyAndCloseBtn.ClientRectangle, -2, -2));
+               }
+            };
+         copyAndCloseBtn.MouseEnter += (_, _) =>
+            {
+               copyHovered = true;
+               copyAndCloseBtn.Invalidate();
+            };
+         copyAndCloseBtn.MouseLeave += (_, _) =>
+            {
+               copyHovered = false;
+               copyPressed = false;
+               copyAndCloseBtn.Invalidate();
+            };
+         copyAndCloseBtn.MouseDown += (_, _) =>
+            {
+               copyPressed = true;
+               copyAndCloseBtn.Invalidate();
+            };
+         copyAndCloseBtn.MouseUp += (_, _) =>
+            {
+               copyPressed = false;
+               copyAndCloseBtn.Invalidate();
+            };
+         copyAndCloseBtn.GotFocus += (_, _) =>
+            {
+               copyFocused = true;
+               copyAndCloseBtn.Invalidate();
+            };
+         copyAndCloseBtn.LostFocus += (_, _) =>
+            {
+               copyFocused = false;
+               copyAndCloseBtn.Invalidate();
+            };
          copyAndCloseBtn.Click += (_, _) =>
             {
                Clipboard.SetText(versionLine);
@@ -313,97 +509,94 @@ namespace StrangeLens
             };
          this.toolTip.SetToolTip(copyAndCloseBtn, "Copy version info and close this window");
 
-         // Give the call-to-action initial keyboard focus instead of whatever control
-         // happens to be first in tab order. Deferred to Load since ActiveControl only
-         // takes effect once the control is actually parented into the form.
-         this.Load += (_, _) => this.ActiveControl = copyAndCloseBtn;
+         // Defer: copyAndCloseBtn isn't in the form hierarchy until the caller adds the panel.
+         this.BeginInvoke(() =>
+            {
+               if (!this.IsDisposed && this.Contains(copyAndCloseBtn))
+               {
+                  this.ActiveControl = copyAndCloseBtn;
+               }
+            });
 
          panel.Controls.Add(copyAndCloseBtn);
          panel.Controls.Add(closeBtn);
          return panel;
       }
 
-      private Label LabelAttribution(string text)
+      private Panel LabelAttribution(string text)
       {
-         var control = new Label
-            {
-               Text = text,
-               Font = this.fontSmall.Font,
-               ForeColor = this.palette.TextSubtle,
-               BackColor = Color.Transparent,
-               Location = new Point(PadX, this.yLocation),
-               Size = new Size(SepW, this.fontSmall.PixelLineHeight),
-               TextAlign = ContentAlignment.MiddleCenter,
-            };
-         return control;
+         var s = this.layoutScale;
+         return this.TextPanel(
+            text,
+            this.fontSmall!.Font,
+            this.palette.TextSubtle,
+            (int)Math.Round(PadX * s),
+            (int)Math.Round(SepW * s),
+            center: true);
       }
 
-      private Label LabelBuildDate(string text)
+      private Panel LabelBuildDate(string text)
       {
-         return new Label
-            {
-               Text = text,
-               Font = this.fontRegular.Font,
-               ForeColor = this.palette.TextSubtle,
-               BackColor = Color.Transparent,
-               Location = new Point(PadX, this.yLocation),
-               Size = new Size(SepW, ControlRowHeight),
-               TextAlign = ContentAlignment.MiddleCenter,
-               Padding = Padding.Empty,
-            };
+         var s = this.layoutScale;
+         return this.TextPanel(
+            text,
+            this.fontRegular!.Font,
+            this.palette.TextSubtle,
+            (int)Math.Round(PadX * s),
+            (int)Math.Round(SepW * s),
+            center: true);
       }
 
-      private Label LabelBuildVersion(string text)
+      private Panel LabelBuildVersion(string text)
       {
-         return new Label
-            {
-               Text = text,
-               Font = this.fontBold.Font,
-               ForeColor = this.palette.TextSubtle,
-               BackColor = Color.Transparent,
-               Location = new Point(PadX, this.yLocation),
-               Size = new Size(SepW, ControlRowHeight),
-               TextAlign = ContentAlignment.MiddleCenter,
-               Padding = Padding.Empty,
-            };
+         var s = this.layoutScale;
+         return this.TextPanel(
+            text,
+            this.fontBold!.Font,
+            this.palette.TextSubtle,
+            (int)Math.Round(PadX * s),
+            (int)Math.Round(SepW * s),
+            center: true);
       }
 
-      private Label LabelCopyright(string text)
+      private Panel LabelCopyright(string text)
       {
-         return new Label
-            {
-               Text = text,
-               Font = this.fontRegular.Font,
-               ForeColor = this.palette.TextSubtle,
-               BackColor = Color.Transparent,
-               Location = new Point(PadX, this.yLocation),
-               Size = new Size(SepW, ControlRowHeight),
-               TextAlign = ContentAlignment.MiddleCenter,
-               Padding = Padding.Empty,
-            };
+         var s = this.layoutScale;
+         return this.TextPanel(
+            text,
+            this.fontRegular!.Font,
+            this.palette.TextSubtle,
+            (int)Math.Round(PadX * s),
+            (int)Math.Round(SepW * s),
+            center: true);
       }
 
-      private Label LabelHeader(string label)
+      private Panel LabelHeader(string label)
       {
-         return new Label
-            {
-               Text = label,
-               Font = this.fontBold.Font,
-               ForeColor = this.palette.AccentNormal,
-               BackColor = Color.Transparent,
-               Location = new Point(TextX, this.yLocation),
-               Size = new Size(TextW, ControlRowHeight),
-               TextAlign = ContentAlignment.MiddleLeft,
-               Padding = Padding.Empty,
-            };
+         var s = this.layoutScale;
+         return this.TextPanel(
+            label,
+            this.fontBold!.Font,
+            this.palette.AccentNormal,
+            (int)Math.Round(TextX * s),
+            (int)Math.Round(TextW * s),
+            center: false);
       }
 
       private Panel LinkButton(SvgImage icon, string label, string url)
       {
+         var s = this.layoutScale;
+         var scaledTextX = (int)Math.Round(TextX * s);
+         var scaledTextW = (int)Math.Round(TextW * s);
+         var scaledBtnSize = (int)Math.Round(BtnSize * s);
+         var scaledPadX = (int)Math.Round(PadX * s);
+         var scaledGap = (int)Math.Round(6 * s);
+         var scaledNudge = (int)Math.Round(2 * s);
+
          var panel = new Panel
             {
-               Location = new Point(TextX, this.yLocation),
-               Size = new Size(TextW, 20),
+               Location = new Point(scaledTextX, this.yLocation),
+               Size = new Size(scaledTextW, scaledBtnSize),
                BackColor = Color.Transparent,
             };
 
@@ -418,7 +611,7 @@ namespace StrangeLens
             this.palette.TextNormal,
             this.palette.AccentStrong,
             onClick);
-         iconButton.Location = new Point(PadX, 0);
+         iconButton.Location = new Point(scaledPadX, 0);
          panel.Controls.Add(iconButton);
          this.toolTip.SetToolTip(iconButton, url);
 
@@ -428,7 +621,9 @@ namespace StrangeLens
             this.palette.AccentStrong,
             this.palette.Control,
             onClick);
-         linkButton.Location = new Point(PadX + BtnSize + 6, 0 + ((BtnSize - linkButton.Height) / 2) + 2);
+         linkButton.Location = new Point(
+            scaledPadX + scaledBtnSize + scaledGap,
+            ((iconButton.Height - linkButton.Height) / 2) + scaledNudge);
          panel.Controls.Add(linkButton);
          this.toolTip.SetToolTip(linkButton, url);
 
@@ -483,10 +678,12 @@ namespace StrangeLens
          Color underlineColor,
          Action onClick)
       {
+         var nudge = (int)Math.Round(2 * this.layoutScale);
+         var penWidth = Math.Max(1, (int)Math.Round(this.layoutScale));
          var textRect = new Rectangle(
-            new Point(0, -2),
-            TextRenderer.MeasureText(text, this.fontRegular.Font, Size.Empty, LinkTextFlags));
-         textRect.Height -= 2;
+            new Point(0, -nudge),
+            TextRenderer.MeasureText(text, this.fontRegular!.Font, Size.Empty, LinkTextFlags));
+         textRect.Height -= nudge;
 
          var btn = new Button
             {
@@ -504,7 +701,7 @@ namespace StrangeLens
          var focused = false;
 
          var underlineY = textRect.Height - 1;
-         textRect.Height += 2;
+         textRect.Height += nudge;
 
          btn.Paint += (_, e) =>
             {
@@ -512,14 +709,14 @@ namespace StrangeLens
                g.Clear(btn.BackColor);
                if (hovered)
                {
-                  using var pen = new Pen(underlineColor);
+                  using var pen = new Pen(underlineColor, penWidth);
                   g.DrawLine(pen, 0, underlineY, textRect.Width - 1, underlineY);
                }
 
                TextRenderer.DrawText(
                   g,
                   text,
-                  this.fontRegular.Font,
+                  this.fontRegular!.Font,
                   textRect,
                   hovered ? hoverColor : color,
                   LinkTextFlags);
@@ -554,30 +751,55 @@ namespace StrangeLens
 
       private Panel Separator()
       {
-         var control = new Panel
+         var s = this.layoutScale;
+         return new Panel
             {
                BackColor = this.palette.Border,
-               Location = new Point(PadX, this.yLocation),
-               Size = new Size(SepW, 1),
+               Location = new Point((int)Math.Round(PadX * s), this.yLocation),
+               Size = new Size((int)Math.Round(SepW * s), Math.Max(1, (int)Math.Round(s))),
             };
-         return control;
       }
 
       private Panel SvgImage(SvgImage image, Color color, Color shadowColor, float shadowOpacity)
       {
-         var location = new Point(TextX, this.yLocation);
+         var s = this.layoutScale;
+         var shadowDx = (int)Math.Round(2 * s);
+         var shadowDy = (int)Math.Round(3 * s);
          var panel = new Panel
             {
                Size = new Size(image.Width, image.Height),
-               Location = location,
-               // BackColor = this.BackColor,
+               Location = new Point((int)Math.Round(TextX * s), this.yLocation),
                BackColor = Color.Transparent,
             };
          panel.Paint += (_, e) =>
             {
-               shadowColor = Color.FromArgb((byte)(shadowOpacity * 255), shadowColor);
-               image.Draw(e.Graphics, shadowColor, 2, 3);
+               var shadow = Color.FromArgb((byte)(shadowOpacity * 255), shadowColor);
+               image.Draw(e.Graphics, shadow, shadowDx, shadowDy);
                image.Draw(e.Graphics, color, 0, 0);
+            };
+         return panel;
+      }
+
+      // Renders static text via TextRenderer.DrawText in a Paint event, bypassing the WinForms
+      // Label.Font-property scaling that fires when a control's HWND is created on a monitor
+      // whose DPI differs from the system (primary-monitor) DPI.
+      private Panel TextPanel(string text, Font font, Color color, int x, int width, bool center)
+      {
+         var height = (int)Math.Round(ControlRowHeight * this.layoutScale);
+         var panel = new Panel
+            {
+               Location = new Point(x, this.yLocation),
+               Size = new Size(width, height),
+               BackColor = Color.Transparent,
+            };
+         panel.Paint += (_, e) =>
+            {
+               const TextFormatFlags Flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix
+                                                                       | TextFormatFlags.SingleLine;
+               var measured = TextRenderer.MeasureText(e.Graphics, text, font, Size.Empty, Flags);
+               var drawX = center ? (width - measured.Width) / 2 : 0;
+               var drawY = (height - measured.Height) / 2;
+               TextRenderer.DrawText(e.Graphics, text, font, new Point(drawX, drawY), color, Flags);
             };
          return panel;
       }

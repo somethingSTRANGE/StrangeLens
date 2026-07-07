@@ -115,6 +115,9 @@ namespace StrangeLens
       ///    is pressed.</summary>
       internal const int WM_HOTKEY = 0x0312;
 
+      /// <summary>Sent to a window when its DPI changes.</summary>
+      internal const int WM_DPICHANGED = 0x02E0;
+
       /// <summary>Posted to a window when the cursor moves.</summary>
       internal const int WM_MOUSEMOVE = 0x0200;
 
