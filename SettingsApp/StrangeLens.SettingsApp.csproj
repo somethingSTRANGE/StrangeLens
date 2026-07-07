@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <Platforms>x64</Platforms>
+    <RootNamespace>StrangeLens.SettingsApp</RootNamespace>
+    <AssemblyName>StrangeLens.Settings</AssemblyName>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The XAML compiler's native VC++ metadata reader isn't needed (UseVCMetaManaged
+         defaults to true), but the unused VC-lookup step still crashes without a real
+         MSVC toolset present. Short-circuit that lookup so we don't depend on VS's C++
+         workload just to build C# XAML. -->
+    <VCInstallPath32>unused</VCInstallPath32>
+    <VCInstallPath64>unused</VCInstallPath64>
+    <Deterministic>true</Deterministic>
+    <Version>0.1.0</Version>
+    <Company>Strange</Company>
+    <Product>Strange Lens</Product>
+    <Copyright>© 2026 Michael Ryan</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+  </ItemGroup>
+
+</Project>

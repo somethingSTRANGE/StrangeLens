@@ -9,9 +9,11 @@ namespace StrangeLens
 {
    using System;
    using System.ComponentModel;
+   using System.Diagnostics;
    using System.Diagnostics.CodeAnalysis;
    using System.Drawing;
    using System.Drawing.Drawing2D;
+   using System.IO;
    using System.Runtime.InteropServices;
    using System.Windows.Forms;
 
@@ -130,6 +132,7 @@ namespace StrangeLens
             miStartWithWindows,
             new ToolStripSeparator(),
             new ToolStripMenuItem("&About...", null, this.menuItemAbout_Click),
+            new ToolStripMenuItem("WinUI 3 Spike...", null, this.menuItemWinUiSpike_Click),
             new ToolStripSeparator(),
             new ToolStripMenuItem("E&xit", null, this.menuItemExit_Click));
 
@@ -687,6 +690,30 @@ namespace StrangeLens
       private void menuItemSettings_Click(object? sender, EventArgs e)
       {
          this.OpenSettings();
+      }
+
+      private void menuItemWinUiSpike_Click(object? sender, EventArgs e)
+      {
+         // Temporary: proves our launching the standalone WinUI 3 process from the tray.
+         // Will be replaced once the real Settings/About windows are ready.
+         var spikeExe = Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "SettingsApp",
+            "bin",
+            "x64",
+            "Debug",
+            "net10.0-windows10.0.19041.0",
+            "StrangeLens.Settings.exe");
+
+         Process.Start(
+            new ProcessStartInfo(Path.GetFullPath(spikeExe))
+               {
+                  UseShellExecute = true,
+               });
       }
 
       private void notifyIcon_MouseClick(object? sender, MouseEventArgs e)

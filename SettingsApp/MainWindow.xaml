@@ -1,0 +1,13 @@
+<Window
+    x:Class="StrangeLens.SettingsApp.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+            <TextBlock Text="WinUI 3 spike window" FontSize="24" HorizontalAlignment="Center" />
+            <TextBlock Text="Launched as a separate process from the tray icon." HorizontalAlignment="Center" />
+            <Button Content="Close" Click="OnCloseClick" HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</Window>
