@@ -90,6 +90,10 @@ The following shortcuts are only available when the lens is open and has focus, 
 
 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> is the primary way to open and close the lens. <kbd>ESC</kbd> is a fallback that only works when the lens window has focus. The lens window border color indicates when the window has focus.
 
+## Known Issues
+
+- **Settings and About panels may flicker or glitch when dragged between displays with different DPI scaling** (e.g. a 150% primary monitor and a 100% secondary monitor). Both panels respond correctly to DPI changes and will render at the right size and text scale on each display, but the transition between monitors can produce a brief visual artifact. This is a limitation of the legacy WinForms UI framework. A migration of the Settings and About panels to WinUI 3 is planned — see the [Roadmap](ROADMAP.md).
+
 ## Troubleshooting
 
 - **Lens doesn't appear or hotkeys don't respond**: Another application may have registered the same key combination. Check the system tray to confirm Strange Lens is running, then look for conflicts in other running apps (AutoHotkey scripts, keyboard utilities, etc.).
