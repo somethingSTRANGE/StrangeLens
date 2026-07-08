@@ -1,12 +1,16 @@
+// -------------------------------------------------------------------------------------
+// <copyright file="MainWindow.xaml.cs">
+//   Copyright (c) 2026
+//   Licensed under the MIT License. See LICENSE file in the project root.
+// </copyright>
+// -------------------------------------------------------------------------------------
+
 namespace StrangeLens.SettingsApp;
 
 using System;
 using System.ComponentModel;
 
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-
-using StrangeLens;
 
 public sealed partial class MainWindow
 {
@@ -85,9 +89,9 @@ public sealed partial class MainWindow
       }
    }
 
-   /// <summary>Keeps the combo boxes in sync when <see cref="Lens"/> changes from outside
-   ///    this window's own controls -- an external settings.json reload (another process),
-   ///    or (for width/height/magnification/grid size) a lens keyboard shortcut.</summary>
+   /// <summary>Keeps the combo boxes in sync when <see cref="Lens"/> changes from outside this
+   ///    window's own controls -- an external settings.json reload (another process), or (for
+   ///    width/height/magnification/grid size) a lens keyboard shortcut.</summary>
    private void OnSettingChanged(object? sender, PropertyChangedEventArgs e)
    {
       switch (e.PropertyName)
@@ -97,8 +101,8 @@ public sealed partial class MainWindow
                (this.Settings.Width - Lens.Defaults.MinWidth) / Lens.Defaults.SizeIncrement;
             break;
          case nameof(this.Settings.Height):
-            this.HeightComboBox.SelectedIndex =
-               (this.Settings.Height - Lens.Defaults.MinHeight) / Lens.Defaults.SizeIncrement;
+            this.HeightComboBox.SelectedIndex = (this.Settings.Height - Lens.Defaults.MinHeight)
+                                                / Lens.Defaults.SizeIncrement;
             break;
          case nameof(this.Settings.GridStyle):
             this.GridStyleComboBox.SelectedIndex = (int)this.Settings.GridStyle;
@@ -165,8 +169,9 @@ public sealed partial class MainWindow
          this.PrecisionSpeedComboBox.Items.Add($"{pct}%");
       }
 
-      this.PrecisionSpeedComboBox.SelectedIndex =
-         Array.IndexOf(Lens.PrecisionSpeedOptions, this.Settings.PrecisionSpeed);
+      this.PrecisionSpeedComboBox.SelectedIndex = Array.IndexOf(
+         Lens.PrecisionSpeedOptions,
+         this.Settings.PrecisionSpeed);
 
       this.GridStyleComboBox.Items.Add("None");
       this.GridStyleComboBox.Items.Add("Solid");
@@ -188,7 +193,9 @@ public sealed partial class MainWindow
          this.GridOpacityComboBox.Items.Add($"{pct}%");
       }
 
-      this.GridOpacityComboBox.SelectedIndex = Array.IndexOf(Lens.GridOpacityOptions, this.Settings.GridOpacity);
+      this.GridOpacityComboBox.SelectedIndex = Array.IndexOf(
+         Lens.GridOpacityOptions,
+         this.Settings.GridOpacity);
 
       this.UpdateGridDependentControls();
 
@@ -216,8 +223,7 @@ public sealed partial class MainWindow
    }
 
    /// <summary>Attached after initial <see cref="ComboBox.SelectedIndex"/> is set, so
-   ///    population doesn't write the just-loaded value straight back into
-   ///    <see cref="Lens"/>.</summary>
+   ///    population doesn't write the just-loaded value straight back into <see cref="Lens"/>.</summary>
    private void WireComboBoxHandlers()
    {
       this.WidthComboBox.SelectionChanged += this.OnWidthChanged;

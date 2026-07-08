@@ -59,9 +59,9 @@ namespace StrangeLens
 
    public partial class Lens : INotifyPropertyChanged
    {
-      /// <summary>Coalesces rapid successive edits (e.g. a burst of scroll-wheel zoom
-      ///    notches) into one write, without the multi-second lag that used to make
-      ///    cross-process sync feel sluggish.</summary>
+      /// <summary>Coalesces rapid successive edits (e.g., a burst of scroll-wheel zoom notches)
+      ///    into a single save, without the multi-second lag that used to make cross-process sync
+      ///    feel sluggish.</summary>
       private const int SaveDebounceMs = 500;
 
       public static readonly int[] GridOpacityOptions = [20, 40, 60, 80, 100];
@@ -108,9 +108,9 @@ namespace StrangeLens
       private static Lens? instance;
 
       /// <summary>Property names changed locally since the last successful <see cref="Save"/>.
-      ///    <see cref="Load(string)"/> skips reassigning anything still pending here, so a
-      ///    reload triggered by (this process's own or another process's) file write can
-      ///    never clobber an edit this process hasn't flushed to disk yet.</summary>
+      ///    <see cref="Load(string)"/> skips reassigning anything still pending here, so a reload
+      ///    triggered by (this process's own or another process's) file write can never clobber an
+      ///    edit this process hasn't flushed to disk yet.</summary>
       private readonly ConcurrentDictionary<string, byte> pendingProperties = new();
 
       private readonly Timer saveTimer;
@@ -377,7 +377,7 @@ namespace StrangeLens
       {
          var path = SettingsFilePath;
 
-         // Snapshot exactly which properties this write is flushing -- not a blanket
+         // Snapshot exactly which properties this save is flushing -- not a blanket
          // Clear() -- so a change that lands mid-save stays pending for the next cycle
          // instead of being forgotten.
          var flushing = this.pendingProperties.Keys.ToArray();
@@ -441,7 +441,7 @@ namespace StrangeLens
             }
 
             // Skip any property with an edit made here that hasn't been flushed to disk
-            // yet -- otherwise a reload (our own echoed write, or the other process's)
+            // yet -- otherwise a reload (our own echoed save, or the other process's)
             // can clobber it with the stale value this file still has for it.
             this.LoadIfNotPending(nameof(this.Width), () => this.Width = data.Width);
             this.LoadIfNotPending(nameof(this.Height), () => this.Height = data.Height);
@@ -452,7 +452,9 @@ namespace StrangeLens
                () => this.GridStyle = (GridStyleOption)data.GridStyle);
             this.LoadIfNotPending(nameof(this.GridOpacity), () => this.GridOpacity = data.GridOpacity);
             this.LoadIfNotPending(nameof(this.Scaling), () => this.Scaling = (ScalingModeOption)data.Scaling);
-            this.LoadIfNotPending(nameof(this.PrecisionSpeed), () => this.PrecisionSpeed = data.PrecisionSpeed);
+            this.LoadIfNotPending(
+               nameof(this.PrecisionSpeed),
+               () => this.PrecisionSpeed = data.PrecisionSpeed);
             this.LoadIfNotPending(nameof(this.InfoShowHex), () => this.InfoShowHex = data.InfoShowHex);
             this.LoadIfNotPending(nameof(this.InfoShowRgb), () => this.InfoShowRgb = data.InfoShowRgb);
             this.LoadIfNotPending(nameof(this.InfoShowHsl), () => this.InfoShowHsl = data.InfoShowHsl);

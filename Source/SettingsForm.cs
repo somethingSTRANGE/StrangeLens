@@ -533,7 +533,7 @@ namespace StrangeLens
                this.WindowState = FormWindowState.Normal;
             }
 
-            this.LaunchSettingsWindow();
+            this.LaunchSettingsAppWindow();
          }
          else
          {
@@ -573,6 +573,35 @@ namespace StrangeLens
             DataSourceUpdateMode.OnPropertyChanged);
 
          return toggle;
+      }
+
+      private void LaunchSettingsAppWindow(string? arguments = null)
+      {
+         // TODO: replace the Debug-config-only relative path once a Release/packaging
+         // pipeline exists (see feature/winui3-migration plan notes).
+         var settingsExe = Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "SettingsApp",
+            "bin",
+            "x64",
+            "Debug",
+            "net10.0-windows10.0.19041.0",
+            "StrangeLens.Settings.exe");
+
+         var startInfo = new ProcessStartInfo(Path.GetFullPath(settingsExe))
+            {
+               UseShellExecute = true,
+            };
+         if (arguments != null)
+         {
+            startInfo.Arguments = arguments;
+         }
+
+         Process.Start(startInfo);
       }
 
       private int LayoutRow(string labelText, Control ctrl, int xOffset, int y, Color labelColor)
@@ -663,15 +692,7 @@ namespace StrangeLens
 
       private void menuItemAbout_Click(object? sender, EventArgs e)
       {
-         if (this.aboutForm is { IsDisposed: false })
-         {
-            this.aboutForm.Activate();
-            return;
-         }
-
-         this.aboutForm = new AboutForm(this.Icon!);
-         this.aboutForm.ShowDialog(this);
-         this.aboutForm.Dispose();
+         this.LaunchSettingsAppWindow("--about");
       }
 
       private void menuItemExit_Click(object? sender, EventArgs e)
@@ -686,33 +707,9 @@ namespace StrangeLens
          this.ToggleLens();
       }
 
-      private void LaunchSettingsWindow()
-      {
-         // TODO: replace the Debug-config-only relative path once a Release/packaging
-         // pipeline exists (see feature/winui3-migration plan notes).
-         var settingsExe = Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "SettingsApp",
-            "bin",
-            "x64",
-            "Debug",
-            "net10.0-windows10.0.19041.0",
-            "StrangeLens.Settings.exe");
-
-         Process.Start(
-            new ProcessStartInfo(Path.GetFullPath(settingsExe))
-               {
-                  UseShellExecute = true,
-               });
-      }
-
       private void menuItemSettings_Click(object? sender, EventArgs e)
       {
-         this.LaunchSettingsWindow();
+         this.LaunchSettingsAppWindow();
       }
 
       private void notifyIcon_MouseClick(object? sender, MouseEventArgs e)

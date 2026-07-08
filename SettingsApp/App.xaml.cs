@@ -9,8 +9,6 @@ namespace StrangeLens.SettingsApp;
 
 using Microsoft.UI.Xaml;
 
-using StrangeLens;
-
 public partial class App
 {
    private Window? window;
@@ -22,11 +20,18 @@ public partial class App
 
    protected override void OnLaunched(LaunchActivatedEventArgs args)
    {
-      Lens.Instance.Load();
-      Lens.Instance.StartWatchingForExternalChanges();
+      if (LaunchArgs.IsAboutMode)
+      {
+         this.window = new AboutWindow();
+      }
+      else
+      {
+         Lens.Instance.Load();
+         Lens.Instance.StartWatchingForExternalChanges();
+         this.window = new MainWindow();
+         this.window.Closed += (_, _) => Lens.Instance.Save();
+      }
 
-      this.window = new MainWindow();
-      this.window.Closed += (_, _) => Lens.Instance.Save();
       this.window.Activate();
    }
 }

@@ -21,22 +21,21 @@ namespace StrangeLens
 
       private FileSystemWatcher? externalChangeWatcher;
 
-      /// <summary>Captured once, in <see cref="StartWatchingForExternalChanges"/>, and reused
-      ///    to marshal both reloads and <see cref="Save"/> onto the same thread. Keeping them
-      ///    on one thread is what makes it safe for <see cref="Save"/> to read fields that
-      ///    <see cref="SetPersisted{T}"/> writes -- without it, a save's field reads and a
-      ///    concurrent edit's field write can race, and a value changed mid-save can get
-      ///    written stale and then have its pending flag cleared anyway.</summary>
+      /// <summary>Captured once, in <see cref="StartWatchingForExternalChanges"/>, and reused to
+      ///    marshal both reloads and <see cref="Save"/> onto the same thread. Keeping them on one
+      ///    thread is what makes it safe for <see cref="Save"/> to read fields that
+      ///    <see cref="SetPersisted{T}"/> writes. Without it, a save's field reads and a
+      ///    concurrent edit's field save can race, and a value changed mid-save can get written
+      ///    stale and then have its pending flag cleared anyway.</summary>
       private SynchronizationContext? ownerSyncContext;
 
-      /// <summary>Watches settings.json for changes written by another process (e.g. the
-      ///    Settings window running as its own process) and reloads when it changes. Call
-      ///    from the thread that should receive the reload -- that thread's
-      ///    <see cref="SynchronizationContext"/> must already be installed (WinForms:
-      ///    after a control handle exists; WinUI 3: any time after <c>OnLaunched</c>).
-      ///    Reloading our own just-written file is a no-op: <see cref="SetPersisted{T}"/>
-      ///    already skips unchanged values, so this can't feed back into an update
-      ///    loop.</summary>
+      /// <summary>Watches settings.json for changes written by another process (e.g., the Settings
+      ///    window running as its own process) and reloads when it changes. Call from the thread
+      ///    that should receive the reload -- that thread's <see cref="SynchronizationContext"/>
+      ///    must already be installed (WinForms: after a control handle exists; WinUI 3: any time
+      ///    after <c>OnLaunched</c>). Reloading our own just-written file is a no-op:
+      ///    <see cref="SetPersisted{T}"/> already skips unchanged values, so this can't feed back
+      ///    into an update loop.</summary>
       public void StartWatchingForExternalChanges()
       {
          if (this.externalChangeWatcher != null)
@@ -50,7 +49,10 @@ namespace StrangeLens
          var directory = Path.GetDirectoryName(path)!;
          Directory.CreateDirectory(directory);
 
-         this.externalChangeDebounceTimer = new Timer(ExternalChangeDebounceMs) { AutoReset = false };
+         this.externalChangeDebounceTimer = new Timer(ExternalChangeDebounceMs)
+            {
+               AutoReset = false,
+            };
          this.externalChangeDebounceTimer.Elapsed += (_, _) => this.RunOnOwnerThread(this.Load);
 
          this.externalChangeWatcher = new FileSystemWatcher(directory, Path.GetFileName(path))

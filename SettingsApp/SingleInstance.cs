@@ -24,13 +24,19 @@ internal static class SingleInstance
    [ModuleInitializer]
    internal static void EnsureSingleInstance()
    {
-      mutex = new Mutex(true, "strange-lens-settings-app-mutex", out var createdNew);
+      // Separate mutex per window so Settings and About can both be open at once, while
+      // each individually stays single-instance.
+      var isAbout = LaunchArgs.IsAboutMode;
+      var mutexName = isAbout ? "strange-lens-about-app-mutex" : "strange-lens-settings-app-mutex";
+      var windowTitle = isAbout ? AboutWindow.WindowTitle : MainWindow.WindowTitle;
+
+      mutex = new Mutex(true, mutexName, out var createdNew);
       if (createdNew)
       {
          return;
       }
 
-      var existing = FindWindow(null, MainWindow.WindowTitle);
+      var existing = FindWindow(null, windowTitle);
       if (existing != 0)
       {
          ShowWindow(existing, SwRestore);
