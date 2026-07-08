@@ -30,7 +30,7 @@ internal static class SingleInstance
          return;
       }
 
-      var existing = FindWindow(null, "Strange Lens Settings (spike)");
+      var existing = FindWindow(null, MainWindow.WindowTitle);
       if (existing != 0)
       {
          ShowWindow(existing, SwRestore);

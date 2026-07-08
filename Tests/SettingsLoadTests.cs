@@ -228,5 +228,46 @@ namespace StrangeLens.Tests
          Lens.Instance.Load(this.tempPath);
          Assert.That(Lens.Instance.Width, Is.EqualTo(140));
       }
+
+      /// <summary>Reproduces the cross-process race: a property changed here but not yet
+      ///    saved must survive a reload of a file that still has the old value -- otherwise
+      ///    a Settings-process edit can get clobbered by a reload triggered by the lens
+      ///    process's own (older) write, or vice versa.</summary>
+      [Test]
+      public void Load_PendingLocalChange_NotClobberedByReload()
+      {
+         this.WriteJson(@"{""Magnification"": 4}");
+         Lens.Instance.Load(this.tempPath);
+         Assert.That(Lens.Instance.Magnification, Is.EqualTo(4));
+
+         // Not yet saved -- Magnification is now "pending" from this process's point of view.
+         Lens.Instance.Magnification = 10;
+
+         // A reload of a file that still reflects the pre-edit value (e.g. an in-flight
+         // watcher callback for an earlier write) must not clobber the pending edit.
+         this.WriteJson(@"{""Magnification"": 4}");
+         Lens.Instance.Load(this.tempPath);
+
+         Assert.That(Lens.Instance.Magnification, Is.EqualTo(10));
+      }
+
+      [Test]
+      public void Load_PendingLocalChange_OtherPropertiesStillReload()
+      {
+         this.WriteJson(@"{""Magnification"": 4, ""GridSize"": 4}");
+         Lens.Instance.Load(this.tempPath);
+
+         // Only Magnification has a pending local edit; GridSize does not.
+         Lens.Instance.Magnification = 10;
+
+         this.WriteJson(@"{""Magnification"": 4, ""GridSize"": 9}");
+         Lens.Instance.Load(this.tempPath);
+
+         Assert.Multiple(() =>
+            {
+               Assert.That(Lens.Instance.Magnification, Is.EqualTo(10), "pending edit preserved");
+               Assert.That(Lens.Instance.GridSize, Is.EqualTo(9), "non-pending property still reloads");
+            });
+      }
    }
 }

@@ -49,6 +49,12 @@ namespace StrangeLens
 
                Application.SetColorMode(colorMode);
                _ = new SettingsForm();
+
+               // SettingsForm's constructor forces its Win32 handle into existence, which is
+               // also what installs WindowsFormsSynchronizationContext on this thread -- start
+               // watching only after that, so reloads marshal back here correctly.
+               Lens.Instance.StartWatchingForExternalChanges();
+
                Application.ApplicationExit += (_, _) => Lens.Instance.Save();
                Application.Run();
             }

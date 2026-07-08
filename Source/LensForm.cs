@@ -274,10 +274,6 @@ namespace StrangeLens
             case Keys.Escape: this.Close(); break;
             case Keys.Oemplus when e.Control: this.ChangeMagnification(1); break;
             case Keys.OemMinus when e.Control: this.ChangeMagnification(-1); break;
-            case Keys.OemOpenBrackets: this.ChangeWidth(-Lens.Defaults.SizeIncrement); break;
-            case Keys.OemCloseBrackets: this.ChangeWidth(Lens.Defaults.SizeIncrement); break;
-            case Keys.OemSemicolon: this.ChangeHeight(-Lens.Defaults.SizeIncrement); break;
-            case Keys.OemQuotes: this.ChangeHeight(Lens.Defaults.SizeIncrement); break;
          }
       }
 
@@ -295,17 +291,6 @@ namespace StrangeLens
                else
                {
                   this.DecreaseSize();
-               }
-
-               break;
-            case Keys.Alt:
-               if (e.Delta > 0)
-               {
-                  this.IncreaseGridSize();
-               }
-               else
-               {
-                  this.DecreaseGridSize();
                }
 
                break;
@@ -632,19 +617,6 @@ namespace StrangeLens
          this.Width = Lens.Instance.Width;
       }
 
-      private void ChangeHeight(short amount)
-      {
-         var before = Lens.Instance.Height;
-         Lens.Instance.Height += amount;
-         if (Lens.Instance.Height == before)
-         {
-            return;
-         }
-
-         this.ApplyHeight();
-         this.RenderFrame();
-      }
-
       private void ChangeMagnification(short amount)
       {
          var before = Lens.Instance.Magnification;
@@ -665,31 +637,6 @@ namespace StrangeLens
          this.lastCursorPos = p;
          this.isSyntheticMove = true;
          Cursor.Position = p;
-      }
-
-      private void ChangePrecisionSpeed(int direction)
-      {
-         var options = Lens.PrecisionSpeedOptions;
-         var idx = Array.IndexOf(options, Lens.Instance.PrecisionSpeed);
-         if (idx < 0)
-         {
-            idx = Array.IndexOf(options, 50);
-         }
-
-         Lens.Instance.PrecisionSpeed = options[(idx + direction).Clamp(0, options.Length - 1)];
-      }
-
-      private void ChangeWidth(short amount)
-      {
-         var before = Lens.Instance.Width;
-         Lens.Instance.Width += amount;
-         if (Lens.Instance.Width == before)
-         {
-            return;
-         }
-
-         this.ApplyWidth();
-         this.RenderFrame();
       }
 
       private void CommitLayeredWindow(Point winPos, int w, int h)
@@ -936,11 +883,6 @@ namespace StrangeLens
             var dest = new Point(valid.X - captureRect.X, valid.Y - captureRect.Y);
             this.scrGrp.CopyFromScreen(valid.Location, dest, valid.Size);
          }
-      }
-
-      private void DecreaseGridSize()
-      {
-         Lens.Instance.GridSize--;
       }
 
       private void DecreaseSize()
@@ -1206,20 +1148,7 @@ namespace StrangeLens
          // MSLLHOOKSTRUCT.mouseData is at offset 8; high word is the wheel delta (signed short).
          var mouseData = Marshal.ReadInt32(lParam, 8);
          var wheelDelta = (short)(mouseData >> 16);
-         if ((GetAsyncKeyState((int)Keys.S) & KEY_PRESSED) != 0)
-            // Wheel up = more precise (lower speed %) -- mirrors wheel up = zoom in.
-         {
-            this.ChangePrecisionSpeed(wheelDelta > 0 ? -1 : 1);
-         }
-         else
-         {
-            this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
-         }
-      }
-
-      private void IncreaseGridSize()
-      {
-         Lens.Instance.GridSize++;
+         this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
       }
 
       private void IncreaseSize()

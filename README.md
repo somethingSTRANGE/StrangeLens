@@ -83,8 +83,6 @@ The following shortcuts are only available when the lens is open and has focus, 
 | Input | Action |
 | --- | --- |
 | <kbd>Ctrl</kbd>+<kbd>=</kbd> and <kbd>Ctrl</kbd>+<kbd>-</kbd> | Magnification zoom in/out |
-| <kbd>[</kbd> and <kbd>]</kbd> | Resize lens width narrower/wider |
-| <kbd>;</kbd> and <kbd>'</kbd> | Resize lens height shorter/taller |
 | <kbd>Arrow keys</kbd> | Nudge mouse cursor 1px |
 | <kbd>ESC</kbd> | Close lens window |
 

@@ -27,7 +27,7 @@ Tests live in `Tests/StrangeLens.Tests.csproj` (NUnit). Run via Rider or `dotnet
 - **Program.cs** — enforces single-instance via Mutex (`strange-lens-app-mutex`). `Application.Run` starts with `SettingsForm` as the host; `LensForm` is created/shown on demand.
 
 ### Settings Singleton
-- **LensSetting.cs** (`Lens` class) — `INotifyPropertyChanged` singleton holding all configuration (magnification, grid size/color/style, window dimensions, speed factor, info panel row toggles). Persisted as JSON to `%LOCALAPPDATA%\Strange\Strange Lens\settings.json` via `System.Text.Json`. Debounced save fires 1.5s after the last change; also flushed on clean exit.
+- **LensSetting.cs** (`Lens` class) — `INotifyPropertyChanged` singleton holding all configuration (magnification, grid size/color/style, window dimensions, speed factor, info panel row toggles). Persisted as JSON to `%LOCALAPPDATA%\Strange\Strange Lens\settings.json` via `System.Text.Json`. Debounced save fires 500ms after the last change; also flushed on clean exit. Tracks per-property pending-save state so a reload (see `Lens.FileWatcher.cs`) never clobbers a local edit that hasn't been flushed to disk yet — needed because Settings now runs as a separate process (see `SettingsApp/`) that can write the same file concurrently.
 - Default: 150×160px window, 4× magnification, 4px grid, Dash style.
 
 ### Rendering (LensForm)
@@ -36,7 +36,7 @@ Tests live in `Tests/StrangeLens.Tests.csproj` (NUnit). Run via Rider or `dotnet
   2. A `Graphics` transform scales the capture by the zoom factor with nearest-neighbor interpolation.
   3. Crosshair lines are drawn *between* pixels (not through them) at sub-pixel offsets derived from the zoom factor so they stay pixel-exact at every zoom level.
   4. A rectangle is drawn around the upper-left quadrant pixel nearest the origin — this is the sampled pixel.
-- Mouse wheel / keyboard shortcuts adjust magnification (`-/+`), width (`[/]`), height (`;/'`), and move the cursor (arrow keys).
+- Mouse wheel / keyboard shortcuts adjust magnification (`-/+`) and move the cursor (arrow keys). Width, height, grid, and precision-speed are Settings-only — Lens itself only changes magnification, since that's the one thing worth adjusting without breaking flow to open Settings.
 - When the cursor is hidden, system mouse speed is lowered proportionally to the zoom factor so movement feels natural.
 
 ### Info Panel (InfoControl)

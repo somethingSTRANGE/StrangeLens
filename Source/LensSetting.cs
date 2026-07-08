@@ -10,11 +10,13 @@ using Timer = System.Timers.Timer;
 namespace StrangeLens
 {
    using System;
+   using System.Collections.Concurrent;
    using System.Collections.Generic;
    using System.ComponentModel;
    using System.Diagnostics;
    using System.Drawing;
    using System.IO;
+   using System.Linq;
    using System.Reflection;
    using System.Runtime.CompilerServices;
    using System.Text.Json;
@@ -57,6 +59,11 @@ namespace StrangeLens
 
    public partial class Lens : INotifyPropertyChanged
    {
+      /// <summary>Coalesces rapid successive edits (e.g. a burst of scroll-wheel zoom
+      ///    notches) into one write, without the multi-second lag that used to make
+      ///    cross-process sync feel sluggish.</summary>
+      private const int SaveDebounceMs = 500;
+
       public static readonly int[] GridOpacityOptions = [20, 40, 60, 80, 100];
 
       public static readonly int[] PrecisionSpeedOptions = [10, 25, 45, 70];
@@ -99,6 +106,12 @@ namespace StrangeLens
          };
 
       private static Lens? instance;
+
+      /// <summary>Property names changed locally since the last successful <see cref="Save"/>.
+      ///    <see cref="Load(string)"/> skips reassigning anything still pending here, so a
+      ///    reload triggered by (this process's own or another process's) file write can
+      ///    never clobber an edit this process hasn't flushed to disk yet.</summary>
+      private readonly ConcurrentDictionary<string, byte> pendingProperties = new();
 
       private readonly Timer saveTimer;
 
@@ -145,11 +158,11 @@ namespace StrangeLens
                ["dark"] = defaultDark,
                ["light"] = defaultLight,
             };
-         this.saveTimer = new Timer(1500)
+         this.saveTimer = new Timer(SaveDebounceMs)
             {
                AutoReset = false,
             };
-         this.saveTimer.Elapsed += (_, _) => this.Save();
+         this.saveTimer.Elapsed += (_, _) => this.RunOnOwnerThread(this.Save);
          this.PropertyChanged += (_, _) =>
             {
                this.saveTimer.Stop();
@@ -363,6 +376,11 @@ namespace StrangeLens
       public void Save()
       {
          var path = SettingsFilePath;
+
+         // Snapshot exactly which properties this write is flushing -- not a blanket
+         // Clear() -- so a change that lands mid-save stays pending for the next cycle
+         // instead of being forgotten.
+         var flushing = this.pendingProperties.Keys.ToArray();
          try
          {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -388,6 +406,11 @@ namespace StrangeLens
                   Themes = this.themes,
                };
             File.WriteAllText(path, JsonSerializer.Serialize(data, jsonOptions));
+
+            foreach (var propertyName in flushing)
+            {
+               this.pendingProperties.TryRemove(propertyName, out _);
+            }
          }
          catch (Exception ex)
          {
@@ -417,29 +440,34 @@ namespace StrangeLens
                return;
             }
 
-            this.Width = data.Width;
-            this.Height = data.Height;
-            this.Magnification = data.Magnification;
-            this.GridSize = data.GridSize;
-            this.GridStyle = (GridStyleOption)data.GridStyle;
-            this.GridOpacity = data.GridOpacity;
-            this.Scaling = (ScalingModeOption)data.Scaling;
-            this.PrecisionSpeed = data.PrecisionSpeed;
-            this.infoShowHex = data.InfoShowHex;
-            this.infoShowRgb = data.InfoShowRgb;
-            this.infoShowHsl = data.InfoShowHsl;
-            this.infoShow12Bit = data.InfoShow12Bit;
-            this.infoShowWeb = data.InfoShowWeb;
-            this.infoShowMouse = data.InfoShowMouse;
-            this.infoShowSize = data.InfoShowSize;
-            this.infoShowZoom = data.InfoShowZoom;
+            // Skip any property with an edit made here that hasn't been flushed to disk
+            // yet -- otherwise a reload (our own echoed write, or the other process's)
+            // can clobber it with the stale value this file still has for it.
+            this.LoadIfNotPending(nameof(this.Width), () => this.Width = data.Width);
+            this.LoadIfNotPending(nameof(this.Height), () => this.Height = data.Height);
+            this.LoadIfNotPending(nameof(this.Magnification), () => this.Magnification = data.Magnification);
+            this.LoadIfNotPending(nameof(this.GridSize), () => this.GridSize = data.GridSize);
+            this.LoadIfNotPending(
+               nameof(this.GridStyle),
+               () => this.GridStyle = (GridStyleOption)data.GridStyle);
+            this.LoadIfNotPending(nameof(this.GridOpacity), () => this.GridOpacity = data.GridOpacity);
+            this.LoadIfNotPending(nameof(this.Scaling), () => this.Scaling = (ScalingModeOption)data.Scaling);
+            this.LoadIfNotPending(nameof(this.PrecisionSpeed), () => this.PrecisionSpeed = data.PrecisionSpeed);
+            this.LoadIfNotPending(nameof(this.InfoShowHex), () => this.InfoShowHex = data.InfoShowHex);
+            this.LoadIfNotPending(nameof(this.InfoShowRgb), () => this.InfoShowRgb = data.InfoShowRgb);
+            this.LoadIfNotPending(nameof(this.InfoShowHsl), () => this.InfoShowHsl = data.InfoShowHsl);
+            this.LoadIfNotPending(nameof(this.InfoShow12Bit), () => this.InfoShow12Bit = data.InfoShow12Bit);
+            this.LoadIfNotPending(nameof(this.InfoShowWeb), () => this.InfoShowWeb = data.InfoShowWeb);
+            this.LoadIfNotPending(nameof(this.InfoShowMouse), () => this.InfoShowMouse = data.InfoShowMouse);
+            this.LoadIfNotPending(nameof(this.InfoShowSize), () => this.InfoShowSize = data.InfoShowSize);
+            this.LoadIfNotPending(nameof(this.InfoShowZoom), () => this.InfoShowZoom = data.InfoShowZoom);
 
             if (data.Themes != null)
             {
                this.Themes = data.Themes;
             }
 
-            this.Theme = data.Theme;
+            this.LoadIfNotPending(nameof(this.Theme), () => this.Theme = data.Theme);
 
             Debug.WriteLine($"Settings loaded from {path}");
          }
@@ -469,6 +497,17 @@ namespace StrangeLens
             };
       }
 
+      private void LoadIfNotPending(string propertyName, Action apply)
+      {
+         if (this.pendingProperties.ContainsKey(propertyName))
+         {
+            Debug.WriteLine($"Skipped loading {propertyName}: local change not yet saved");
+            return;
+         }
+
+         apply();
+      }
+
       private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
       {
          this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -482,6 +521,7 @@ namespace StrangeLens
          }
 
          field = value;
+         this.pendingProperties[propertyName!] = 0;
          Debug.WriteLine($"{propertyName} = {value}");
          this.OnPropertyChanged(propertyName);
       }

@@ -132,7 +132,6 @@ namespace StrangeLens
             miStartWithWindows,
             new ToolStripSeparator(),
             new ToolStripMenuItem("&About...", null, this.menuItemAbout_Click),
-            new ToolStripMenuItem("WinUI 3 Spike...", null, this.menuItemWinUiSpike_Click),
             new ToolStripSeparator(),
             new ToolStripMenuItem("E&xit", null, this.menuItemExit_Click));
 
@@ -534,7 +533,7 @@ namespace StrangeLens
                this.WindowState = FormWindowState.Normal;
             }
 
-            this.OpenSettings();
+            this.LaunchSettingsWindow();
          }
          else
          {
@@ -687,16 +686,11 @@ namespace StrangeLens
          this.ToggleLens();
       }
 
-      private void menuItemSettings_Click(object? sender, EventArgs e)
+      private void LaunchSettingsWindow()
       {
-         this.OpenSettings();
-      }
-
-      private void menuItemWinUiSpike_Click(object? sender, EventArgs e)
-      {
-         // Temporary: proves our launching the standalone WinUI 3 process from the tray.
-         // Will be replaced once the real Settings/About windows are ready.
-         var spikeExe = Path.Combine(
+         // TODO: replace the Debug-config-only relative path once a Release/packaging
+         // pipeline exists (see feature/winui3-migration plan notes).
+         var settingsExe = Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
@@ -710,10 +704,15 @@ namespace StrangeLens
             "StrangeLens.Settings.exe");
 
          Process.Start(
-            new ProcessStartInfo(Path.GetFullPath(spikeExe))
+            new ProcessStartInfo(Path.GetFullPath(settingsExe))
                {
                   UseShellExecute = true,
                });
+      }
+
+      private void menuItemSettings_Click(object? sender, EventArgs e)
+      {
+         this.LaunchSettingsWindow();
       }
 
       private void notifyIcon_MouseClick(object? sender, MouseEventArgs e)
