@@ -24,8 +24,12 @@ public sealed partial class AboutWindow
    public AboutWindow()
    {
       this.InitializeComponent();
+      
+      AppWindow.SetIcon("Assets/Tiles/GalleryIcon.ico");
+
       this.Title = WindowTitle;
       this.PopulateContent();
+      this.PopulateIcons();
    }
 
    private void OnCloseClick(object sender, RoutedEventArgs e)
@@ -70,5 +74,21 @@ public sealed partial class AboutWindow
       this.CopyrightText.Text = $"{copyright} — MIT License";
 
       this.versionSummary = $"{productName} {buildVersion}\nBuilt on {buildDate} from commit {commitHash}";
+   }
+
+   private void PopulateIcons()
+   {
+      this.ResourceSourceIconHost.Children.Add(
+         IconPath.Create(VectorImageFactory.AboutResourceSourceData, 18, "White"));
+      this.ResourceIssuesIconHost.Children.Add(
+         IconPath.Create(VectorImageFactory.AboutResourceIssuesData, 18, "Gray", "Orange"));
+      this.DonateGitHubIconHost.Children.Add(
+         IconPath.Create(VectorImageFactory.AboutDonateGitHubData, 18, "White"));
+      this.DonateBmcIconHost.Children.Add(
+         IconPath.Create(VectorImageFactory.AboutDonateBuyMeACoffeeData, 18, "White"));
+      this.DonateKoFiIconHost.Children.Add(
+         IconPath.Create(VectorImageFactory.AboutDonateKoFiData, 18, "White"));
+      this.DonatePayPalIconHost.Children.Add(
+         IconPath.Create(VectorImageFactory.AboutDonatePayPalData, 18, "White"));
    }
 }

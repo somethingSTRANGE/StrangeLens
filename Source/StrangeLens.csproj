@@ -30,6 +30,14 @@
     </AssemblyAttribute>
   </ItemGroup>
 
+  <!-- SettingsApp reuses the existing VectorImageFactory icon path data (About/donate icons)
+       instead of duplicating it or shipping standalone .svg files. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>StrangeLens.Settings</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

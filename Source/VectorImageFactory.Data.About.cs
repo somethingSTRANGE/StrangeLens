@@ -1,5 +1,5 @@
-﻿// -------------------------------------------------------------------------------------
-// <copyright file="SvgImageFactory.Data.cs">
+// -------------------------------------------------------------------------------------
+// <copyright file="VectorImageFactory.Data.About.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
@@ -7,11 +7,15 @@
 
 namespace StrangeLens;
 
-internal static partial class SvgImageFactory
+internal static partial class VectorImageFactory
 {
-   private static class Data
+   /// <summary>Icons used by About (WinForms today; also read by SettingsApp via
+   ///    <see cref="VectorImageFactory"/>'s internal accessors -- see
+   ///    <c>VectorImageFactory.RawData.cs</c>). Kept separate from <c>Info</c>'s icons, which
+   ///    stay WinForms/GDI+-only.</summary>
+   private static partial class Data
    {
-      internal static readonly SvgData AboutDonateBuyMeACoffeeIcon = new(
+      internal static readonly VectorData AboutDonateBuyMeACoffeeIcon = new(
          "0 0 640 640",
             [
                "M194 82c-25 14-7 43 17 48q86 16 174 7c25-2 18-36-7-29-28 8-128 2-146-3-6-17 147-20"
@@ -24,7 +28,7 @@ internal static partial class SvgImageFactory
                + "37 6l18 184c3 24 27 26 46 27 24 1 47 3 70-3 15-4 20-22 22-41l19-198q-14-6-28-6z",
             ]);
 
-      internal static readonly SvgData AboutDonateGitHubSponsorsIcon = new(
+      internal static readonly VectorData AboutDonateGitHubSponsorsIcon = new(
          "0 0 640 640",
             [
                "M266 393c0 21-11 55-37 55-25 0-36-34-36-55s11-55 36-55c26 0 37 34 37 55m294-51c0 3"
@@ -35,7 +39,7 @@ internal static partial class SvgImageFactory
                + "5c-26 0-37 34-37 55s11 55 37 55 37-34 37-55-11-55-37-55",
             ]);
 
-      internal static readonly SvgData AboutDonateKoFiIcon = new(
+      internal static readonly VectorData AboutDonateKoFiIcon = new(
          "0 0 640 640",
             [
                "M314 139c90 0 113 1 146 4 78 8 124 56 124 126v9c0 64-47 116-111 122q-8 25-23 50c-2"
@@ -47,7 +51,7 @@ internal static partial class SvgImageFactory
                + "39 12 49 28 12-16 27-28 50-28m123-4q43 2 43 44 0 41-43 42-14-1-14-11v-63q0-11 14-12",
             ]);
 
-      internal static readonly SvgData AboutDonatePayPalIcon = new(
+      internal static readonly VectorData AboutDonatePayPalIcon = new(
          "0 0 640 640",
             [
                "m240 360-22 134q0 2-3 2h-74q-13-1-12-13l58-372q4-16 20-17c153 0 165-4 204 11 60 23"
@@ -56,7 +60,7 @@ internal static partial class SvgImageFactory
                + "30-20 71 0 126-29 142-112 7-35 5-72-23-93",
             ]);
 
-      internal static readonly SvgData AboutLogoImage = new(
+      internal static readonly VectorData AboutLogoImage = new(
          "0 0 800 100",
             [
                "M76 62c0 4 0 9-8 12q-12 5-40 4H3V58h46l2-1q1-5-1-7l-35-2C4 47 1 36 1 26Q2 14 8 9c8"
@@ -78,7 +82,7 @@ internal static partial class SvgImageFactory
                + " 0-31-2V48c6 1 39 4 42 0l-1-5c-1-1-31 0-39-5q-5-2-3-12 0-13 13-14 14-3 44-1",
             ]);
 
-      internal static readonly SvgData AboutResourceIssuesIcon = new(
+      internal static readonly VectorData AboutResourceIssuesIcon = new(
          "0 0 640 640",
             [
                "M320 64c-53 0-96 43-96 96v4c0 15 13 28 28 28h136c15 0 28-13 28-28v-4c0-53-43-96-96"
@@ -93,79 +97,13 @@ internal static partial class SvgImageFactory
                + "-25-56-56-56H264c-31 0-56 25-56 56",
             ]);
 
-      internal static readonly SvgData AboutResourceSourceIcon = new(
+      internal static readonly VectorData AboutResourceSourceIcon = new(
          "0 0 640 640",
             [
                "M536 300 340 105q-8-9-20-9t-21 8l-40 41 51 52c27-10 53 16 43 43l50 50c34-12 61 31 "
                + "36 57-27 26-71-3-56-38l-47-46v122c26 12 23 42 9 55a35 35 0 0 1-48 0 34 34 0 0 1 "
                + "11-56V261c-21-9-25-31-19-45l-50-51-134 134a29 29 0 0 0 0 41l195 196a29 29 0 0 0 "
                + "41 0l195-195a29 29 0 0 0 0-41",
-            ]);
-
-      internal static readonly SvgData InfoColorPaletteIcon = new(
-         "0 0 640 640",
-            [
-               "M576 320v3c0 36-34 61-70 61h-98a48 48 0 0 0-47 58q4 15 11 30 11 20 12 42c0 32-22 6"
-               + "1-53 62h-11a256 256 0 1 1 256-256m-384 32a32 32 0 1 0-64 0 32 32 0 0 0 64 0m0-96"
-               + "a32 32 0 1 0 0-64 32 32 0 0 0 0 64m160-96a32 32 0 1 0-64 0 32 32 0 0 0 64 0m96 9"
-               + "6a32 32 0 1 0 0-64 32 32 0 0 0 0 64",
-            ]);
-
-      internal static readonly SvgData InfoColorValuesIcon = new(
-         "0 0 640 640",
-            [
-               "M112 64c-26 0-48 22-48 48v368a96 96 0 0 0 192 0V112c0-26-21-48-48-48zm32 64h32q15 "
-               + "1 16 16v32q-1 15-16 16h-32q-15-1-16-16v-32q1-15 16-16m-16 144q1-15 16-16h32q15 1"
-               + " 16 16v32q-1 15-16 16h-32q-15-1-16-16zm32 184a24 24 0 1 1 0 48 24 24 0 1 1 0-48",
-            ],
-            [
-               "M160 576a95 95 0 0 0 68-28q27-26 28-68V250l96-96c19-19 49-19 68 0l68 68c19 19 19 4"
-               + "9 0 68L230 548a96 96 0 0 1-70 28m109 0 192-192h67c27 0 48 22 48 48v96c0 27-21 48"
-               + "-48 48z",
-            ]);
-
-      internal static readonly SvgData InfoLensSizeIcon = new(
-         "0 0 640 640",
-            [
-               "M128 96c-18 0-32 14-32 32v96a32 32 0 1 0 64 0v-64h64a32 32 0 1 0 0-64zm32 320a32 3"
-               + "2 0 1 0-64 0v96c0 18 14 32 32 32h96a32 32 0 1 0 0-64h-64zM416 96a32 32 0 1 0 0 6"
-               + "4h64v64a32 32 0 1 0 64 0v-96c0-18-14-32-32-32zm128 320a32 32 0 1 0-64 0v64h-64a3"
-               + "2 32 0 1 0 0 64h96c18 0 32-14 32-32z",
-            ]);
-
-      internal static readonly SvgData InfoMagnificationIcon = new(
-         "0 0 640 640",
-            [
-               "M480 272c0 45.9-14.9 88.3-40 122.7l126.6 126.7a32 32 0 0 1-45.3 45.3L394.7 440A208"
-               + " 208 0 1 1 480 272M272 416a144 144 0 1 0 0-288 144 144 0 0 0 0 288",
-            ],
-            [
-               "M128 272a144 144 0 1 0 288 0 144 144 0 0 0-288 0",
-            ]);
-
-      internal static readonly SvgData InfoMouseCursorIcon = new(
-         "0 0 640 640",
-            [
-               "M173 67q13-7 25 2l320 240q13 10 9 27-6 15-23 16H352l89 178a32 32 0 1 1-58 28l-88-1"
-               + "77-92 121q-11 13-27 9-15-6-16-23V88q1-14 13-21",
-            ]);
-
-      internal static readonly SvgData InfoRulerIcon = new(
-         "0 0 640 640",
-            [
-               "M210 60q30 0 30 30v30h-40c-10 0-20 10-20 20s10 20 20 20h40v40h-80c-10 0-20 10-20 2"
-               + "0s10 20 20 20h80v40h-40c-10 0-20 10-20 20s10 20 20 20h40v40h-80c-10 0-20 10-20 2"
-               + "0s10 20 20 20h80v80c0 10 10 20 20 20s20-10 20-20v-80h40v40c0 10 10 20 20 20s20-1"
-               + "0 20-20v-40h40v80c0 10 10 20 20 20s20-10 20-20v-80h40v40c0 10 10 20 20 20s20-10 "
-               + "20-20v-40h30q30 0 30 30v110c0 20-20 40-40 40H100c-20 0-40-20-40-40V100c0-20 20-4"
-               + "0 40-40z",
-            ],
-            [
-               "M240 120v40h-40c-10 0-20-10-20-20s10-20 20-20zm0 80v40h-80c-10 0-20-10-20-20s10-20"
-               + " 20-20zm0 80v40h-40c-10 0-20-10-20-20s10-20 20-20zm0 80v40h-80c-10 0-20-10-20-20"
-               + "s10-20 20-20zm0 40h40v80c0 10-10 20-20 20s-20-10-20-20zm280 0v40c0 10-10 20-20 2"
-               + "0s-20-10-20-20v-40zm-80 0v80c0 10-10 20-20 20s-20-10-20-20v-80zm-80 0v40c0 10-10"
-               + " 20-20 20s-20-10-20-20v-40z",
             ]);
    }
 }

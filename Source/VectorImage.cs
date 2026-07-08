@@ -1,5 +1,5 @@
-﻿// -------------------------------------------------------------------------------------
-// <copyright file="SvgImage.cs">
+// -------------------------------------------------------------------------------------
+// <copyright file="VectorImage.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
@@ -11,10 +11,10 @@ namespace StrangeLens
    using System.Drawing.Drawing2D;
 
    /// <summary>Immutable result of building an SVG path at a specific pixel size. Produced and
-   ///    cached by <see cref="SvgImageFactory"/>; callers must not dispose it.</summary>
-   internal sealed class SvgImage
+   ///    cached by <see cref="VectorImageFactory"/>; callers must not dispose it.</summary>
+   internal sealed class VectorImage
    {
-      internal SvgImage(GraphicsPath path1, GraphicsPath? path2, int width, int height)
+      internal VectorImage(GraphicsPath path1, GraphicsPath? path2, int width, int height)
       {
          this.Path1 = path1;
          this.Path2 = path2;

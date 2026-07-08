@@ -64,19 +64,19 @@ namespace StrangeLens
 
       private FontInfo? fontSmall;
 
-      private SvgImage? iconDonateBuyMeACoffee;
+      private VectorImage? iconDonateBuyMeACoffee;
 
-      private SvgImage? iconDonateGitHub;
+      private VectorImage? iconDonateGitHub;
 
-      private SvgImage? iconDonateKoFi;
+      private VectorImage? iconDonateKoFi;
 
-      private SvgImage? iconDonatePayPal;
+      private VectorImage? iconDonatePayPal;
 
-      private SvgImage? iconResourcesIssues;
+      private VectorImage? iconResourcesIssues;
 
-      private SvgImage? iconResourcesSource;
+      private VectorImage? iconResourcesSource;
 
-      private SvgImage? imageLogo;
+      private VectorImage? imageLogo;
 
       // Scale factor for the current display (DeviceDpi / 96). Updated in BuildLayout.
       private float layoutScale = 1f;
@@ -203,13 +203,13 @@ namespace StrangeLens
 
          // -- Icons ---------------------------------------------------------------------------------
          var btnSize = (int)Math.Round(BtnSize * s);
-         this.iconDonateGitHub = SvgImageFactory.AboutDonateGitHub(btnSize);
-         this.iconDonatePayPal = SvgImageFactory.AboutDonatePayPal(btnSize);
-         this.iconDonateKoFi = SvgImageFactory.AboutDonateKoFi(btnSize);
-         this.iconDonateBuyMeACoffee = SvgImageFactory.AboutDonateBuyMeACoffee(btnSize);
-         this.iconResourcesSource = SvgImageFactory.AboutResourceSource(btnSize);
-         this.iconResourcesIssues = SvgImageFactory.AboutResourceIssues(btnSize);
-         this.imageLogo = SvgImageFactory.AboutLogo((int)Math.Round(200 * s), (int)Math.Round(36 * s));
+         this.iconDonateGitHub = VectorImageFactory.AboutDonateGitHub(btnSize);
+         this.iconDonatePayPal = VectorImageFactory.AboutDonatePayPal(btnSize);
+         this.iconDonateKoFi = VectorImageFactory.AboutDonateKoFi(btnSize);
+         this.iconDonateBuyMeACoffee = VectorImageFactory.AboutDonateBuyMeACoffee(btnSize);
+         this.iconResourcesSource = VectorImageFactory.AboutResourceSource(btnSize);
+         this.iconResourcesIssues = VectorImageFactory.AboutResourceIssues(btnSize);
+         this.imageLogo = VectorImageFactory.AboutLogo((int)Math.Round(200 * s), (int)Math.Round(36 * s));
 
          this.appIconBitmap?.Dispose();
          using var icon = new Icon(
@@ -255,12 +255,12 @@ namespace StrangeLens
             var attributions = new[]
                {
                   "Wordmark: Slackey (fonts.google.com), Apache 2.0",
-                  "Icons: Font Awesome Free (fontawesome.com), CC BY 4.0",
+                  "Icons: Font Awesome Pro (fontawesome.com), Commercial License",
                   "Font: JetBrains Mono (jetbrains.com/lp/mono), SIL OFL 1.1",
                   "Font: Inter (rsms.me/inter), SIL OFL 1.1",
                };
 
-            (SvgImage Icon, string Label, string Url)[] donationLinks =
+            (VectorImage Icon, string Label, string Url)[] donationLinks =
                [
                   (this.iconDonateGitHub!, "GitHub Sponsors", "https://github.com/sponsors/somethingSTRANGE"),
                   (this.iconDonateBuyMeACoffee!, "Buy Me a Coffee", "https://buymeacoffee.com/strange"),
@@ -268,7 +268,7 @@ namespace StrangeLens
                   (this.iconDonatePayPal!, "PayPal", "https://www.paypal.com/donate/?business=JFYPDTH5TA872"),
                ];
 
-            (SvgImage Icon, string Label, string Url)[] resourceLinks =
+            (VectorImage Icon, string Label, string Url)[] resourceLinks =
                [
                   (this.iconResourcesSource!, "Source Code", "https://github.com/somethingSTRANGE/Lens"),
                   (this.iconResourcesIssues!, "Report Issues",
@@ -293,7 +293,7 @@ namespace StrangeLens
             // -- Logo ----------------------------------------------------------------------------------
             this.AddSpace(scaledPadY);
             this.AddControl(
-               this.SvgImage(this.imageLogo!, this.palette.TextStrong, this.palette.AccentSubtle, 0.5f));
+               this.VectorImage(this.imageLogo!, this.palette.TextStrong, this.palette.AccentSubtle, 0.5f));
 
             // -- Version & metadata --------------------------------------------------------------------
             this.AddSpace((int)Math.Round(8 * s));
@@ -583,7 +583,7 @@ namespace StrangeLens
             center: false);
       }
 
-      private Panel LinkButton(SvgImage icon, string label, string url)
+      private Panel LinkButton(VectorImage icon, string label, string url)
       {
          var s = this.layoutScale;
          var scaledTextX = (int)Math.Round(TextX * s);
@@ -631,7 +631,7 @@ namespace StrangeLens
       }
 
       private Button MakeIconButton(
-         SvgImage icon,
+         VectorImage icon,
          Color color,
          Color hoverColor,
          Action onClick,
@@ -760,7 +760,7 @@ namespace StrangeLens
             };
       }
 
-      private Panel SvgImage(SvgImage image, Color color, Color shadowColor, float shadowOpacity)
+      private Panel VectorImage(VectorImage image, Color color, Color shadowColor, float shadowOpacity)
       {
          var s = this.layoutScale;
          var shadowDx = (int)Math.Round(2 * s);

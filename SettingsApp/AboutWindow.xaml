@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer Padding="24,20,24,20">
+    <ScrollViewer Padding="24,24,24,24">
         <StackPanel Spacing="4" MaxWidth="360">
 
             <TextBlock x:Name="ProductNameText" Style="{StaticResource SubtitleTextBlockStyle}" HorizontalAlignment="Center" />
@@ -11,19 +11,37 @@
             <TextBlock x:Name="BuildDateText" HorizontalAlignment="Center" Opacity="0.7" />
 
             <TextBlock Text="Resources" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,20,0,4" />
-            <HyperlinkButton Content="Source Code" NavigateUri="https://github.com/somethingSTRANGE/Lens" />
-            <HyperlinkButton Content="Report Issues" NavigateUri="https://github.com/somethingSTRANGE/Lens/issues" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Grid x:Name="ResourceSourceIconHost" Width="18" Height="18" />
+                <HyperlinkButton Content="Source Code" NavigateUri="https://github.com/somethingSTRANGE/Lens" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Grid x:Name="ResourceIssuesIconHost" Width="18" Height="18" />
+                <HyperlinkButton Content="Report Issues" NavigateUri="https://github.com/somethingSTRANGE/Lens/issues" />
+            </StackPanel>
 
             <TextBlock Text="Give support and donate" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,16,0,4" />
-            <HyperlinkButton Content="GitHub Sponsors" NavigateUri="https://github.com/sponsors/somethingSTRANGE" />
-            <HyperlinkButton Content="Buy Me a Coffee" NavigateUri="https://buymeacoffee.com/strange" />
-            <HyperlinkButton Content="Ko-fi" NavigateUri="https://ko-fi.com/somethingstrange" />
-            <HyperlinkButton Content="PayPal" NavigateUri="https://www.paypal.com/donate/?business=JFYPDTH5TA872" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Grid x:Name="DonateGitHubIconHost" Width="18" Height="18" />
+                <HyperlinkButton Content="GitHub Sponsors" NavigateUri="https://github.com/sponsors/somethingSTRANGE" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Grid x:Name="DonateBmcIconHost" Width="18" Height="18" />
+                <HyperlinkButton Content="Buy Me a Coffee" NavigateUri="https://buymeacoffee.com/strange" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Grid x:Name="DonateKoFiIconHost" Width="18" Height="18" />
+                <HyperlinkButton Content="Ko-fi" NavigateUri="https://ko-fi.com/somethingstrange" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Grid x:Name="DonatePayPalIconHost" Width="18" Height="18" />
+                <HyperlinkButton Content="PayPal" NavigateUri="https://www.paypal.com/donate/?business=JFYPDTH5TA872" />
+            </StackPanel>
 
             <TextBlock x:Name="CopyrightText" HorizontalAlignment="Center" Opacity="0.7" Margin="0,20,0,0" TextWrapping="Wrap" TextAlignment="Center" />
 
             <TextBlock Text="Wordmark: Slackey (fonts.google.com), Apache 2.0" Opacity="0.5" FontSize="11" Margin="0,12,0,0" HorizontalAlignment="Center" />
-            <TextBlock Text="Icons: Font Awesome Free (fontawesome.com), CC BY 4.0" Opacity="0.5" FontSize="11" HorizontalAlignment="Center" />
+            <TextBlock Text="Icons: Font Awesome Pro (fontawesome.com), Commercial License" Opacity="0.5" FontSize="11" HorizontalAlignment="Center" />
             <TextBlock Text="Font: JetBrains Mono (jetbrains.com/lp/mono), SIL OFL 1.1" Opacity="0.5" FontSize="11" HorizontalAlignment="Center" />
             <TextBlock Text="Font: Inter (rsms.me/inter), SIL OFL 1.1" Opacity="0.5" FontSize="11" HorizontalAlignment="Center" />
 
