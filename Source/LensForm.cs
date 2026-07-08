@@ -277,26 +277,6 @@ namespace StrangeLens
          }
       }
 
-      protected override void OnMouseWheel(MouseEventArgs e)
-      {
-         base.OnMouseWheel(e);
-
-         switch (ModifierKeys)
-         {
-            case Keys.Control:
-               if (e.Delta > 0)
-               {
-                  this.IncreaseSize();
-               }
-               else
-               {
-                  this.DecreaseSize();
-               }
-
-               break;
-         }
-      }
-
       /// <summary>Layered window content is managed entirely by <c>UpdateLayeredWindow</c> via
       ///    <see cref="RenderFrame"/> -- no GDI+ painting here.</summary>
       protected override void OnPaint(PaintEventArgs e)
@@ -885,11 +865,6 @@ namespace StrangeLens
          }
       }
 
-      private void DecreaseSize()
-      {
-         Debug.WriteLine("DECREASE FORM SIZE KEEPING ASPECT RATIO");
-      }
-
       private void EnsureFinalResources(int w, int h)
       {
          if (this.finalMemDC == IntPtr.Zero)
@@ -1149,11 +1124,6 @@ namespace StrangeLens
          var mouseData = Marshal.ReadInt32(lParam, 8);
          var wheelDelta = (short)(mouseData >> 16);
          this.ChangeMagnification((short)(wheelDelta > 0 ? 1 : -1));
-      }
-
-      private void IncreaseSize()
-      {
-         Debug.WriteLine("INCREASE FORM SIZE KEEPING ASPECT RATIO");
       }
 
       private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)

@@ -1,4 +1,4 @@
-﻿// -------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
 // <copyright file="Program.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
@@ -48,9 +48,9 @@ namespace StrangeLens
                Debug.WriteLine($"Theme: {Lens.Instance.Theme} -> {colorMode}");
 
                Application.SetColorMode(colorMode);
-               _ = new SettingsForm();
+               _ = new TrayForm();
 
-               // SettingsForm's constructor forces its Win32 handle into existence, which is
+               // TrayForm's constructor forces its Win32 handle into existence, which is
                // also what installs WindowsFormsSynchronizationContext on this thread -- start
                // watching only after that, so reloads marshal back here correctly.
                Lens.Instance.StartWatchingForExternalChanges();
