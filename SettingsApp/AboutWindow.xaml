@@ -9,9 +9,8 @@
                  for the pointer-over/pressed states. Those are wired to these specific theme
                  resource keys instead, which is why setting Foreground alone wouldn't have
                  fixed the hover highlight. -->
-            <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="TextFillColorPrimaryBrush" />
-            <StaticResource x:Key="HyperlinkButtonForegroundPointerOver" ResourceKey="AccentTextFillColorPrimaryBrush" />
-            <StaticResource x:Key="HyperlinkButtonForegroundPressed" ResourceKey="AccentTextFillColorTertiaryBrush" />
+            <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="TextFillColorSecondaryBrush" />
+            <StaticResource x:Key="HyperlinkButtonForegroundPressed" ResourceKey="TextFillColorTertiaryBrush" />
 
             <!-- Shared "class" for every card link button: fixed width so they line up,
                  centered within the card, content left-aligned inside that fixed width
@@ -67,13 +66,13 @@
                 <Border Grid.Row="0" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="16,12,16,12" MaxWidth="200" HorizontalAlignment="Stretch" Translation="0,0,16" Shadow="{StaticResource CardShadow}">
                     <StackPanel>
                         <TextBlock Text="Resources" Style="{StaticResource BodyStrongTextBlockStyle}"   Margin="0,0,0,12" />
-                        <HyperlinkButton NavigateUri="https://github.com/somethingSTRANGE/Lens" Style="{StaticResource CardLinkButtonStyle}">
+                        <HyperlinkButton NavigateUri="https://github.com/somethingSTRANGE/Lens" Style="{StaticResource CardLinkButtonStyle}" PointerEntered="CardLinkButton_PointerEntered" PointerExited="CardLinkButton_PointerExited">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid x:Name="ResourceSourceIconHost" Width="20" Height="20" />
                                 <TextBlock Text="Source Code" VerticalAlignment="Center" />
                             </StackPanel>
                         </HyperlinkButton>
-                        <HyperlinkButton NavigateUri="https://github.com/somethingSTRANGE/Lens/issues" Style="{StaticResource CardLinkButtonStyle}">
+                        <HyperlinkButton NavigateUri="https://github.com/somethingSTRANGE/Lens/issues" Style="{StaticResource CardLinkButtonStyle}" PointerEntered="CardLinkButton_PointerEntered" PointerExited="CardLinkButton_PointerExited">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid x:Name="ResourceIssuesIconHost" Width="20" Height="20" />
                                 <TextBlock Text="Report Issues" VerticalAlignment="Center" />
@@ -85,25 +84,25 @@
                 <Border Grid.Row="1" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="16,16,16,16" MaxWidth="200" HorizontalAlignment="Stretch" Margin="0,16,0,0" Translation="0,0,16" Shadow="{StaticResource CardShadow}">
                     <StackPanel>
                         <TextBlock Text="Give support and donate" Style="{StaticResource BodyStrongTextBlockStyle}"   Margin="0,0,0,12" />
-                        <HyperlinkButton NavigateUri="https://github.com/sponsors/somethingSTRANGE" Style="{StaticResource CardLinkButtonStyle}">
+                        <HyperlinkButton NavigateUri="https://github.com/sponsors/somethingSTRANGE" Style="{StaticResource CardLinkButtonStyle}" PointerEntered="CardLinkButton_PointerEntered" PointerExited="CardLinkButton_PointerExited">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid x:Name="DonateGitHubIconHost" Width="20" Height="20" />
                                 <TextBlock Text="GitHub Sponsors" VerticalAlignment="Center" />
                             </StackPanel>
                         </HyperlinkButton>
-                        <HyperlinkButton NavigateUri="https://buymeacoffee.com/strange" Style="{StaticResource CardLinkButtonStyle}">
+                        <HyperlinkButton NavigateUri="https://buymeacoffee.com/strange" Style="{StaticResource CardLinkButtonStyle}" PointerEntered="CardLinkButton_PointerEntered" PointerExited="CardLinkButton_PointerExited">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid x:Name="DonateBmcIconHost" Width="20" Height="20" />
                                 <TextBlock Text="Buy Me a Coffee" VerticalAlignment="Center" />
                             </StackPanel>
                         </HyperlinkButton>
-                        <HyperlinkButton NavigateUri="https://ko-fi.com/somethingstrange" Style="{StaticResource CardLinkButtonStyle}">
+                        <HyperlinkButton NavigateUri="https://ko-fi.com/somethingstrange" Style="{StaticResource CardLinkButtonStyle}" PointerEntered="CardLinkButton_PointerEntered" PointerExited="CardLinkButton_PointerExited">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid x:Name="DonateKoFiIconHost" Width="20" Height="20" />
                                 <TextBlock Text="Ko-fi" VerticalAlignment="Center" />
                             </StackPanel>
                         </HyperlinkButton>
-                        <HyperlinkButton NavigateUri="https://www.paypal.com/donate/?business=JFYPDTH5TA872" Style="{StaticResource CardLinkButtonStyle}">
+                        <HyperlinkButton NavigateUri="https://www.paypal.com/donate/?business=JFYPDTH5TA872" Style="{StaticResource CardLinkButtonStyle}" PointerEntered="CardLinkButton_PointerEntered" PointerExited="CardLinkButton_PointerExited">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid x:Name="DonatePayPalIconHost" Width="20" Height="20" />
                                 <TextBlock Text="PayPal" VerticalAlignment="Center" />
@@ -123,7 +122,7 @@
         </StackPanel>
 
         <StackPanel x:Name="FooterPanel" Grid.Row="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Padding="24,24,24,24">
-            <Button Content="Copy and Close" Click="OnCopyAndCloseClick" />
+            <Button Content="Copy and Close" Click="OnCopyAndCloseClick" Style="{StaticResource AccentButtonStyle}" />
             <Button Content="Close" Click="OnCloseClick" />
         </StackPanel>
 

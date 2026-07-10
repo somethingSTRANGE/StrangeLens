@@ -16,6 +16,9 @@ using Windows.Graphics;
 
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 public sealed partial class AboutWindow
 {
@@ -65,6 +68,27 @@ public sealed partial class AboutWindow
       // single physical shadow instance. CardShadowReceiver is a sibling of the two cards,
       // not their ancestor -- registering an ancestor as receiver faults natively.
       this.CardShadow.Receivers.Add(this.CardShadowReceiver);
+   }
+
+   // HyperlinkButtonForeground/PointerOver/Pressed (see Grid.Resources in the XAML) correctly
+   // handle entering a state, but the default template doesn't reliably revert to the Normal
+   // state's color on pointer-exit. Setting Foreground directly here is a local value, which
+   // takes precedence over whatever the template's own (buggy) state transition does, so it
+   // reliably wins regardless of the underlying cause.
+   private void CardLinkButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+   {
+      if (sender is HyperlinkButton button)
+      {
+         button.Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+      }
+   }
+
+   private void CardLinkButton_PointerExited(object sender, PointerRoutedEventArgs e)
+   {
+      if (sender is HyperlinkButton button)
+      {
+         button.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+      }
    }
 
    private void OnCloseClick(object sender, RoutedEventArgs e)
