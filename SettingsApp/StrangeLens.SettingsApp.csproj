@@ -13,6 +13,7 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Icons\AppIcon.ico</ApplicationIcon>
     <!-- The XAML compiler's native VC++ metadata reader isn't needed (UseVCMetaManaged
          defaults to true), but the unused VC-lookup step still crashes without a real
          MSVC toolset present. Short-circuit that lookup so we don't depend on VS's C++
@@ -36,6 +37,24 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Source\StrangeLens.csproj" />
+  </ItemGroup>
+
+  <!-- Also available as a loose file at runtime for AppWindow.SetIcon(string), which takes
+       a file path, not a PE resource ID. -->
+  <ItemGroup>
+    <Content Include="Icons\AppIcon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Same physical file as Source\Icons\AppIcon.ico (StrangeLens.exe's own icon), linked
+       rather than duplicated, and placed under a distinct path so it doesn't collide with
+       this project's own icon above. Shown in AboutWindow as a visual reference to the main
+       app. -->
+  <ItemGroup>
+    <Content Include="..\Source\Icons\AppIcon.ico" Link="Assets\StrangeLensLogo.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

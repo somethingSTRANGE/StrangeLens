@@ -19,17 +19,30 @@ using Microsoft.UI.Xaml.Markup;
 ///    the XAML Path mini-language -- no standalone .svg file involved.</summary>
 internal static class IconPath
 {
+   /// <summary>Renders at <paramref name="width"/>, with height scaled proportionally to the
+   ///    source viewBox's own aspect ratio. For a square viewBox (all the icon data today) this
+   ///    produces a square result, same as passing width as a fixed size -- but it also handles
+   ///    non-square viewBoxes correctly (e.g. the 800x100 wordmark), where forcing equal
+   ///    width/height would squash the image.</summary>
    internal static UIElement Create(
       VectorData data,
-      double size,
+      double width,
       string primaryFill,
       string? secondaryFill = null)
    {
-      var (width, height) = ParseViewBox(data.ViewBox);
+      var (viewBoxWidth, viewBoxHeight) = ParseViewBox(data.ViewBox);
+      var height = viewBoxHeight * (width / viewBoxWidth);
 
+      // Clip to the viewBox explicitly. Real SVG viewers always clip content to the viewBox;
+      // this Grid doesn't by default, and font/glyph path data (e.g. the wordmark) commonly
+      // has coordinates that overshoot the nominal bounds slightly, which then render
+      // uncontained -- visible as stray shapes floating outside the icon's own area.
       var markup = $"""
-                    <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="{width}" Height="{
-             height}">
+                    <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="{
+                       viewBoxWidth}" Height="{viewBoxHeight}">
+                       <Grid.Clip>
+                          <RectangleGeometry Rect="0,0,{viewBoxWidth},{viewBoxHeight}" />
+                       </Grid.Clip>
                        <Path Fill="{primaryFill}" Data="{string.Concat(data.Primary)}" />
                        {(data.Secondary != null
                           ? $"""<Path Fill="{secondaryFill ?? primaryFill}" Data="{
@@ -41,8 +54,8 @@ internal static class IconPath
       var grid = (UIElement)XamlReader.Load(markup);
       return new Viewbox
          {
-            Width = size,
-            Height = size,
+            Width = width,
+            Height = height,
             Child = grid,
          };
    }

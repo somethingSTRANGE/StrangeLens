@@ -3,53 +3,129 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer Padding="24,24,24,24">
-        <StackPanel Spacing="4" MaxWidth="360">
+    <Grid Background="{ThemeResource ControlOnImageFillColorTertiaryBrush}">
+        <Grid.Resources>
+            <!-- HyperlinkButton's default template doesn't read its own Foreground property
+                 for the pointer-over/pressed states. Those are wired to these specific theme
+                 resource keys instead, which is why setting Foreground alone wouldn't have
+                 fixed the hover highlight. -->
+            <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="TextFillColorPrimaryBrush" />
+            <StaticResource x:Key="HyperlinkButtonForegroundPointerOver" ResourceKey="AccentTextFillColorPrimaryBrush" />
+            <StaticResource x:Key="HyperlinkButtonForegroundPressed" ResourceKey="AccentTextFillColorTertiaryBrush" />
 
-            <TextBlock x:Name="ProductNameText" Style="{StaticResource SubtitleTextBlockStyle}" HorizontalAlignment="Center" />
-            <TextBlock x:Name="VersionText" HorizontalAlignment="Center" Margin="0,4,0,0" />
-            <TextBlock x:Name="BuildDateText" HorizontalAlignment="Center" Opacity="0.7" />
+            <!-- Shared "class" for every card link button: fixed width so they line up,
+                 centered within the card, content left-aligned inside that fixed width
+                 rather than each button centering its own icon+text independently. -->
+            <Style x:Key="CardLinkButtonStyle" TargetType="HyperlinkButton">
+                <Setter Property="Width" Value="150" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Padding" Value="6,4,8,4" />
+                <Setter Property="CornerRadius" Value="4" />
+            </Style>
+        </Grid.Resources>
 
-            <TextBlock Text="Resources" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,20,0,4" />
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Grid x:Name="ResourceSourceIconHost" Width="18" Height="18" />
-                <HyperlinkButton Content="Source Code" NavigateUri="https://github.com/somethingSTRANGE/Lens" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Grid x:Name="ResourceIssuesIconHost" Width="18" Height="18" />
-                <HyperlinkButton Content="Report Issues" NavigateUri="https://github.com/somethingSTRANGE/Lens/issues" />
-            </StackPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-            <TextBlock Text="Give support and donate" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,16,0,4" />
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Grid x:Name="DonateGitHubIconHost" Width="18" Height="18" />
-                <HyperlinkButton Content="GitHub Sponsors" NavigateUri="https://github.com/sponsors/somethingSTRANGE" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Grid x:Name="DonateBmcIconHost" Width="18" Height="18" />
-                <HyperlinkButton Content="Buy Me a Coffee" NavigateUri="https://buymeacoffee.com/strange" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Grid x:Name="DonateKoFiIconHost" Width="18" Height="18" />
-                <HyperlinkButton Content="Ko-fi" NavigateUri="https://ko-fi.com/somethingstrange" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Grid x:Name="DonatePayPalIconHost" Width="18" Height="18" />
-                <HyperlinkButton Content="PayPal" NavigateUri="https://www.paypal.com/donate/?business=JFYPDTH5TA872" />
-            </StackPanel>
+        <StackPanel x:Name="MainContentPanel" Grid.Row="0" Spacing="4" Padding="24,24,24,20" Background="{ThemeResource SolidBackgroundFillColorSecondaryBrush}">
 
-            <TextBlock x:Name="CopyrightText" HorizontalAlignment="Center" Opacity="0.7" Margin="0,20,0,0" TextWrapping="Wrap" TextAlignment="Center" />
+            <StackPanel.Resources>
+                <ThemeShadow x:Name="CardShadow" />
+            </StackPanel.Resources>
 
-            <TextBlock Text="Wordmark: Slackey (fonts.google.com), Apache 2.0" Opacity="0.5" FontSize="11" Margin="0,12,0,0" HorizontalAlignment="Center" />
+            <Grid VerticalAlignment="Top" ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="64" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="64" />
+                </Grid.ColumnDefinitions>
+
+                <Image Source="Assets/StrangeLensLogo.ico" Grid.Column="0" Width="64" Height="64" VerticalAlignment="Top" />
+                <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Top" Padding="0">
+                    <Grid x:Name="WordmarkHost" HorizontalAlignment="Center" VerticalAlignment="Stretch" />
+                    <TextBlock x:Name="VersionText" HorizontalAlignment="Center" Margin="0,24,0,4" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="BuildDateText" HorizontalAlignment="Center" Opacity="0.5" Margin="0" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+            </Grid>
+
+
+            <Grid Margin="0,36,0,0" Loaded="CardsGrid_Loaded">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Sibling of the two cards below, not their ancestor. ThemeShadow.Receivers
+                     needs a receiver that isn't a parent of the element casting the shadow onto
+                     it, or WinUI 3's composition engine faults natively (crashed the process
+                     when MainContentPanel, an ancestor of the cards, was used as the receiver). -->
+                <Grid x:Name="CardShadowReceiver" Grid.Row="0" Grid.RowSpan="2" Margin="0,24,0,0" />
+
+                <Border Grid.Row="0" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="16,12,16,12" MaxWidth="200" HorizontalAlignment="Stretch" Translation="0,0,16" Shadow="{StaticResource CardShadow}">
+                    <StackPanel>
+                        <TextBlock Text="Resources" Style="{StaticResource BodyStrongTextBlockStyle}"   Margin="0,0,0,12" />
+                        <HyperlinkButton NavigateUri="https://github.com/somethingSTRANGE/Lens" Style="{StaticResource CardLinkButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Grid x:Name="ResourceSourceIconHost" Width="20" Height="20" />
+                                <TextBlock Text="Source Code" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HyperlinkButton>
+                        <HyperlinkButton NavigateUri="https://github.com/somethingSTRANGE/Lens/issues" Style="{StaticResource CardLinkButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Grid x:Name="ResourceIssuesIconHost" Width="20" Height="20" />
+                                <TextBlock Text="Report Issues" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HyperlinkButton>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="16,16,16,16" MaxWidth="200" HorizontalAlignment="Stretch" Margin="0,16,0,0" Translation="0,0,16" Shadow="{StaticResource CardShadow}">
+                    <StackPanel>
+                        <TextBlock Text="Give support and donate" Style="{StaticResource BodyStrongTextBlockStyle}"   Margin="0,0,0,12" />
+                        <HyperlinkButton NavigateUri="https://github.com/sponsors/somethingSTRANGE" Style="{StaticResource CardLinkButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Grid x:Name="DonateGitHubIconHost" Width="20" Height="20" />
+                                <TextBlock Text="GitHub Sponsors" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HyperlinkButton>
+                        <HyperlinkButton NavigateUri="https://buymeacoffee.com/strange" Style="{StaticResource CardLinkButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Grid x:Name="DonateBmcIconHost" Width="20" Height="20" />
+                                <TextBlock Text="Buy Me a Coffee" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HyperlinkButton>
+                        <HyperlinkButton NavigateUri="https://ko-fi.com/somethingstrange" Style="{StaticResource CardLinkButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Grid x:Name="DonateKoFiIconHost" Width="20" Height="20" />
+                                <TextBlock Text="Ko-fi" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HyperlinkButton>
+                        <HyperlinkButton NavigateUri="https://www.paypal.com/donate/?business=JFYPDTH5TA872" Style="{StaticResource CardLinkButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Grid x:Name="DonatePayPalIconHost" Width="20" Height="20" />
+                                <TextBlock Text="PayPal" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HyperlinkButton>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <TextBlock x:Name="CopyrightText" HorizontalAlignment="Center" Opacity="0.7" Margin="0,36,0,0" TextWrapping="Wrap" TextAlignment="Center" />
+
+            <TextBlock Text="Wordmark: Slackey (fonts.google.com), Apache 2.0" Opacity="0.5" FontSize="11" Margin="0,24,0,0" HorizontalAlignment="Center" />
             <TextBlock Text="Icons: Font Awesome Pro (fontawesome.com), Commercial License" Opacity="0.5" FontSize="11" HorizontalAlignment="Center" />
             <TextBlock Text="Font: JetBrains Mono (jetbrains.com/lp/mono), SIL OFL 1.1" Opacity="0.5" FontSize="11" HorizontalAlignment="Center" />
-            <TextBlock Text="Font: Inter (rsms.me/inter), SIL OFL 1.1" Opacity="0.5" FontSize="11" HorizontalAlignment="Center" />
-
-            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,20,0,0">
-                <Button Content="Copy and Close" Click="OnCopyAndCloseClick" />
-                <Button Content="Close" Click="OnCloseClick" />
-            </StackPanel>
+            <TextBlock Text="Font: Inter (rsms.me/inter), SIL OFL 1.1" Opacity="0.5" FontSize="11" HorizontalAlignment="Center"   Margin="0,0,0,24" />
 
         </StackPanel>
-    </ScrollViewer>
+
+        <StackPanel x:Name="FooterPanel" Grid.Row="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Padding="24,24,24,24">
+            <Button Content="Copy and Close" Click="OnCopyAndCloseClick" />
+            <Button Content="Close" Click="OnCloseClick" />
+        </StackPanel>
+
+    </Grid>
 </Window>

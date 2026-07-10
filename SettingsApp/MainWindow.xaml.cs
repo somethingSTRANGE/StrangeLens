@@ -19,6 +19,9 @@ public sealed partial class MainWindow
    public MainWindow()
    {
       this.InitializeComponent();
+
+      this.AppWindow.SetIcon("Icons/AppIcon.ico");
+
       this.Title = WindowTitle;
 
       this.PopulateComboBoxes();
