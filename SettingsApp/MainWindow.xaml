@@ -1,97 +1,184 @@
-<Window
-    x:Class="StrangeLens.SettingsApp.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Window x:Class="StrangeLens.SettingsApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <ScrollViewer Padding="24,20,24,20">
-        <StackPanel Spacing="8" MaxWidth="440">
+        <StackPanel Spacing="8"
+                    MaxWidth="440">
 
-            <TextBlock Text="Lens" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,4" />
-
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Panel width" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="WidthComboBox" MinWidth="150" />
-            </Grid>
+            <TextBlock Text="Lens"
+                       Style="{StaticResource SubtitleTextBlockStyle}"
+                       Margin="0,0,0,4" />
 
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Panel height" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="HeightComboBox" MinWidth="150" />
-            </Grid>
-
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Mouse precision speed" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="PrecisionSpeedComboBox" MinWidth="150" />
-            </Grid>
-
-            <TextBlock Text="Grid" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="16,12,0,0" />
-
-            <Grid ColumnDefinitions="*,Auto" Margin="16,0,0,0">
-                <TextBlock Grid.Column="0" Text="Style" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="GridStyleComboBox" MinWidth="150" />
-            </Grid>
-
-            <Grid ColumnDefinitions="*,Auto" Margin="16,0,0,0">
-                <TextBlock Grid.Column="0" Text="Size" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="GridSizeComboBox" MinWidth="150" />
-            </Grid>
-
-            <Grid ColumnDefinitions="*,Auto" Margin="16,0,0,0">
-                <TextBlock Grid.Column="0" Text="Opacity" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="GridOpacityComboBox" MinWidth="150" />
-            </Grid>
-
-            <TextBlock Text="Magnification" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="16,12,0,0" />
-
-            <Grid ColumnDefinitions="*,Auto" Margin="16,0,0,0">
-                <TextBlock Grid.Column="0" Text="Power level" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="MagnificationComboBox" MinWidth="150" />
-            </Grid>
-
-            <Grid ColumnDefinitions="*,Auto" Margin="16,0,0,0">
-                <TextBlock Grid.Column="0" Text="Scaling" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" x:Name="ScalingComboBox" MinWidth="150" />
-            </Grid>
-
-            <TextBlock Text="Info Panel" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,20,0,4" />
-
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Show hex color value" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShowHex, Mode=TwoWay}" />
+                <TextBlock Grid.Column="0"
+                           Text="Panel width"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="WidthComboBox"
+                          MinWidth="150" />
             </Grid>
 
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Show RGB color value" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShowRgb, Mode=TwoWay}" />
+                <TextBlock Grid.Column="0"
+                           Text="Panel height"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="HeightComboBox"
+                          MinWidth="150" />
             </Grid>
 
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Show HSL color value" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShowHsl, Mode=TwoWay}" />
+                <TextBlock Grid.Column="0"
+                           Text="Mouse precision speed"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="PrecisionSpeedComboBox"
+                          MinWidth="150" />
             </Grid>
 
-            <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                <TextBlock Grid.Column="0" Text="Show 12-bit color conversion" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShow12Bit, Mode=TwoWay}" />
+            <TextBlock Text="Grid"
+                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                       Margin="16,12,0,0" />
+
+            <Grid ColumnDefinitions="*,Auto"
+                  Margin="16,0,0,0">
+                <TextBlock Grid.Column="0"
+                           Text="Style"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="GridStyleComboBox"
+                          MinWidth="150" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto"
+                  Margin="16,0,0,0">
+                <TextBlock Grid.Column="0"
+                           Text="Size"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="GridSizeComboBox"
+                          MinWidth="150" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto"
+                  Margin="16,0,0,0">
+                <TextBlock Grid.Column="0"
+                           Text="Opacity"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="GridOpacityComboBox"
+                          MinWidth="150" />
+            </Grid>
+
+            <TextBlock Text="Magnification"
+                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                       Margin="16,12,0,0" />
+
+            <Grid ColumnDefinitions="*,Auto"
+                  Margin="16,0,0,0">
+                <TextBlock Grid.Column="0"
+                           Text="Power level"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="MagnificationComboBox"
+                          MinWidth="150" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto"
+                  Margin="16,0,0,0">
+                <TextBlock Grid.Column="0"
+                           Text="Scaling"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          x:Name="ScalingComboBox"
+                          MinWidth="150" />
+            </Grid>
+
+            <TextBlock Text="Info Panel"
+                       Style="{StaticResource SubtitleTextBlockStyle}"
+                       Margin="0,20,0,4" />
+
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="Show hex color value"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShowHex, Mode=TwoWay}" />
             </Grid>
 
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Show web safe color conversion" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShowWeb, Mode=TwoWay}" />
-            </Grid>
-
-            <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                <TextBlock Grid.Column="0" Text="Show mouse position" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShowMouse, Mode=TwoWay}" />
-            </Grid>
-
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Show lens size" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShowSize, Mode=TwoWay}" />
+                <TextBlock Grid.Column="0"
+                           Text="Show RGB color value"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShowRgb, Mode=TwoWay}" />
             </Grid>
 
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Show zoom level" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" OnContent="" OffContent="" IsOn="{x:Bind Settings.InfoShowZoom, Mode=TwoWay}" />
+                <TextBlock Grid.Column="0"
+                           Text="Show HSL color value"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShowHsl, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto"
+                  Margin="0,8,0,0">
+                <TextBlock Grid.Column="0"
+                           Text="Show 12-bit color conversion"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShow12Bit, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="Show web safe color conversion"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShowWeb, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto"
+                  Margin="0,8,0,0">
+                <TextBlock Grid.Column="0"
+                           Text="Show mouse position"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShowMouse, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="Show lens size"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShowSize, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="Show zoom level"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              OnContent=""
+                              OffContent=""
+                              IsOn="{x:Bind Settings.InfoShowZoom, Mode=TwoWay}" />
             </Grid>
 
         </StackPanel>

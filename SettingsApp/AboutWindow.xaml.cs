@@ -24,19 +24,18 @@ public sealed partial class AboutWindow
 {
    internal const string WindowTitle = "About Strange Lens";
 
-   private const string SystemFillColorCriticalBackground =
-      "{ThemeResource SystemFillColorCriticalBackgroundBrush}";
+   private const string ColorTextDisabled = "{ThemeResource TextFillColorDisabledBrush}";
 
-   private const string TextFillColorPrimary = "{ThemeResource TextFillColorPrimaryBrush}";
+   private const string ColorTextPrimary = "{ThemeResource TextFillColorPrimaryBrush}";
 
+   private const string ColorTextSecondary = "{ThemeResource TextFillColorSecondaryBrush}";
+
+   /// <summary>The window's total visible height, top border to the bottom border, including
+   ///    the title bar.</summary>
    private const int VisibleHeight = 745;
 
-   // Visible width/height the window should render at. AppWindow.Resize takes a "logical"
-   // size (matches GetWindowRect) that's larger than the visible bounds by an invisible
-   // resize/shadow margin -- empirically ~14px wide / ~7px tall (DwmGetWindowAttribute
-   // DWMWA_EXTENDED_FRAME_BOUNDS vs GetWindowRect, tested with a real window). Content
-   // naturally needs ~595px, footer ~62px (measured via DesiredSize); title bar adds ~32px.
-   private const int VisibleWidth = 410;
+   /// <summary>The window's total visible width, left border to the right border.</summary>
+   private const int VisibleWidth = 408;
 
    private string versionSummary = string.Empty;
 
@@ -54,11 +53,40 @@ public sealed partial class AboutWindow
       presenter.IsResizable = false;
       presenter.SetBorderAndTitleBar(true, true);
       this.AppWindow.SetPresenter(presenter);
+
+      // AppWindow.Resize takes a "logical" size (matches GetWindowRect) that's larger than the
+      // visible bounds by an invisible resize/shadow margin -- empirically ~14px wide / ~7px tall
+      // (DwmGetWindowAttribute DWMWA_EXTENDED_FRAME_BOUNDS vs. GetWindowRect, tested with a real
+      // window).
       this.AppWindow.Resize(new SizeInt32(VisibleWidth + 14, VisibleHeight + 7));
 
       this.Title = WindowTitle;
       this.PopulateContent();
       this.PopulateIcons();
+   }
+
+   /// <summary>HyperlinkButtonForeground/PointerOver/Pressed (see Grid.Resources in the XAML)
+   ///    correctly handle entering a state, but the default template doesn't reliably revert to
+   ///    the Normal state's color on pointer-exit. Setting Foreground directly here is a local
+   ///    value, which takes precedence over whatever the template's own (buggy) state
+   ///    transition does, so it reliably wins regardless of the underlying cause.</summary>
+   /// <param name="sender">The sender.</param>
+   /// <param name="e">The event arguments.</param>
+   private void CardLinkButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+   {
+      if (sender is HyperlinkButton button)
+      {
+         button.Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+      }
+   }
+
+   /// <inheritdoc cref="CardLinkButton_PointerEntered"/>
+   private void CardLinkButton_PointerExited(object sender, PointerRoutedEventArgs e)
+   {
+      if (sender is HyperlinkButton button)
+      {
+         button.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+      }
    }
 
    private void CardsGrid_Loaded(object sender, RoutedEventArgs e)
@@ -68,27 +96,6 @@ public sealed partial class AboutWindow
       // single physical shadow instance. CardShadowReceiver is a sibling of the two cards,
       // not their ancestor -- registering an ancestor as receiver faults natively.
       this.CardShadow.Receivers.Add(this.CardShadowReceiver);
-   }
-
-   // HyperlinkButtonForeground/PointerOver/Pressed (see Grid.Resources in the XAML) correctly
-   // handle entering a state, but the default template doesn't reliably revert to the Normal
-   // state's color on pointer-exit. Setting Foreground directly here is a local value, which
-   // takes precedence over whatever the template's own (buggy) state transition does, so it
-   // reliably wins regardless of the underlying cause.
-   private void CardLinkButton_PointerEntered(object sender, PointerRoutedEventArgs e)
-   {
-      if (sender is HyperlinkButton button)
-      {
-         button.Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
-      }
-   }
-
-   private void CardLinkButton_PointerExited(object sender, PointerRoutedEventArgs e)
-   {
-      if (sender is HyperlinkButton button)
-      {
-         button.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
-      }
    }
 
    private void OnCloseClick(object sender, RoutedEventArgs e)
@@ -136,24 +143,32 @@ public sealed partial class AboutWindow
 
    private void PopulateIcons()
    {
+      // The wordmark is styled with a pseudo 3D effect.
       this.WordmarkHost.Children.Add(
-         IconPath.Create(VectorImageFactory.AboutLogoData, 200, TextFillColorPrimary));
+         IconPath.CreateWithOffsetShadow(
+            VectorImageFactory.AboutLogoData,
+            232,
+            ColorTextPrimary,
+            ColorTextSecondary,
+            -1,
+            3,
+            0.375));
 
       this.ResourceSourceIconHost.Children.Add(
-         IconPath.Create(VectorImageFactory.AboutResourceSourceData, 20, TextFillColorPrimary));
+         IconPath.Create(VectorImageFactory.AboutResourceSourceData, 20, ColorTextPrimary));
       this.ResourceIssuesIconHost.Children.Add(
          IconPath.Create(
             VectorImageFactory.AboutResourceIssuesData,
             20,
-            TextFillColorPrimary,
-            SystemFillColorCriticalBackground));
+            ColorTextPrimary,
+            ColorTextDisabled));
       this.DonateGitHubIconHost.Children.Add(
-         IconPath.Create(VectorImageFactory.AboutDonateGitHubData, 20, TextFillColorPrimary));
+         IconPath.Create(VectorImageFactory.AboutDonateGitHubData, 20, ColorTextPrimary));
       this.DonateBmcIconHost.Children.Add(
-         IconPath.Create(VectorImageFactory.AboutDonateBuyMeACoffeeData, 20, TextFillColorPrimary));
+         IconPath.Create(VectorImageFactory.AboutDonateBuyMeACoffeeData, 20, ColorTextPrimary));
       this.DonateKoFiIconHost.Children.Add(
-         IconPath.Create(VectorImageFactory.AboutDonateKoFiData, 20, TextFillColorPrimary));
+         IconPath.Create(VectorImageFactory.AboutDonateKoFiData, 20, ColorTextPrimary));
       this.DonatePayPalIconHost.Children.Add(
-         IconPath.Create(VectorImageFactory.AboutDonatePayPalData, 20, TextFillColorPrimary));
+         IconPath.Create(VectorImageFactory.AboutDonatePayPalData, 20, ColorTextPrimary));
    }
 }

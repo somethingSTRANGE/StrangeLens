@@ -7,6 +7,42 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Fluent 2 generates a whole ramp of lighter/adjusted shades from the OS accent
+                 color for button/toggle-style controls (ToggleSwitch's "on" track,
+                 AccentButtonStyle's background, etc.) rather than using the raw accent color
+                 directly. AccentFillColorSelectedTextBackgroundBrush is the one resource that
+                 matches the raw OS accent color exactly (confirmed against the OS Settings
+                 app's own accent, #0063B1), but aliasing straight to it still rendered
+                 noticeably duller than the target on AccentButtonStyle specifically.
+                 Pixel-sampled the actual rendered button with pure #F00/#0F0 test colors and
+                 found both scaled down to about 65.5% of the input on every channel (#FF0000
+                 to #A70000, #00FF00 to #00A700), including with Background set as a direct
+                 local value on the Button, not just through this resource key, so it's some
+                 multiply/opacity effect baked into AccentButtonStyle's own control template,
+                 not a resource-lookup issue. Compensating by dividing the target color by
+                 that ~0.6549 factor (#0063B1 to #0097FF as the input) reproduces the target
+                 almost exactly: sampled result was #0063A7, exact on R and G, 10 short on B
+                 because 0x0063B1's blue channel (177) is already near the ~167 ceiling this
+                 scaling can ever produce (255 times 0.6549), close enough to be visually
+                 indistinguishable from the OS accent. ToggleSwitch does NOT have the same
+                 dimming: pixel-sampling its "on" track with the same #0097FF compensated
+                 value rendered that color exactly, unscaled, so ToggleSwitchFillOn uses the
+                 raw #0063B1 target directly instead, no compensation. Overriding the shared
+                 AccentFillColorDefault/Secondary/Tertiary/Disabled brush keys was tried first
+                 and cascaded too far, recoloring the window title bar too; these narrower,
+                 control-specific keys avoid that. All states currently point at the same
+                 single color per control, no distinct hover/pressed shades yet; revisit with
+                 computed darker/lighter variants if that ends up feeling wrong in practice. -->
+            <SolidColorBrush x:Key="AccentButtonBackground" Color="#0097FF" />
+            <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#0097FF" />
+            <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#0097FF" />
+            <SolidColorBrush x:Key="AccentButtonBackgroundDisabled" Color="#0097FF" />
+
+            <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#0063B1" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#0063B1" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#0063B1" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOnDisabled" Color="#0063B1" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
