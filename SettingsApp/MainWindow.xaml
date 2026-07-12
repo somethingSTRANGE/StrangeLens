@@ -22,41 +22,41 @@
                            Style="{StaticResource SubtitleTextBlockStyle}"
                            Margin="0,-4,0,20" />
 
-                <local:ComboBoxRow x:Name="WidthComboBoxRow"
-                                   Label="Panel width" />
+                <local:ComboBoxRow Label="Panel width"
+                                   x:Name="WidthComboBoxRow" />
 
-                <local:ComboBoxRow x:Name="HeightComboBoxRow"
-                                   Label="Panel height" />
+                <local:ComboBoxRow Label="Panel height"
+                                   x:Name="HeightComboBoxRow" />
 
-                <local:ComboBoxRow x:Name="PrecisionSpeedComboBoxRow"
-                                   Label="Mouse precision speed" />
+                <local:ComboBoxRow Label="Mouse precision speed"
+                                   x:Name="PrecisionSpeedComboBoxRow" />
 
                 <TextBlock Text="Grid"
                            Style="{StaticResource BodyStrongTextBlockStyle}"
                            Margin="0,24,0,7" />
 
-                <local:ComboBoxRow x:Name="GridStyleComboBoxRow"
-                                   Label="Style"
+                <local:ComboBoxRow Label="Style"
+                                   x:Name="GridStyleComboBoxRow"
                                    Indent="True" />
 
-                <local:ComboBoxRow x:Name="GridSizeComboBoxRow"
-                                   Label="Size"
+                <local:ComboBoxRow Label="Size"
+                                   x:Name="GridSizeComboBoxRow"
                                    Indent="True" />
 
-                <local:ComboBoxRow x:Name="GridOpacityComboBoxRow"
-                                   Label="Opacity"
+                <local:ComboBoxRow Label="Opacity"
+                                   x:Name="GridOpacityComboBoxRow"
                                    Indent="True" />
 
                 <TextBlock Text="Magnification"
                            Style="{StaticResource BodyStrongTextBlockStyle}"
                            Margin="0,24,0,7" />
 
-                <local:ComboBoxRow x:Name="MagnificationComboBoxRow"
-                                   Label="Power level"
+                <local:ComboBoxRow Label="Power level"
+                                   x:Name="MagnificationComboBoxRow"
                                    Indent="True" />
 
-                <local:ComboBoxRow x:Name="ScalingComboBoxRow"
-                                   Label="Scaling"
+                <local:ComboBoxRow Label="Scaling"
+                                   x:Name="ScalingComboBoxRow"
                                    Indent="True" />
             </StackPanel>
         </Border>
