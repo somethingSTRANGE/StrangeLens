@@ -10,6 +10,10 @@ namespace StrangeLens.SettingsApp;
 using System;
 using System.ComponentModel;
 
+using Windows.Foundation;
+using Windows.Graphics;
+
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml.Controls;
 
 public sealed partial class MainWindow
@@ -22,6 +26,17 @@ public sealed partial class MainWindow
 
       this.AppWindow.SetIcon("Icons/AppIcon.ico");
 
+      // Layout is finalized on fixed-width controls/cards, not content that benefits from
+      // resizing, so the window is locked to its natural size -- same rationale as
+      // AboutWindow's presenter setup. Minimize is left enabled (unlike AboutWindow), since
+      // there's a real reason to want Settings out of the way temporarily without closing it;
+      // Maximize doesn't make sense once resizing itself is disabled.
+      var presenter = OverlappedPresenter.Create();
+      presenter.IsMaximizable = false;
+      presenter.IsResizable = false;
+      presenter.SetBorderAndTitleBar(true, true);
+      this.AppWindow.SetPresenter(presenter);
+
       this.Title = WindowTitle;
 
       this.PopulateComboBoxes();
@@ -29,6 +44,8 @@ public sealed partial class MainWindow
 
       this.Settings.PropertyChanged += this.OnSettingChanged;
       this.Closed += (_, _) => this.Settings.PropertyChanged -= this.OnSettingChanged;
+
+      this.SizeWindowToContent();
    }
 
    public Lens Settings { get; } = Lens.Instance;
@@ -215,6 +232,23 @@ public sealed partial class MainWindow
       this.ScalingComboBox.Items.Add("Bicubic");
       this.ScalingComboBox.Items.Add("High quality bicubic");
       this.ScalingComboBox.SelectedIndex = (int)this.Settings.Scaling;
+   }
+
+   /// <summary>WinUI3 has no WPF-style SizeToContent -- left alone, the window keeps whatever
+   ///    size Windows last remembered for it, regardless of how much the actual content needs.
+   ///    Measures the real content once at startup and resizes to fit, using the same
+   ///    empirically confirmed offsets AboutWindow's fixed sizing relies on: AppWindow.Resize
+   ///    takes a "logical" size larger than the true visible bounds by an invisible
+   ///    resize/shadow margin (~14px wide / ~7px tall), and Measure() doesn't include the title
+   ///    bar's own height (~32px). Resizing is disabled via the presenter set up in the
+   ///    constructor, so unlike when this was first added, this size now sticks for the life of
+   ///    the window rather than being just an initial hint.</summary>
+   private void SizeWindowToContent()
+   {
+      this.Content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+      var width = (int)Math.Ceiling(this.Content.DesiredSize.Width) + 14;
+      var height = (int)Math.Ceiling(this.Content.DesiredSize.Height) + 32 + 7;
+      this.AppWindow.Resize(new SizeInt32(width, height));
    }
 
    /// <summary>Grid size/opacity are meaningless with no grid drawn.</summary>
