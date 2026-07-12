@@ -37,6 +37,8 @@ public sealed partial class AboutWindow
    /// <summary>The window's total visible width, left border to the right border.</summary>
    private const int VisibleWidth = 408;
 
+   private double lastScaleFactor;
+
    private string versionSummary = string.Empty;
 
    public AboutWindow()
@@ -54,15 +56,33 @@ public sealed partial class AboutWindow
       presenter.SetBorderAndTitleBar(true, true);
       this.AppWindow.SetPresenter(presenter);
 
-      // AppWindow.Resize takes a "logical" size (matches GetWindowRect) that's larger than the
-      // visible bounds by an invisible resize/shadow margin -- empirically ~14px wide / ~7px tall
-      // (DwmGetWindowAttribute DWMWA_EXTENDED_FRAME_BOUNDS vs. GetWindowRect, tested with a real
-      // window).
-      this.AppWindow.Resize(new SizeInt32(VisibleWidth + 14, VisibleHeight + 7));
+      this.lastScaleFactor = DpiHelper.GetScaleFactor(this);
+      this.ApplyWindowSize();
+
+      // IsResizable = false stops the user from resizing, but the window can still be dragged
+      // to a monitor with different DPI. Windows won't bitmap-stretch it for us (this app is
+      // Per-Monitor-V2 aware), so without this the window would keep its old physical size, and
+      // the same "correctly scaled content, wrong-size frame" problem would reappear on drag.
+      this.AppWindow.Changed += this.OnAppWindowChanged;
 
       this.Title = WindowTitle;
       this.PopulateContent();
       this.PopulateIcons();
+   }
+
+   /// <summary>AppWindow.Resize takes physical pixels, not the DIPs VisibleWidth/VisibleHeight
+   ///    were tuned in, so the target size needs multiplying by the window's current DPI scale
+   ///    factor -- see <see cref="DpiHelper"/>. The ~14px/~7px offset is the invisible
+   ///    resize/shadow margin AppWindow.Resize's "logical" size includes beyond the visible
+   ///    bounds (DwmGetWindowAttribute DWMWA_EXTENDED_FRAME_BOUNDS vs. GetWindowRect, tested
+   ///    with a real window) -- that margin scales with DPI too, so it's included before
+   ///    scaling rather than added after.</summary>
+   private void ApplyWindowSize()
+   {
+      var scale = DpiHelper.GetScaleFactor(this);
+      var width = (int)Math.Round((VisibleWidth + 14) * scale);
+      var height = (int)Math.Round((VisibleHeight + 7) * scale);
+      this.AppWindow.Resize(new SizeInt32(width, height));
    }
 
    /// <summary>HyperlinkButtonForeground/PointerOver/Pressed (see Grid.Resources in the XAML)
@@ -96,6 +116,26 @@ public sealed partial class AboutWindow
       // single physical shadow instance. CardShadowReceiver is a sibling of the two cards,
       // not their ancestor -- registering an ancestor as receiver faults natively.
       this.CardShadow.Receivers.Add(this.CardShadowReceiver);
+   }
+
+   /// <summary>Re-applies the window's size if it was dragged to a monitor with a different DPI
+   ///    scale factor than the one it was last sized for. AppWindow.Changed doesn't expose a
+   ///    dedicated "DPI changed" flag, so DidPositionChange (which does fire on a cross-monitor
+   ///    drag) is used as the trigger, then the scale factor itself is compared to confirm it
+   ///    actually changed before doing any work.</summary>
+   private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+   {
+      if (!args.DidPositionChange)
+      {
+         return;
+      }
+
+      var scale = DpiHelper.GetScaleFactor(this);
+      if (Math.Abs(scale - this.lastScaleFactor) > 0.01)
+      {
+         this.lastScaleFactor = scale;
+         this.ApplyWindowSize();
+      }
    }
 
    private void OnCloseClick(object sender, RoutedEventArgs e)

@@ -20,6 +20,8 @@ public sealed partial class MainWindow
 {
    internal const string WindowTitle = "Strange Lens Settings";
 
+   private double lastScaleFactor;
+
    public MainWindow()
    {
       this.InitializeComponent();
@@ -45,10 +47,37 @@ public sealed partial class MainWindow
       this.Settings.PropertyChanged += this.OnSettingChanged;
       this.Closed += (_, _) => this.Settings.PropertyChanged -= this.OnSettingChanged;
 
+      this.lastScaleFactor = DpiHelper.GetScaleFactor(this);
       this.SizeWindowToContent();
+
+      // IsResizable = false stops the user from resizing, but the window can still be dragged
+      // to a monitor with different DPI. Windows won't bitmap-stretch it for us (this app is
+      // Per-Monitor-V2 aware), so without this the window would keep its old physical size, and
+      // the same "correctly scaled content, wrong-size frame" problem would reappear on drag.
+      this.AppWindow.Changed += this.OnAppWindowChanged;
    }
 
    public Lens Settings { get; } = Lens.Instance;
+
+   /// <summary>Re-applies the window's size if it was dragged to a monitor with a different DPI
+   ///    scale factor than the one it was last sized for. AppWindow.Changed doesn't expose a
+   ///    dedicated "DPI changed" flag, so DidPositionChange (which does fire on a cross-monitor
+   ///    drag) is used as the trigger, then the scale factor itself is compared to confirm it
+   ///    actually changed before doing any work.</summary>
+   private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+   {
+      if (!args.DidPositionChange)
+      {
+         return;
+      }
+
+      var scale = DpiHelper.GetScaleFactor(this);
+      if (Math.Abs(scale - this.lastScaleFactor) > 0.01)
+      {
+         this.lastScaleFactor = scale;
+         this.SizeWindowToContent();
+      }
+   }
 
    private void OnGridOpacityChanged(object sender, SelectionChangedEventArgs e)
    {
@@ -249,12 +278,17 @@ public sealed partial class MainWindow
    ///    resize/shadow margin (~14px wide / ~7px tall), and Measure() doesn't include the title
    ///    bar's own height (~32px). Resizing is disabled via the presenter setup in the
    ///    constructor, so unlike when this was first added, this size now sticks for the life of
-   ///    the window rather than being just an initial hint.</summary>
+   ///    the window rather than being just an initial hint. Content.Measure()/DesiredSize work
+   ///    in DIPs, same as the rest of XAML, but AppWindow.Resize wants physical pixels -- see
+   ///    <see cref="DpiHelper"/>. The chrome offsets scale with DPI too, so they're added to
+   ///    the DIP measurement before scaling, not tacked on afterward as raw pixels.</summary>
    private void SizeWindowToContent()
    {
       this.Content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-      var width = (int)Math.Ceiling(this.Content.DesiredSize.Width) + 14;
-      var height = (int)Math.Ceiling(this.Content.DesiredSize.Height) + 32 + 7;
+
+      var scale = DpiHelper.GetScaleFactor(this);
+      var width = (int)Math.Round((this.Content.DesiredSize.Width + 14) * scale);
+      var height = (int)Math.Round((this.Content.DesiredSize.Height + 32 + 7) * scale);
       this.AppWindow.Resize(new SizeInt32(width, height));
    }
 
