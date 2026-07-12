@@ -63,16 +63,14 @@ namespace StrangeLens
          this.notifyIcon.Text = Application.ProductName;
 
          // Silent by design: a missing exe here is a normal state, not a fault -- someone may
-         // have deliberately stripped a trimmed-down install, and every-boot noise for a
+         // have deliberately stripped a trimmed-down installation, and every-boot noise for a
          // condition that hasn't changed since last boot would be worse than saying nothing.
          // The disabled menu items' tooltip is the only signal. Contrast with a scan that
          // finds it fine here but fails when actually invoked later (see
          // DisableSettingsAndAbout) -- that's an unexpected mid-session change and is worth
          // logging and interrupting the user for.
          this.settingsExePath = ResolveSettingsExePath();
-         var missingTooltip = this.settingsExePath == null
-            ? "StrangeLens.Settings.exe was not found."
-            : null;
+         var missingTooltip = this.settingsExePath == null ? "StrangeLens.Settings.exe was not found." : null;
 
          var miStartWithWindows = new ToolStripMenuItem("Start with Windows")
             {
@@ -226,6 +224,38 @@ namespace StrangeLens
          return Lens.IsOsDarkMode();
       }
 
+      /// <summary>A packaged release ships both exes side by side (see release.yml), so that's the
+      ///    real, expected structure and gets checked first. The dev-repo relative path only
+      ///    exists to make Rider's default (unpublished) Debug build of this project able to find
+      ///    the separately built SettingsApp project without manually copying files around. It
+      ///    assumes a specific sibling-folder checkout structure that won't exist once both exes
+      ///    are actually deployed together. Returns null if neither is found.</summary>
+      private static string? ResolveSettingsExePath()
+      {
+         var sideBySideExe =
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "StrangeLens.Settings.exe"));
+         if (File.Exists(sideBySideExe))
+         {
+            return sideBySideExe;
+         }
+
+         var devRepoExe = Path.GetFullPath(
+            Path.Combine(
+               AppContext.BaseDirectory,
+               "..",
+               "..",
+               "..",
+               "..",
+               "SettingsApp",
+               "bin",
+               "x64",
+               "Debug",
+               "net10.0-windows10.0.19041.0",
+               "StrangeLens.Settings.exe"));
+
+         return File.Exists(devRepoExe) ? devRepoExe : null;
+      }
+
       private static void SetStartWithWindows(bool enable)
       {
          using var key = Registry.CurrentUser.OpenSubKey(
@@ -274,9 +304,9 @@ namespace StrangeLens
          this.Hide();
       }
 
-      /// <summary>Disables Settings/About for the rest of this run and tells the user why.
-      ///    There's no automatic re-enable -- restarting the app re-runs the startup scan in
-      ///    the constructor, which is the only path back to enabled.</summary>
+      /// <summary>Disables Settings/About for the rest of this run and tells the user why. There's
+      ///    no automatic re-enabling -- restarting the app re-runs the startup scan in the
+      ///    constructor, which is the only path back to enable.</summary>
       /// <param name="reason">A short, user-facing explanation shown in the dialog.</param>
       private void DisableSettingsAndAbout(string reason)
       {
@@ -328,38 +358,6 @@ namespace StrangeLens
             // deleted, corrupted, or permissions changed mid-session.
             this.DisableSettingsAndAbout($"StrangeLens.Settings.exe could not be launched: {ex.Message}");
          }
-      }
-
-      /// <summary>A packaged release ships both exes side by side (see release.yml), so that's
-      ///    the real, expected layout and gets checked first. The dev-repo relative path only
-      ///    exists to make Rider's default (unpublished) Debug build of this project able to
-      ///    find the separately-built SettingsApp project without manually copying files
-      ///    around -- it assumes a specific sibling-folder checkout structure that won't exist
-      ///    once both exes are actually deployed together. Returns null if neither is
-      ///    found.</summary>
-      private static string? ResolveSettingsExePath()
-      {
-         var sideBySideExe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "StrangeLens.Settings.exe"));
-         if (File.Exists(sideBySideExe))
-         {
-            return sideBySideExe;
-         }
-
-         var devRepoExe = Path.GetFullPath(
-            Path.Combine(
-               AppContext.BaseDirectory,
-               "..",
-               "..",
-               "..",
-               "..",
-               "SettingsApp",
-               "bin",
-               "x64",
-               "Debug",
-               "net10.0-windows10.0.19041.0",
-               "StrangeLens.Settings.exe"));
-
-         return File.Exists(devRepoExe) ? devRepoExe : null;
       }
 
       private void menuItemAbout_Click(object? sender, EventArgs e)
