@@ -41,9 +41,15 @@ namespace StrangeLens
 
       private readonly Timer clickTimer;
 
+      private readonly ToolStripMenuItem miAbout;
+
+      private readonly ToolStripMenuItem miSettings;
+
       private LensForm? activeLens;
 
       private int clickCount;
+
+      private string? settingsExePath;
 
       private bool shouldExitApplication;
 
@@ -56,6 +62,18 @@ namespace StrangeLens
 
          this.notifyIcon.Text = Application.ProductName;
 
+         // Silent by design: a missing exe here is a normal state, not a fault -- someone may
+         // have deliberately stripped a trimmed-down install, and every-boot noise for a
+         // condition that hasn't changed since last boot would be worse than saying nothing.
+         // The disabled menu items' tooltip is the only signal. Contrast with a scan that
+         // finds it fine here but fails when actually invoked later (see
+         // DisableSettingsAndAbout) -- that's an unexpected mid-session change and is worth
+         // logging and interrupting the user for.
+         this.settingsExePath = ResolveSettingsExePath();
+         var missingTooltip = this.settingsExePath == null
+            ? "StrangeLens.Settings.exe was not found."
+            : null;
+
          var miStartWithWindows = new ToolStripMenuItem("Start with Windows")
             {
                CheckOnClick = true,
@@ -63,6 +81,18 @@ namespace StrangeLens
             };
          miStartWithWindows.Click += (_, _) => SetStartWithWindows(miStartWithWindows.Checked);
 
+         this.miSettings = new ToolStripMenuItem("&Settings...", null, this.menuItemSettings_Click)
+            {
+               Enabled = this.settingsExePath != null,
+               ToolTipText = missingTooltip,
+            };
+         this.miAbout = new ToolStripMenuItem("&About...", null, this.menuItemAbout_Click)
+            {
+               Enabled = this.settingsExePath != null,
+               ToolTipText = missingTooltip,
+            };
+
+         this.contextMenu.ShowItemToolTips = true;
          this.contextMenu.Items.AddRange(
             new ToolStripMenuItem("Toggle Lens", null, this.menuItemOpen_Click)
                {
@@ -70,10 +100,10 @@ namespace StrangeLens
                   ShowShortcutKeys = true,
                },
             new ToolStripSeparator(),
-            new ToolStripMenuItem("&Settings...", null, this.menuItemSettings_Click),
+            this.miSettings,
             miStartWithWindows,
             new ToolStripSeparator(),
-            new ToolStripMenuItem("&About...", null, this.menuItemAbout_Click),
+            this.miAbout,
             new ToolStripSeparator(),
             new ToolStripMenuItem("E&xit", null, this.menuItemExit_Click));
 
@@ -244,48 +274,92 @@ namespace StrangeLens
          this.Hide();
       }
 
+      /// <summary>Disables Settings/About for the rest of this run and tells the user why.
+      ///    There's no automatic re-enable -- restarting the app re-runs the startup scan in
+      ///    the constructor, which is the only path back to enabled.</summary>
+      /// <param name="reason">A short, user-facing explanation shown in the dialog.</param>
+      private void DisableSettingsAndAbout(string reason)
+      {
+         this.settingsExePath = null;
+         this.miSettings.Enabled = false;
+         this.miSettings.ToolTipText = reason;
+         this.miAbout.Enabled = false;
+         this.miAbout.ToolTipText = reason;
+
+         AppLog.Error($"Settings and About disabled: {reason}");
+         MessageBox.Show(
+            $"{reason}\n\nSettings and About will be unavailable until Strange Lens is restarted.",
+            "Strange Lens",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
+      }
+
       private void LaunchSettingsAppWindow(string? arguments = null)
       {
-         // A packaged release ships both exes side by side (see release.yml), so that's the
-         // real, expected layout and gets checked first. The dev-repo relative path only
-         // exists to make Rider's default (unpublished) Debug build of this project able to
-         // find the separately-built SettingsApp project without manually copying files
-         // around -- it assumes a specific sibling-folder checkout structure that won't exist
-         // once both exes are actually deployed together.
-         var sideBySideExe = Path.Combine(AppContext.BaseDirectory, "StrangeLens.Settings.exe");
-         var devRepoExe = Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "SettingsApp",
-            "bin",
-            "x64",
-            "Debug",
-            "net10.0-windows10.0.19041.0",
-            "StrangeLens.Settings.exe");
+         if (this.settingsExePath == null)
+         {
+            return;
+         }
 
-         var settingsExe = File.Exists(sideBySideExe) ? sideBySideExe : devRepoExe;
-
-         var startInfo = new ProcessStartInfo(Path.GetFullPath(settingsExe))
+         try
+         {
+            var startInfo = new ProcessStartInfo(this.settingsExePath)
+               {
+                  UseShellExecute = true,
+               };
+            if (arguments != null)
             {
-               UseShellExecute = true,
-            };
-         if (arguments != null)
+               startInfo.Arguments = arguments;
+            }
+
+            var process = Process.Start(startInfo);
+
+            // Ties the Settings/About process's lifetime to this one, so it doesn't linger
+            // as an orphaned window (with no tray icon left to reopen it from) after this
+            // process exits -- by any means, not just the normal Tray -> Exit.
+            if (process != null)
+            {
+               ChildProcessTracker.Add(process);
+            }
+         }
+         catch (Exception ex)
          {
-            startInfo.Arguments = arguments;
+            // Found during the constructor's startup scan, but can't be launched now --
+            // deleted, corrupted, or permissions changed mid-session.
+            this.DisableSettingsAndAbout($"StrangeLens.Settings.exe could not be launched: {ex.Message}");
+         }
+      }
+
+      /// <summary>A packaged release ships both exes side by side (see release.yml), so that's
+      ///    the real, expected layout and gets checked first. The dev-repo relative path only
+      ///    exists to make Rider's default (unpublished) Debug build of this project able to
+      ///    find the separately-built SettingsApp project without manually copying files
+      ///    around -- it assumes a specific sibling-folder checkout structure that won't exist
+      ///    once both exes are actually deployed together. Returns null if neither is
+      ///    found.</summary>
+      private static string? ResolveSettingsExePath()
+      {
+         var sideBySideExe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "StrangeLens.Settings.exe"));
+         if (File.Exists(sideBySideExe))
+         {
+            return sideBySideExe;
          }
 
-         var process = Process.Start(startInfo);
+         var devRepoExe = Path.GetFullPath(
+            Path.Combine(
+               AppContext.BaseDirectory,
+               "..",
+               "..",
+               "..",
+               "..",
+               "SettingsApp",
+               "bin",
+               "x64",
+               "Debug",
+               "net10.0-windows10.0.19041.0",
+               "StrangeLens.Settings.exe"));
 
-         // Ties the Settings/About process's lifetime to this one, so it doesn't linger
-         // as an orphaned window (with no tray icon left to reopen it from) after this
-         // process exits -- by any means, not just the normal Tray -> Exit.
-         if (process != null)
-         {
-            ChildProcessTracker.Add(process);
-         }
+         return File.Exists(devRepoExe) ? devRepoExe : null;
       }
 
       private void menuItemAbout_Click(object? sender, EventArgs e)
