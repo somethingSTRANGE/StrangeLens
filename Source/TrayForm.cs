@@ -270,7 +270,15 @@ namespace StrangeLens
             startInfo.Arguments = arguments;
          }
 
-         Process.Start(startInfo);
+         var process = Process.Start(startInfo);
+
+         // Ties the Settings/About process's lifetime to this one, so it doesn't linger
+         // as an orphaned window (with no tray icon left to reopen it from) after this
+         // process exits -- by any means, not just the normal Tray -> Exit.
+         if (process != null)
+         {
+            ChildProcessTracker.Add(process);
+         }
       }
 
       private void menuItemAbout_Click(object? sender, EventArgs e)
@@ -308,14 +316,6 @@ namespace StrangeLens
          this.clickTimer.Start();
       }
 
-      private void TrayForm_FormClosing(object? sender, FormClosingEventArgs e)
-      {
-         if (!this.shouldExitApplication)
-         {
-            this.CloseToSystemTray(e);
-         }
-      }
-
       private void ToggleLens()
       {
          if (this.activeLens != null)
@@ -339,6 +339,14 @@ namespace StrangeLens
          this.activeLens = lensForm;
          lensForm.Show();
          lensForm.Activate();
+      }
+
+      private void TrayForm_FormClosing(object? sender, FormClosingEventArgs e)
+      {
+         if (!this.shouldExitApplication)
+         {
+            this.CloseToSystemTray(e);
+         }
       }
    }
 }
