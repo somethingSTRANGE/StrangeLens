@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Strange Lens** is a Windows desktop magnifying glass utility with pixel color picking. It renders a floating zoomed panel that follows the mouse, draws a precise crosshair between pixels, highlights the pixel closest to the origin (used for color sampling), and shows color info (hex/RGB/HSL) plus mouse position in a companion info panel. It lives in the system tray.
 
-**Stack:** C# 12 / .NET 10 / WinForms / GDI+
+**Stack:** C# 12 / .NET 10 / WinForms / GDI+ (lens) / WinUI 3 via Windows App SDK (Settings & About, see `SettingsApp/`)
 
 ## Build & Run
 

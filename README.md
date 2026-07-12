@@ -19,7 +19,7 @@ A pixel-precise screen magnifier, color picker, and measurement tool for Windows
 Strange Lens is fully portable. It requires no installer, writes no registry entries, and needs no administrator privileges to run.
 
 1. Download the latest release
-2. Place `StrangeLens.exe` anywhere. A good choice is `%LocalAppData%\Programs\StrangeLens\`, because it keeps user-scoped apps in one place and requires no admin rights.
+2. Unzip both `StrangeLens.exe` and `StrangeLens.Settings.exe` into the same folder — Settings and About are launched as a separate process that Strange Lens locates next to its own executable, so keep them together. A good choice is `%LocalAppData%\Programs\StrangeLens\`, because it keeps user-scoped apps in one place and requires no admin rights.
 
 The optional **Start with Windows** feature writes a single registry key to launch the app at login; if you prefer to avoid that, drop a shortcut to the exe in your startup folder (`shell:startup`) instead.
 
@@ -87,10 +87,6 @@ The following shortcuts are only available when the lens is open and has focus, 
 | <kbd>ESC</kbd> | Close lens window |
 
 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> is the primary way to open and close the lens. <kbd>ESC</kbd> is a fallback that only works when the lens window has focus. The lens window border color indicates when the window has focus.
-
-## Known Issues
-
-- **Settings and About panels may flicker or glitch when dragged between displays with different DPI scaling** (e.g. a 150% primary monitor and a 100% secondary monitor). Both panels respond correctly to DPI changes and will render at the right size and text scale on each display, but the transition between monitors can produce a brief visual artifact. This is a limitation of the legacy WinForms UI framework. A migration of the Settings and About panels to WinUI 3 is planned — see the [Roadmap](ROADMAP.md).
 
 ## Troubleshooting
 
