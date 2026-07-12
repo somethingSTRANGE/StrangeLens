@@ -27,6 +27,7 @@ public sealed partial class MainWindow
       this.InitializeComponent();
 
       this.AppWindow.SetIcon("Icons/AppIcon.ico");
+      this.AppWindow.TitleBar.PreferredTheme = TitleBarTheme.UseDefaultAppMode;
 
       // Layout is finalized on fixed-width controls/cards, not content that benefits from
       // resizing, so the window is locked to its natural size -- the same rationale as
