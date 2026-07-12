@@ -33,7 +33,7 @@ jobs:
         shell: pwsh
         run: '"value=" + (Get-Date -Format "yyyy-MM-dd") | Out-File -FilePath $env:GITHUB_OUTPUT -Append'
 
-      - name: Publish
+      - name: Publish StrangeLens
         shell: pwsh
         run: |
           dotnet publish Source/StrangeLens.csproj `
@@ -43,16 +43,42 @@ jobs:
             -p:PublishSingleFile=true `
             -p:EnableCompressionInSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:DebugType=none `
             -p:Version=${{ steps.version.outputs.version }} `
             -p:BuildDate=${{ steps.date.outputs.value }} `
             --output publish
+
+      - name: Publish StrangeLens.Settings
+        shell: pwsh
+        run: |
+          dotnet publish SettingsApp/StrangeLens.SettingsApp.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained `
+            -p:Platform=x64 `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableMsixTooling=true `
+            -p:DebugType=none `
+            -p:Version=${{ steps.version.outputs.version }} `
+            --output publish-settings
+
+      - name: Package release zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release-zip | Out-Null
+          Copy-Item publish/StrangeLens.exe release-zip/
+          Copy-Item publish-settings/StrangeLens.Settings.exe release-zip/
+          Copy-Item LICENSE release-zip/LICENSE.txt
+          Copy-Item README.md release-zip/
+          Copy-Item Source/Resources/Fonts/LICENSE-Inter.txt release-zip/
+          Copy-Item Source/Resources/Fonts/LICENSE-JetBrainsMono.txt release-zip/
+          Compress-Archive -Path release-zip/* -DestinationPath StrangeLens-${{ steps.version.outputs.version }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "Strange Lens ${{ steps.version.outputs.version }}"
-          files: |
-            publish/StrangeLens.exe
-            Source/Resources/Fonts/LICENSE-Inter.txt
-            Source/Resources/Fonts/LICENSE-JetBrainsMono.txt
+          files: StrangeLens-${{ steps.version.outputs.version }}.zip
           generate_release_notes: true

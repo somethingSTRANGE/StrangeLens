@@ -54,36 +54,9 @@ namespace StrangeLens
          fontFamilies = map;
       }
 
-      public static FontInfo CreateBoldFontInfo()
-      {
-         return new FontInfo(new Font(GetFamily("Inter"), 12f, FontStyle.Bold, GraphicsUnit.Pixel));
-      }
-
-      public static FontInfo CreateBoldFontInfo(float scale)
-      {
-         return new FontInfo(new Font(GetFamily("Inter"), 12f * scale, FontStyle.Bold, GraphicsUnit.Pixel));
-      }
-
-      public static FontInfo CreateSmallFontInfo()
-      {
-         return new FontInfo(new Font(GetFamily("Inter"), 11f, FontStyle.Regular, GraphicsUnit.Pixel));
-      }
-
-      public static FontInfo CreateSmallFontInfo(float scale)
-      {
-         return new FontInfo(
-            new Font(GetFamily("Inter"), 11f * scale, FontStyle.Regular, GraphicsUnit.Pixel));
-      }
-
       internal static FontInfo CreateRegularFontInfo()
       {
          return new FontInfo(new Font(GetFamily("Inter"), 12f, FontStyle.Regular, GraphicsUnit.Pixel));
-      }
-
-      internal static FontInfo CreateRegularFontInfo(float scale)
-      {
-         return new FontInfo(
-            new Font(GetFamily("Inter"), 12f * scale, FontStyle.Regular, GraphicsUnit.Pixel));
       }
 
       internal static FontInfo CreateValueFontInfo()

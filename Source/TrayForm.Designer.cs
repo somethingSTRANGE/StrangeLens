@@ -1,6 +1,6 @@
-﻿namespace StrangeLens
+namespace StrangeLens
 {
-   partial class SettingsForm
+   partial class TrayForm
    {
       private System.ComponentModel.IContainer components = null;
 
@@ -8,7 +8,6 @@
       {
          if (disposing)
          {
-            this.textFont?.Dispose();
             if (components != null) components.Dispose();
          }
          base.Dispose(disposing);
@@ -17,7 +16,7 @@
       private void InitializeComponent()
       {
          this.components = new System.ComponentModel.Container();
-         var resources = new System.ComponentModel.ComponentResourceManager(typeof(SettingsForm));
+         var resources = new System.ComponentModel.ComponentResourceManager(typeof(TrayForm));
 
          this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
          this.contextMenu = new System.Windows.Forms.ContextMenuStrip();
@@ -28,14 +27,14 @@
          this.notifyIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseClick);
 
          this.AutoScaleMode   = System.Windows.Forms.AutoScaleMode.None;
-         this.ClientSize      = new System.Drawing.Size(320, 100); // BuildLayout sets final height
+         this.ClientSize      = new System.Drawing.Size(320, 100); // never shown -- pure tray/hotkey host
          this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
          this.Icon            = (System.Drawing.Icon)resources.GetObject("$this.Icon");
          this.MaximizeBox     = false;
          this.MinimizeBox     = false;
-         this.Name            = "SettingsForm";
+         this.Name            = "TrayForm";
          this.Text            = "Strange Lens Settings";
-         this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.SettingsForm_FormClosing);
+         this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.TrayForm_FormClosing);
          this.ResumeLayout(false);
       }
 

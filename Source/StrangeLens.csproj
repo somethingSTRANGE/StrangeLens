@@ -6,13 +6,15 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>StrangeLens</RootNamespace>
     <AssemblyName>StrangeLens</AssemblyName>
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
-    <SupportedOSPlatformVersion>6.1</SupportedOSPlatformVersion>
+    <!-- Matches SettingsApp's TargetPlatformMinVersion. The shipped product (both exes)
+         already has this as its real floor, regardless of what this project claims alone. -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
     <ApplicationIcon>Icons\AppIcon.ico</ApplicationIcon>
     <Deterministic>true</Deterministic>
@@ -27,6 +29,14 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>BuildDate</_Parameter1>
       <_Parameter2>$(BuildDate)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- SettingsApp reuses the existing VectorImageFactory icon path data (About/donate icons)
+       instead of duplicating it or shipping standalone .svg files. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>StrangeLens.Settings</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 

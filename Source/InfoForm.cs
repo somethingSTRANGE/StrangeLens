@@ -1,4 +1,4 @@
-﻿// -------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
 // <copyright file="InfoForm.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
@@ -74,17 +74,17 @@ namespace StrangeLens
 
       private readonly float charWidth;
 
-      private readonly SvgImage iconColorPalette;
+      private readonly VectorImage iconColorPalette;
 
-      private readonly SvgImage iconColorValues;
+      private readonly VectorImage iconColorValues;
 
-      private readonly SvgImage iconLensSize;
+      private readonly VectorImage iconLensSize;
 
-      private readonly SvgImage iconMagnification;
+      private readonly VectorImage iconMagnification;
 
-      private readonly SvgImage iconMousePosition;
+      private readonly VectorImage iconMousePosition;
 
-      private readonly SvgImage iconRuler;
+      private readonly VectorImage iconRuler;
 
       private readonly InfoControl infoData;
 
@@ -150,12 +150,12 @@ namespace StrangeLens
             this.contentH + this.shadowMarginT + this.shadowMarginB);
          // Start off-screen; shown lazily by UpdateAndPosition after first position set.
          this.Location = new Point(-32000, -32000);
-         this.iconColorPalette = SvgImageFactory.InfoColorPalette(IconSize);
-         this.iconColorValues = SvgImageFactory.InfoColorValues(IconSize);
-         this.iconLensSize = SvgImageFactory.InfoLensSize(IconSize);
-         this.iconMagnification = SvgImageFactory.InfoMagnification(IconSize);
-         this.iconMousePosition = SvgImageFactory.InfoMousePosition(IconSize);
-         this.iconRuler = SvgImageFactory.InfoRuler(IconSize);
+         this.iconColorPalette = VectorImageFactory.InfoColorPalette(IconSize);
+         this.iconColorValues = VectorImageFactory.InfoColorValues(IconSize);
+         this.iconLensSize = VectorImageFactory.InfoLensSize(IconSize);
+         this.iconMagnification = VectorImageFactory.InfoMagnification(IconSize);
+         this.iconMousePosition = VectorImageFactory.InfoMousePosition(IconSize);
+         this.iconRuler = VectorImageFactory.InfoRuler(IconSize);
       }
 
       internal int ContentH => this.contentH;

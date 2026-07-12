@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------------------------
-// <copyright file="SvgImageFactory.PathCursor.cs">
+// <copyright file="VectorImageFactory.PathCursor.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
@@ -7,7 +7,7 @@
 
 namespace StrangeLens
 {
-   internal static partial class SvgImageFactory
+   internal static partial class VectorImageFactory
    {
       private struct PathCursor
       {

@@ -1,5 +1,5 @@
-﻿// -------------------------------------------------------------------------------------
-// <copyright file="SvgImageFactory.cs">
+// -------------------------------------------------------------------------------------
+// <copyright file="VectorImageFactory.cs">
 //   Copyright (c) 2026
 //   Licensed under the MIT License. See LICENSE file in the project root.
 // </copyright>
@@ -14,100 +14,100 @@ namespace StrangeLens
    using System.Drawing.Drawing2D;
    using System.Globalization;
 
-   /// <summary>Builds and caches <see cref="SvgImage"/> instances from embedded SVG path data.
-   ///    One static method per icon; square icons accept a single <c>size</c> parameter,
+   /// <summary>Builds and caches <see cref="VectorImage"/> instances from embedded SVG path
+   ///    data. One static method per icon; square icons accept a single <c>size</c> parameter,
    ///    non-square icons accept <c>width, height</c>. The factory owns all
    ///    <see cref="System.Drawing.Drawing2D.GraphicsPath"/> objects -- callers must not
-   ///    dispose the returned <see cref="SvgImage"/> instances.</summary>
-   internal static partial class SvgImageFactory
+   ///    dispose the returned <see cref="VectorImage"/> instances.</summary>
+   internal static partial class VectorImageFactory
    {
-      private static readonly Dictionary<(int, int), SvgImage> cachedAboutDonateBuyMeACoffee = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedAboutDonateBuyMeACoffee = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedAboutDonateGitHub = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedAboutDonateGitHub = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedAboutDonateKoFi = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedAboutDonateKoFi = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedAboutDonatePayPal = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedAboutDonatePayPal = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedAboutLogo = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedAboutLogo = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedAboutResourceIssues = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedAboutResourceIssues = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedAboutResourceSource = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedAboutResourceSource = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedInfoColorPalette = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedInfoColorPalette = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedInfoColorValues = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedInfoColorValues = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedInfoLensSize = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedInfoLensSize = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedInfoMagnification = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedInfoMagnification = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedInfoMousePosition = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedInfoMousePosition = new();
 
-      private static readonly Dictionary<(int, int), SvgImage> cachedInfoRuler = new();
+      private static readonly Dictionary<(int, int), VectorImage> cachedInfoRuler = new();
 
-      public static SvgImage AboutDonateBuyMeACoffee(int size)
+      public static VectorImage AboutDonateBuyMeACoffee(int size)
       {
          return Get(cachedAboutDonateBuyMeACoffee, Data.AboutDonateBuyMeACoffeeIcon, size, size);
       }
 
-      public static SvgImage AboutDonateGitHub(int size)
+      public static VectorImage AboutDonateGitHub(int size)
       {
          return Get(cachedAboutDonateGitHub, Data.AboutDonateGitHubSponsorsIcon, size, size);
       }
 
-      public static SvgImage AboutDonateKoFi(int size)
+      public static VectorImage AboutDonateKoFi(int size)
       {
          return Get(cachedAboutDonateKoFi, Data.AboutDonateKoFiIcon, size, size);
       }
 
-      public static SvgImage AboutDonatePayPal(int size)
+      public static VectorImage AboutDonatePayPal(int size)
       {
          return Get(cachedAboutDonatePayPal, Data.AboutDonatePayPalIcon, size, size);
       }
 
-      public static SvgImage AboutLogo(int width, int height)
+      public static VectorImage AboutLogo(int width, int height)
       {
          return Get(cachedAboutLogo, Data.AboutLogoImage, width, height);
       }
 
-      public static SvgImage AboutResourceIssues(int size)
+      public static VectorImage AboutResourceIssues(int size)
       {
          return Get(cachedAboutResourceIssues, Data.AboutResourceIssuesIcon, size, size);
       }
 
-      public static SvgImage AboutResourceSource(int size)
+      public static VectorImage AboutResourceSource(int size)
       {
          return Get(cachedAboutResourceSource, Data.AboutResourceSourceIcon, size, size);
       }
 
-      public static SvgImage InfoColorPalette(int size)
+      public static VectorImage InfoColorPalette(int size)
       {
          return Get(cachedInfoColorPalette, Data.InfoColorPaletteIcon, size, size);
       }
 
-      public static SvgImage InfoColorValues(int size)
+      public static VectorImage InfoColorValues(int size)
       {
          return Get(cachedInfoColorValues, Data.InfoColorValuesIcon, size, size);
       }
 
-      public static SvgImage InfoLensSize(int size)
+      public static VectorImage InfoLensSize(int size)
       {
          return Get(cachedInfoLensSize, Data.InfoLensSizeIcon, size, size);
       }
 
-      public static SvgImage InfoMagnification(int size)
+      public static VectorImage InfoMagnification(int size)
       {
          return Get(cachedInfoMagnification, Data.InfoMagnificationIcon, size, size);
       }
 
-      public static SvgImage InfoMousePosition(int size)
+      public static VectorImage InfoMousePosition(int size)
       {
          return Get(cachedInfoMousePosition, Data.InfoMouseCursorIcon, size, size);
       }
 
-      public static SvgImage InfoRuler(int size)
+      public static VectorImage InfoRuler(int size)
       {
          return Get(cachedInfoRuler, Data.InfoRulerIcon, size, size);
       }
@@ -202,7 +202,7 @@ namespace StrangeLens
          if (phiDeg != 0)
          {
             // Rotated ellipse: apply transform around centre, draw, restore.
-            Debug.WriteLine($"[SvgImageFactory] rotated arc (phi={phiDeg}) not fully supported");
+            Debug.WriteLine($"[VectorImageFactory] rotated arc (phi={phiDeg}) not fully supported");
          }
 
          path.AddArc(
@@ -233,7 +233,7 @@ namespace StrangeLens
                return true;
             }
 
-            Debug.WriteLine($"[SvgImageFactory] '{c}': need {n} args, have {have}");
+            Debug.WriteLine($"[VectorImageFactory] '{c}': need {n} args, have {have}");
             return false;
          }
 
@@ -562,7 +562,7 @@ namespace StrangeLens
                break;
 
             default:
-               Debug.WriteLine($"[SvgImageFactory] unhandled command '{cmd}'");
+               Debug.WriteLine($"[VectorImageFactory] unhandled command '{cmd}'");
                ri = raw.Length;
                break;
          }
@@ -616,14 +616,14 @@ namespace StrangeLens
          return path;
       }
 
-      private static SvgImage Get(Dictionary<(int, int), SvgImage> cache, SvgData data, int w, int h)
+      private static VectorImage Get(Dictionary<(int, int), VectorImage> cache, VectorData data, int w, int h)
       {
          var key = (w, h);
          if (!cache.TryGetValue(key, out var img))
          {
             var path1 = BuildPath(data.ViewBox, data.Primary, w, h);
             var path2 = data.Secondary != null ? BuildPath(data.ViewBox, data.Secondary, w, h) : null;
-            img = new SvgImage(path1, path2, w, h);
+            img = new VectorImage(path1, path2, w, h);
             cache[key] = img;
          }
 

@@ -1,0 +1,14 @@
+<UserControl x:Class="StrangeLens.SettingsApp.ComboBoxRow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid ColumnDefinitions="*,176">
+        <TextBlock Text="{x:Bind Label, Mode=OneWay}"
+                   Margin="{x:Bind GetLabelMargin(Indent), Mode=OneWay}"
+                   Grid.Column="0"
+                   VerticalAlignment="Center" />
+        <ComboBox x:Name="InnerComboBox"
+                  Grid.Column="1"
+                  Width="176" />
+    </Grid>
+</UserControl>

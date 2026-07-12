@@ -1,0 +1,100 @@
+<Window x:Class="StrangeLens.SettingsApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:StrangeLens.SettingsApp">
+
+    <Grid Background="{ThemeResource SolidBackgroundFillColorSecondaryBrush}"
+          Padding="24"
+          ColumnSpacing="24"
+          Height="512">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                Grid.Column="0"
+                CornerRadius="8"
+                Padding="16">
+            <StackPanel Spacing="4"
+                        Width="340">
+                <TextBlock Text="Lens"
+                           Style="{StaticResource SubtitleTextBlockStyle}"
+                           Margin="0,-4,0,20" />
+
+                <local:ComboBoxRow Label="Panel width"
+                                   x:Name="WidthComboBoxRow" />
+
+                <local:ComboBoxRow Label="Panel height"
+                                   x:Name="HeightComboBoxRow" />
+
+                <local:ComboBoxRow Label="Mouse precision speed"
+                                   x:Name="PrecisionSpeedComboBoxRow" />
+
+                <TextBlock Text="Grid"
+                           Style="{StaticResource BodyStrongTextBlockStyle}"
+                           Margin="0,24,0,7" />
+
+                <local:ComboBoxRow Label="Style"
+                                   x:Name="GridStyleComboBoxRow"
+                                   Indent="True" />
+
+                <local:ComboBoxRow Label="Size"
+                                   x:Name="GridSizeComboBoxRow"
+                                   Indent="True" />
+
+                <local:ComboBoxRow Label="Opacity"
+                                   x:Name="GridOpacityComboBoxRow"
+                                   Indent="True" />
+
+                <TextBlock Text="Magnification"
+                           Style="{StaticResource BodyStrongTextBlockStyle}"
+                           Margin="0,24,0,7" />
+
+                <local:ComboBoxRow Label="Power level"
+                                   x:Name="MagnificationComboBoxRow"
+                                   Indent="True" />
+
+                <local:ComboBoxRow Label="Scaling"
+                                   x:Name="ScalingComboBoxRow"
+                                   Indent="True" />
+            </StackPanel>
+        </Border>
+
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                Padding="16"
+                CornerRadius="8"
+                Grid.Column="1">
+            <StackPanel Spacing="4"
+                        Width="254">
+                <TextBlock Text="Information"
+                           Style="{StaticResource SubtitleTextBlockStyle}"
+                           Margin="0,-4,0,16" />
+
+                <local:ToggleSwitchRow Label="Show hex color value"
+                                       IsOn="{x:Bind Settings.InfoShowHex, Mode=TwoWay}" />
+
+                <local:ToggleSwitchRow Label="Show RGB color value"
+                                       IsOn="{x:Bind Settings.InfoShowRgb, Mode=TwoWay}" />
+
+                <local:ToggleSwitchRow Label="Show HSL color value"
+                                       IsOn="{x:Bind Settings.InfoShowHsl, Mode=TwoWay}" />
+
+                <local:ToggleSwitchRow Label="Show 12-bit color conversion"
+                                       IsOn="{x:Bind Settings.InfoShow12Bit, Mode=TwoWay}" />
+
+                <local:ToggleSwitchRow Label="Show web safe color conversion"
+                                       IsOn="{x:Bind Settings.InfoShowWeb, Mode=TwoWay}" />
+
+                <local:ToggleSwitchRow Label="Show mouse position"
+                                       IsOn="{x:Bind Settings.InfoShowMouse, Mode=TwoWay}" />
+
+                <local:ToggleSwitchRow Label="Show lens size"
+                                       IsOn="{x:Bind Settings.InfoShowSize, Mode=TwoWay}" />
+
+                <local:ToggleSwitchRow Label="Show zoom level"
+                                       IsOn="{x:Bind Settings.InfoShowZoom, Mode=TwoWay}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
