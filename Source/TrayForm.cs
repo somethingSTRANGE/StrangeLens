@@ -246,9 +246,14 @@ namespace StrangeLens
 
       private void LaunchSettingsAppWindow(string? arguments = null)
       {
-         // TODO: replace the Debug-config-only relative path once a Release/packaging
-         // pipeline exists (see feature/winui3-migration plan notes).
-         var settingsExe = Path.Combine(
+         // A packaged release ships both exes side by side (see release.yml), so that's the
+         // real, expected layout and gets checked first. The dev-repo relative path only
+         // exists to make Rider's default (unpublished) Debug build of this project able to
+         // find the separately-built SettingsApp project without manually copying files
+         // around -- it assumes a specific sibling-folder checkout structure that won't exist
+         // once both exes are actually deployed together.
+         var sideBySideExe = Path.Combine(AppContext.BaseDirectory, "StrangeLens.Settings.exe");
+         var devRepoExe = Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
@@ -260,6 +265,8 @@ namespace StrangeLens
             "Debug",
             "net10.0-windows10.0.19041.0",
             "StrangeLens.Settings.exe");
+
+         var settingsExe = File.Exists(sideBySideExe) ? sideBySideExe : devRepoExe;
 
          var startInfo = new ProcessStartInfo(Path.GetFullPath(settingsExe))
             {
